@@ -1,135 +1,102 @@
-# Turborepo starter
+# 🤝 Giveaway
 
-This Turborepo starter is maintained by the Turborepo core team.
+> **Connecter ceux qui veulent aider avec ceux qui en ont besoin.**
 
-## Using this example
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+![React Native](https://img.shields.io/badge/React_Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![NestJS](https://img.shields.io/badge/NestJS-E0234E?style=for-the-badge&logo=nestjs&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
+![Turborepo](https://img.shields.io/badge/Turborepo-EF4444?style=for-the-badge&logo=turborepo&logoColor=white)
 
-Run the following command:
+---
 
-```sh
-npx create-turbo@latest
-```
+## 📖 À propos
 
-## What's inside?
+**Giveaway** est une plateforme innovante de mise en relation entre bénévoles et associations. Notre mission est de simplifier l'engagement associatif grâce à la technologie.
 
-This Turborepo includes the following packages/apps:
+L'application repose sur un **algorithme de matching intelligent** qui propose des missions personnalisées en fonction de la localisation et des centres d'intérêt du bénévole, à la manière des applications de rencontre, mais pour la bonne cause.
 
-### Apps and Packages
+### ✨ Fonctionnalités Clés (MVP)
+* 🎯 **Matching Intelligent :** Algorithme de pertinence (Géolocalisation + Tags).
+* 📱 **Expérience Mobile First :** Application fluide et intuitive (Expo / React Native).
+* 🏢 **Espace Association :** Publication de missions et vérification d'identité (RNA).
+* 🔒 **Architecture Sécurisée :** Séparation stricte Client/Serveur et base de données isolée.
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+---
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+## 🛠️ Stack Technique
 
-### Utilities
+Ce projet est conçu comme un **Monorepo** orchestré par **Turborepo**, garantissant une cohérence totale entre le Frontend et le Backend (partage de types TypeScript).
 
-This Turborepo has some additional tools already setup for you:
+| Domaine          | Technologie             | Usage                                           |
+| :--------------- | :---------------------- | :---------------------------------------------- |
+| **Monorepo**     | **Turborepo**           | Orchestration du build et cache intelligent.    |
+| **Langage**      | **TypeScript**          | Typage strict partagé (End-to-End Type Safety). |
+| **Mobile & Web** | **Expo (React Native)** | Application Cross-platform (iOS, Android, Web). |
+| **UI Framework** | **NativeWind (v4)**     | Styles utilitaires basés sur Tailwind CSS.      |
+| **Backend**      | **NestJS**              | Framework Node.js modulaire et robuste.         |
+| **Data**         | **PostgreSQL + Prisma** | Base de données relationnelle et ORM moderne.   |
+| **Infra (Dev)**  | **Docker**              | Conteneurisation de la BDD et outils d'admin.   |
 
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
+---
 
-### Build
+## 📂 Structure du Projet
 
-To build all apps and packages, run the following command:
-
-```
-cd my-turborepo
-
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build
-yarn dlx turbo build
-pnpm exec turbo build
-```
-
-You can build a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
-
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build --filter=docs
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build --filter=docs
-yarn exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-```
-
-### Develop
-
-To develop all apps and packages, run the following command:
+```text
+Giveaway/
+├── apps/
+│   ├── api/          # Backend NestJS (Port 3000)
+│   └── mobile/       # Application Expo iOS/Android/Web
+├── packages/
+│   └── shared/       # DTOs, Types et Interfaces partagés
+└── docker-compose.yml # Infrastructure locale (Postgres, Adminer)
 
 ```
-cd my-turborepo
+---
 
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev
+# 🚀 Démarrage Rapide
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev
-yarn exec turbo dev
-pnpm exec turbo dev
+## 📦 Prérequis
+- **Node.js** (v20+)
+- **Docker** & **Docker Compose**
+
+---
+
+## 🛠️ Installation
+
+### 1️⃣ Cloner le projet
+
+```bash
+git clone https://github.com/Mart1n-S/GiveAWay.git
+cd GiveAWay
+````
+
+---
+
+### 2️⃣ Installer les dépendances
+
+```bash
+npm install
 ```
 
-You can develop a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
+---
 
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev --filter=web
+### 3️⃣ Démarrer le développement
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev --filter=web
-yarn exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
+```bash
+npm run dev
 ```
 
-### Remote Caching
+---
 
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
+## 🌐 Accès aux services
 
-Turborepo can use a technique known as [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
+### 🚀 API (NestJS)
 
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
+[http://localhost:3000](http://localhost:3000)
 
-```
-cd my-turborepo
+### 📱 Mobile (Expo)
 
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo login
+Scannez le **QR Code affiché dans le terminal** avec **Expo Go** (iOS/Android)
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo login
-yarn exec turbo login
-pnpm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo link
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo link
-yarn exec turbo link
-pnpm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.com/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.com/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.com/docs/reference/configuration)
-- [CLI Usage](https://turborepo.com/docs/reference/command-line-reference)
+---
