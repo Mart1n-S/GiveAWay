@@ -100,3 +100,6 @@ npm run dev
 Scannez le **QR Code affiché dans le terminal** avec **Expo Go** (iOS/Android)
 
 ---
+
+# Schéma prévisionnel de la BDD
+![Schéma prévisionnel de la BDD](.github/schemaPrevisonnelBDD.jpeg)
