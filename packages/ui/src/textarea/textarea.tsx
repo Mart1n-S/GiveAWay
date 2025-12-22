@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useId } from "react";
 import {
   View,
   TextInput,
@@ -44,7 +44,8 @@ export function TextArea({
   const inputRef = useRef<TextInput>(null);
   const isError = error || !!errorMessage;
 
-  const inputId = id ?? `textarea-${Math.random().toString(36).slice(2, 9)}`;
+  const uniqueId = useId();
+  const inputId = id ?? `textarea-${uniqueId}`;
   const labelId = `${inputId}-label`;
   const helperTextId = `${inputId}-helper`;
   const errorTextId = `${inputId}-error`;

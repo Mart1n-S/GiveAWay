@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useId } from "react";
 import {
   View,
   TextInput,
@@ -36,7 +36,8 @@ export function Input({
   const isError = error || !!errorMessage;
 
   // ---------- IDs ----------
-  const inputId = id ?? `input-${Math.random().toString(36).slice(2, 9)}`;
+  const uniqueId = useId();
+  const inputId = id ?? `input-${uniqueId}`;
   const labelId = `${inputId}-label`;
   const helperTextId = `${inputId}-helper`;
   const errorTextId = `${inputId}-error`;
