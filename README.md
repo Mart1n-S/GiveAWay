@@ -95,9 +95,15 @@ git clone https://github.com/Mart1n-S/GiveAWay.git
 cd GiveAWay
 ````
 
+### 2️⃣ Copier le fichier .env.example en .env et remplir les valeurs appropriées.
+
+```bash
+cp .env.example .env
+````
+
 ---
 
-### 2️⃣ Installer les dépendances
+### 3️⃣ Installer les dépendances
 
 ```bash
 npm install
@@ -105,7 +111,7 @@ npm install
 
 ---
 
-### 3️⃣ Démarrer le développement
+### 4️⃣ Démarrer le développement
 
 ```bash
 npm run dev
