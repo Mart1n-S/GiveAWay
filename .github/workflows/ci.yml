@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, staging, prod]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  quality:
+    name: Quality Check
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Récupération du code
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # Important pour que Turbo détecte les changements
+
+      # 2. Setup Node.js + Cache NPM (Accélère la CI)
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      # 3. Installation des dépendances
+      - name: Install Dependencies
+        run: npm ci
+
+      # 4. LINTING (Vérifie la syntaxe)
+      # Turbo va lancer le script "lint" dans tous les packages modifiés
+      - name: Linting
+        run: npx turbo run lint
+
+      # 5. TYPE CHECKING (TypeScript)
+      # Vérifie qu'il n'y a aucune erreur de typage dans tout le projet
+      - name: Type Checking
+        run: npx turbo run check-types
+
+      # 6. BUILD (Vérification de compilation)
+      # On vérifie que l'API et le Mobile peuvent être buildés sans erreur
+      # Note: pour le mobile on vérifie juste que la config est saine,
+      # le vrai build d'artefact (APK/IPA) se fait souvent via EAS plus tard.
+      - name: Build Test
+        run: npx turbo run build --filter=./apps/* --filter=./packages/*
+
+      # 7. SÉCURITÉ & QUALITÉ (SONARCLOUD)
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
