@@ -7,6 +7,7 @@
 ![NestJS](https://img.shields.io/badge/NestJS-E0234E?style=for-the-badge&logo=nestjs&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
 ![Turborepo](https://img.shields.io/badge/Turborepo-EF4444?style=for-the-badge&logo=turborepo&logoColor=white)
+[![SonarQube Cloud](https://sonarcloud.io/images/project_badges/sonarcloud-light.svg)](https://sonarcloud.io/summary/new_code?id=Mart1n-S_GiveAWay)
 
 ---
 
@@ -33,6 +34,7 @@ Ce projet est conçu comme un **Monorepo** orchestré par **Turborepo**, garanti
 | **Monorepo**     | **Turborepo**           | Orchestration du build et cache intelligent.    |
 | **Langage**      | **TypeScript**          | Typage strict partagé (End-to-End Type Safety). |
 | **Mobile & Web** | **Expo (React Native)** | Application Cross-platform (iOS, Android, Web). |
+| **Routing**      | **Expo Router**         | Navigation basée sur les fichiers. |
 | **UI Framework** | **NativeWind (v4)**     | Styles utilitaires basés sur Tailwind CSS.      |
 | **Backend**      | **NestJS**              | Framework Node.js modulaire et robuste.         |
 | **Data**         | **PostgreSQL + Prisma** | Base de données relationnelle et ORM moderne.   |
@@ -47,18 +49,40 @@ Giveaway/
 ├── apps/
 │   ├── api/          # Backend NestJS (Port 3000)
 │   └── mobile/       # Application Expo iOS/Android/Web
+│       └── app/      # Navigation & Pages (Expo Router)
 ├── packages/
-│   └── shared/       # DTOs, Types et Interfaces partagés
+│   ├── shared/       # DTOs, Types et Interfaces partagés
+│   └── ui/           # Design System & Composants Réutilisables
 └── docker-compose.yml # Infrastructure locale (Postgres, Adminer)
 
 ```
+
+---
+
+## 🎨 Design System
+
+L'interface utilisateur repose sur une bibliothèque de composants isolée (`packages/ui`) pour garantir une cohérence visuelle parfaite.
+
+Nous disposons actuellement de **3 composants fondamentaux** déclinés en plusieurs variantes et états (Hover, Active, Loading, Disabled, Error...) :
+
+1. **Button :** Boutons primaires, secondaires, tertiaires avec gestion d'icônes et spinner de chargement.
+2. **Input :** Champs de saisie avec icônes (gauche/droite), textes d'aide et validation d'erreurs.
+3. **TextArea :** Zones de texte multi-lignes auto-extensibles avec compteurs de caractères.
+
+### 🕹️ Documentation Interactive (Playground)
+
+Une page de documentation "Storybook interne" est intégrée à l'application. Elle est **accessible uniquement en mode développement** et permet de tester tous les composants en temps réel.
+
+🔗 **Accès Web :** [http://localhost:8081/design-system](http://localhost:8081/design-system)
+
 ---
 
 # 🚀 Démarrage Rapide
 
 ## 📦 Prérequis
-- **Node.js** (v20+)
-- **Docker** & **Docker Compose**
+
+* **Node.js** (v20+)
+* **Docker** & **Docker Compose**
 
 ---
 
@@ -98,6 +122,10 @@ npm run dev
 ### 📱 Mobile (Expo)
 
 Scannez le **QR Code affiché dans le terminal** avec **Expo Go** (iOS/Android)
+
+### 🖥️ Web (Expo)
+
+[http://localhost:8081/](http://localhost:8081/)
 
 ---
 
