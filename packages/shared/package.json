@@ -2,7 +2,6 @@
   "name": "@repo/shared",
   "version": "1.0.0",
   "private": true,
-  "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -17,10 +16,12 @@
     "check-types": "tsc --noEmit",
     "lint": "eslint ."
   },
-  "dependencies": {},
+  "dependencies": {
+    "zod": "^4.2.1"
+  },
   "devDependencies": {
-    "typescript": "^5.9.2",
+    "@repo/eslint-config": "*",
     "eslint": "^9.18.0",
-    "@repo/eslint-config": "*"
+    "typescript": "^5.9.2"
   }
 }

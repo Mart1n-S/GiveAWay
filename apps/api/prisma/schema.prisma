@@ -6,9 +6,128 @@
 
 generator client {
   provider = "prisma-client"
-  output   = "../generated/prisma_client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+// --- ENUMS (Listes de choix) ---
+
+enum UserStatus {
+  pending
+  active
+  suspended
+  deleted
+}
+
+enum AssociationStatus {
+  pending
+  validated
+  rejected
+  suspended
+}
+
+enum AssociationRole {
+  owner
+  admin
+  editor
+}
+
+// --- MODELS ---
+
+model Address {
+  id          Int     @id @default(autoincrement())
+  street      String
+  postalCode  String @map("postal_code") // @map permet de garder le nom SQL "postal_code" mais d'utiliser "postalCode" en JS
+  city        String
+  latitude    Decimal? @db.Decimal(10, 7)
+  longitude   Decimal? @db.Decimal(10, 7)
+
+  // Relations inverses (Prisma en a besoin pour naviguer)
+  users        User[]
+  associations Association[]
+  
+  @@map("addresses") // Nom de la table en base
+}
+
+model User {
+  id            Int         @id @default(autoincrement())
+  email         String      @unique
+  password      String      @map("password_hash") // A passer en nullable si Google Auth
+  // googleId     String?    @map("google_id") Voir plus tard si on met en place l'auth google
+  
+  firstName     String      @map("firstname")
+  lastName      String      @map("lastname")
+  age           Int
+  biography     String?     @db.Text
+  profilePicture String?    @map("profile_picture_url")
+  
+  // Il est optionnel (String?) car une fois vérifié, on pourra le remettre à null
+  verificationToken String? @map("verification_token")
+  emailVerifiedAt DateTime? @map("email_verified_at")
+  status        UserStatus  @default(pending)
+
+  termsAcceptedAt DateTime  @default(now()) @map("terms_accepted_at")
+
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  addressId     Int?        @map("address_id")
+  address       Address?    @relation(fields: [addressId], references: [id])
+
+  associations AssociationUser[] // Un user peut être membre de plusieurs assos
+
+  @@map("users")
+}
+
+model AssociationCategory {
+  id   Int    @id @default(autoincrement())
+  name String
+
+  associations Association[]
+
+  @@map("association_categories")
+}
+
+model Association {
+  id        Int               @id @default(autoincrement())
+  name      String
+  email     String            @unique
+  siret     String?
+  rna       String?
+  logoUrl   String?           @map("logo_url")
+  status    AssociationStatus @default(pending)
+
+  createdAt DateTime          @default(now()) @map("created_at")
+  updatedAt DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  addressId  Int?             @map("address_id")
+  address    Address?         @relation(fields: [addressId], references: [id])
+
+  categoryId Int?             @map("category_id")
+  category   AssociationCategory? @relation(fields: [categoryId], references: [id])
+
+  members    AssociationUser[] // Liste des membres
+
+  @@map("associations")
+}
+
+// Table de liaison (Pivot) entre User et Association
+model AssociationUser {
+  id            Int             @id @default(autoincrement())
+  role          AssociationRole @default(admin)
+  createdAt     DateTime        @default(now()) @map("created_at")
+
+  // Liens
+  userId        Int             @map("user_id")
+  user          User            @relation(fields: [userId], references: [id])
+
+  associationId Int             @map("association_id")
+  association   Association     @relation(fields: [associationId], references: [id])
+
+  @@map("association_users")
 }

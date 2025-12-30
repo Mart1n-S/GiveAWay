@@ -34,7 +34,7 @@ Ce projet est conçu comme un **Monorepo** orchestré par **Turborepo**, garanti
 | **Monorepo**     | **Turborepo**           | Orchestration du build et cache intelligent.    |
 | **Langage**      | **TypeScript**          | Typage strict partagé (End-to-End Type Safety). |
 | **Mobile & Web** | **Expo (React Native)** | Application Cross-platform (iOS, Android, Web). |
-| **Routing**      | **Expo Router**         | Navigation basée sur les fichiers. |
+| **Routing**      | **Expo Router**         | Navigation basée sur les fichiers.              |
 | **UI Framework** | **NativeWind (v4)**     | Styles utilitaires basés sur Tailwind CSS.      |
 | **Backend**      | **NestJS**              | Framework Node.js modulaire et robuste.         |
 | **Data**         | **PostgreSQL + Prisma** | Base de données relationnelle et ORM moderne.   |
@@ -93,13 +93,21 @@ Une page de documentation "Storybook interne" est intégrée à l'application. E
 ```bash
 git clone https://github.com/Mart1n-S/GiveAWay.git
 cd GiveAWay
-````
+```
+
+---
 
 ### 2️⃣ Copier le fichier .env.example en .env et remplir les valeurs appropriées.
 
 ```bash
 cp .env.example .env
-````
+```
+
+Pour le JWT_SECRET, vous pouvez générer une chaîne aléatoire avec la commande suivante :
+
+```bash
+openssl rand -base64 62
+``` 
 
 ---
 
@@ -111,7 +119,15 @@ npm install
 
 ---
 
-### 4️⃣ Démarrer le développement
+### 4️⃣ Prisma – Génération du client
+
+```bash
+npm run prisma:generate
+```
+
+---
+
+### 5️⃣ Démarrer le développement
 
 ```bash
 npm run dev
@@ -136,4 +152,5 @@ Scannez le **QR Code affiché dans le terminal** avec **Expo Go** (iOS/Android)
 ---
 
 # Schéma prévisionnel de la BDD
+
 ![Schéma prévisionnel de la BDD](.github/schemaPrevisonnelBDD.jpeg)
