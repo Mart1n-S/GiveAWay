@@ -1,11 +1,14 @@
 -- CreateEnum
-CREATE TYPE "UserStatus" AS ENUM ('pending', 'active', 'suspended', 'deleted');
+CREATE TYPE "UserStatus" AS ENUM ('PENDING', 'ACTIVE', 'SUSPENDED', 'DELETED');
 
 -- CreateEnum
-CREATE TYPE "AssociationStatus" AS ENUM ('pending', 'validated', 'rejected', 'suspended');
+CREATE TYPE "AssociationStatus" AS ENUM ('PENDING', 'VALIDATED', 'REJECTED', 'SUSPENDED');
 
 -- CreateEnum
-CREATE TYPE "AssociationRole" AS ENUM ('owner', 'admin', 'editor');
+CREATE TYPE "AssociationRole" AS ENUM ('OWNER', 'ADMIN', 'EDITOR');
+
+-- CreateEnum
+CREATE TYPE "TokenType" AS ENUM ('EMAIL_VERIFICATION', 'PASSWORD_RESET');
 
 -- CreateTable
 CREATE TABLE "addresses" (
@@ -29,15 +32,39 @@ CREATE TABLE "users" (
     "age" INTEGER NOT NULL,
     "biography" TEXT,
     "profile_picture_url" TEXT,
-    "verification_token" TEXT,
     "email_verified_at" TIMESTAMP(3),
-    "status" "UserStatus" NOT NULL DEFAULT 'pending',
+    "status" "UserStatus" NOT NULL DEFAULT 'PENDING',
     "terms_accepted_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
     "address_id" INTEGER,
 
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "token" (
+    "id" SERIAL NOT NULL,
+    "token" TEXT NOT NULL,
+    "type" "TokenType" NOT NULL,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "userId" INTEGER NOT NULL,
+
+    CONSTRAINT "token_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "refresh_tokens" (
+    "id" TEXT NOT NULL,
+    "hashed_token" TEXT NOT NULL,
+    "user_id" INTEGER NOT NULL,
+    "expires_at" TIMESTAMP(3) NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "user_agent" TEXT,
+    "ip" TEXT,
+
+    CONSTRAINT "refresh_tokens_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -56,7 +83,7 @@ CREATE TABLE "associations" (
     "siret" TEXT,
     "rna" TEXT,
     "logo_url" TEXT,
-    "status" "AssociationStatus" NOT NULL DEFAULT 'pending',
+    "status" "AssociationStatus" NOT NULL DEFAULT 'PENDING',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
     "address_id" INTEGER,
@@ -68,7 +95,7 @@ CREATE TABLE "associations" (
 -- CreateTable
 CREATE TABLE "association_users" (
     "id" SERIAL NOT NULL,
-    "role" "AssociationRole" NOT NULL DEFAULT 'admin',
+    "role" "AssociationRole" NOT NULL DEFAULT 'ADMIN',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "user_id" INTEGER NOT NULL,
     "association_id" INTEGER NOT NULL,
@@ -80,10 +107,22 @@ CREATE TABLE "association_users" (
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "token_token_key" ON "token"("token");
+
+-- CreateIndex
+CREATE INDEX "token_userId_idx" ON "token"("userId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "associations_email_key" ON "associations"("email");
 
 -- AddForeignKey
 ALTER TABLE "users" ADD CONSTRAINT "users_address_id_fkey" FOREIGN KEY ("address_id") REFERENCES "addresses"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "token" ADD CONSTRAINT "token_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "refresh_tokens" ADD CONSTRAINT "refresh_tokens_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "associations" ADD CONSTRAINT "associations_address_id_fkey" FOREIGN KEY ("address_id") REFERENCES "addresses"("id") ON DELETE SET NULL ON UPDATE CASCADE;

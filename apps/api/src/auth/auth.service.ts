@@ -12,7 +12,11 @@ import { hash, verify } from 'argon2';
 import * as crypto from 'crypto';
 
 import { PrismaService } from '../prisma/prisma.service';
-import { UserStatus, RefreshToken } from '../generated/prisma/client';
+import {
+  UserStatus,
+  RefreshToken,
+  TokenType,
+} from '../generated/prisma/client';
 import { MailService } from '../mail/mail.service';
 import { RegisterDto, LoginDto } from '@repo/shared';
 
@@ -39,22 +43,12 @@ export class AuthService {
     if (existingUser) {
       throw new ConflictException('Cet email est déjà utilisé');
     }
+
     // 2. Hasher le mot de passe
     const hashedPassword = await hash(dto.password);
 
-    // 3. Générer le token de vérification d'email
-    // On génère une chaîne aléatoire (C'est celle-ci qu'on enverra par email)
-    const rawToken = crypto.randomBytes(32).toString('hex');
-
-    // On la hashe en SHA-256 pour la stocker en base (Sécurité en cas de fuite de BDD)
-    const hashedToken = crypto
-      .createHash('sha256')
-      .update(rawToken)
-      .digest('hex');
-
-    // 4. Création du User (Mapping explicite pour éviter les erreurs de types)
-    // On ne stocke pas 'acceptTerms' (boolean), Prisma mettra la date automatiquement via @default(now())
-    await this.prisma.user.create({
+    // 3. Création du User (SANS le token, car on le gère à part maintenant)
+    const newUser = await this.prisma.user.create({
       data: {
         firstName: dto.firstName,
         lastName: dto.lastName,
@@ -62,14 +56,11 @@ export class AuthService {
         age: dto.age,
         biography: dto.biography,
         profilePicture: dto.profilePicture,
-        password: hashedPassword,
-
-        // Gestion de la validation email
-        verificationToken: hashedToken,
+        password: hashedPassword, // Mot de passe hashé Argon2
         emailVerifiedAt: null,
-        status: UserStatus.pending,
+        status: UserStatus.PENDING,
 
-        // Création de l'adresse liée via la relation Prisma
+        // Création de l'adresse liée
         address: {
           create: {
             street: dto.address.street,
@@ -82,13 +73,20 @@ export class AuthService {
       },
     });
 
-    // 5. Simulation envoi Email
+    // 4. Génération et Sauvegarde du Token (Via notre Helper)
+    // Cela crée l'entrée dans la table Token avec expiration +15min
+    const rawToken = await this.generateAndSaveToken(
+      newUser.id,
+      TokenType.EMAIL_VERIFICATION,
+    );
+
+    // 5. Envoi Email
     await this.mailService.sendVerificationEmail(dto.email, rawToken);
 
-    // 6. On ne renvoie PAS de token JWT. On renvoie un message de succès.
+    // 6. Réponse succès
     return {
       message:
-        'Inscription réussie ! Veuillez vérifier vos emails pour activer votre compte.',
+        'Inscription réussie ! Veuillez vérifier vos emails pour activer votre compte (Lien valide 15 min).',
     };
   }
 
@@ -96,32 +94,72 @@ export class AuthService {
   // VERIFY EMAIL
   // ----------------------------------------------------------------
   async verifyEmail(token: string) {
-    // 1. On hashe le token reçu pour le comparer à celui en base
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
-    // 2. On cherche un utilisateur avec ce token
-    const user = await this.prisma.user.findFirst({
-      where: { verificationToken: hashedToken },
+    // 1. On cherche dans la table Token
+    const dbToken = await this.prisma.token.findUnique({
+      where: { token: hashedToken },
+      include: { user: true },
     });
 
-    if (!user) {
-      throw new UnauthorizedException('Lien de validation invalide ou expiré.');
+    // 2. Vérifications
+    if (!dbToken) {
+      throw new UnauthorizedException('Lien de validation invalide');
     }
 
-    // 3. On valide l'email et on supprime le token (pour qu'il ne serve qu'une fois)
+    if (dbToken.expiresAt < new Date()) {
+      // Nettoyage optionnel ici (ou via un cron job)
+      await this.prisma.token.delete({ where: { id: dbToken.id } });
+      throw new UnauthorizedException('Le lien a expiré');
+    }
+
+    // 3. Validation de l'utilisateur
     await this.prisma.user.update({
-      where: { id: user.id },
+      where: { id: dbToken.userId },
       data: {
-        emailVerifiedAt: new Date(), // Date de maintenant
-        verificationToken: null,
-        status: UserStatus.active,
+        emailVerifiedAt: new Date(),
+        status: UserStatus.ACTIVE,
       },
+    });
+
+    // 4. Nettoyage : On supprime le token utilisé
+    await this.prisma.token.delete({
+      where: { id: dbToken.id },
     });
 
     return {
       message:
-        'Email validé avec succès ! Vous pouvez maintenant vous connecter.',
+        'Email validé avec succès ! Vous pouvez maintenant vous connecter',
     };
+  }
+
+  // ----------------------------------------------------------------
+  // RESEND VERIFICATION EMAIL
+  // ----------------------------------------------------------------
+  async resendVerificationEmail(email: string) {
+    const genericMessage = {
+      message:
+        "Si cet email existe et n'est pas déjà validé, un nouveau lien a été envoyé.",
+    };
+
+    const user = await this.prisma.user.findUnique({ where: { email } });
+
+    // Sécurité (Anti-énumération) + Vérif si déjà validé
+    if (!user || user.emailVerifiedAt) {
+      return genericMessage;
+    }
+
+    // 1. Génération et Sauvegarde du nouveau Token
+    // Le helper supprime automatiquement les anciens tokens avant d'en créer un nouveau
+    const rawToken = await this.generateAndSaveToken(
+      user.id,
+      TokenType.EMAIL_VERIFICATION,
+    );
+
+    // 2. Envoi Email
+    await this.mailService.sendVerificationEmail(user.email, rawToken);
+
+    return genericMessage;
   }
 
   // ----------------------------------------------------------------
@@ -145,8 +183,8 @@ export class AuthService {
     }
 
     if (
-      user.status == UserStatus.deleted ||
-      user.status == UserStatus.suspended
+      user.status == UserStatus.DELETED ||
+      user.status == UserStatus.SUSPENDED
     ) {
       throw new UnauthorizedException(
         'Votre compte a été supprimé ou suspendu. Veuillez contacter le support.',
@@ -240,7 +278,7 @@ export class AuthService {
     const user = await this.prisma.user.findFirst({
       where: {
         id: userId,
-        status: UserStatus.active,
+        status: UserStatus.ACTIVE,
       },
     });
 
@@ -321,5 +359,46 @@ export class AuthService {
         ip,
       },
     });
+  }
+
+  /**
+   * Méthode utilitaire pour générer et sauvegarder un token (Email ou Reset Password)
+   * Durée de validité : 15 minutes.
+   */
+  private async generateAndSaveToken(
+    userId: number,
+    type: TokenType,
+  ): Promise<string> {
+    // 1. Nettoyage : On supprime les anciens tokens de ce type pour cet user
+    // Cela garantit qu'il n'y a toujours qu'un seul token valide par type.
+    await this.prisma.token.deleteMany({
+      where: { userId, type },
+    });
+
+    // 2. Génération du token brut (celui qu'on envoie par mail)
+    const rawToken = crypto.randomBytes(32).toString('hex');
+
+    // 3. Hashage pour la BDD
+    const hashedToken = crypto
+      .createHash('sha256')
+      .update(rawToken)
+      .digest('hex');
+
+    // 4. Calcul de l'expiration (15 minutes)
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 15);
+
+    // 5. Sauvegarde
+    await this.prisma.token.create({
+      data: {
+        token: hashedToken,
+        type: type,
+        expiresAt: expiresAt,
+        userId: userId,
+      },
+    });
+
+    // On retourne le token brut pour pouvoir l'envoyer par email
+    return rawToken;
   }
 }

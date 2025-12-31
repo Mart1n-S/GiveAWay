@@ -52,7 +52,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     }
 
     // 3. Si l'user est banni/suspendu
-    if (user.status !== UserStatus.active) {
+    if (user.status !== UserStatus.ACTIVE) {
       throw new UnauthorizedException('Votre compte est suspendu ou désactivé');
     }
 

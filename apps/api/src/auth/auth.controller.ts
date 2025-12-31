@@ -23,6 +23,8 @@ import {
   RegisterSchema,
   LoginDto,
   LoginSchema,
+  ResendVerificationDto,
+  ResendVerificationSchema,
 } from '@repo/shared';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { AuthenticatedRequest } from '../common/interfaces/authenticated-request.interface';
@@ -32,7 +34,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   // Route: POST /auth/register
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Throttle({ default: { limit: 5, ttl: 5 * 60 * 1000 } })
   @Post('register')
   @UsePipes(new ZodValidationPipe(RegisterSchema))
   register(@Body() dto: RegisterDto) {
@@ -46,7 +48,7 @@ export class AuthController {
   }
 
   // Route: POST /auth/login
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Throttle({ default: { limit: 5, ttl: 60 * 60 * 1000 } }) // 5 requêtes par heure
   @HttpCode(HttpStatus.OK)
   @Post('login')
   @UsePipes(new ZodValidationPipe(LoginSchema))
@@ -100,8 +102,16 @@ export class AuthController {
     return { message: 'Connexion réussie' };
   }
 
+  // Route: POST /auth/resend-verification
+  @Throttle({ default: { limit: 3, ttl: 60 * 60 * 1000 } }) // 3 requêtes par heure
+  @Post('resend-verification')
+  @UsePipes(new ZodValidationPipe(ResendVerificationSchema))
+  async resendVerification(@Body() dto: ResendVerificationDto) {
+    return this.authService.resendVerificationEmail(dto.email);
+  }
+
   // Route: POST /auth/logout
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Throttle({ default: { limit: 5, ttl: 5 * 60 * 1000 } })
   @UseGuards(AuthGuard('jwt'))
   @Post('logout')
   @HttpCode(HttpStatus.OK)

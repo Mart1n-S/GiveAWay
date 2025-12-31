@@ -16,23 +16,28 @@ datasource db {
 // --- ENUMS ---
 
 enum UserStatus {
-  pending
-  active
-  suspended
-  deleted
+  PENDING
+  ACTIVE
+  SUSPENDED
+  DELETED
 }
 
 enum AssociationStatus {
-  pending
-  validated
-  rejected
-  suspended
+  PENDING
+  VALIDATED
+  REJECTED
+  SUSPENDED
 }
 
 enum AssociationRole {
-  owner
-  admin
-  editor
+  OWNER
+  ADMIN
+  EDITOR
+}
+
+enum TokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
 }
 
 // --- MODELS ---
@@ -64,10 +69,8 @@ model User {
   biography     String?     @db.Text
   profilePicture String?    @map("profile_picture_url")
   
-  // Il est optionnel (String?) car une fois vérifié, on pourra le remettre à null
-  verificationToken String? @map("verification_token")
   emailVerifiedAt DateTime? @map("email_verified_at")
-  status        UserStatus  @default(pending)
+  status        UserStatus  @default(PENDING)
 
   termsAcceptedAt DateTime  @default(now()) @map("terms_accepted_at")
 
@@ -80,8 +83,26 @@ model User {
 
   associations AssociationUser[] // Un user peut être membre de plusieurs assos
   refreshTokens RefreshToken[] 
+  tokens    Token[]
 
   @@map("users")
+}
+
+model Token {
+  id        Int       @id @default(autoincrement())
+  token     String    @unique // Le hash du token
+  type      TokenType // EMAIL_VERIFICATION ou PASSWORD_RESET
+  expiresAt DateTime
+  
+  createdAt DateTime  @default(now())
+
+  // Relation avec User
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Index pour rendre les recherches plus rapides
+  @@index([userId])
+  @@map("token")
 }
 
 model RefreshToken {
@@ -116,7 +137,7 @@ model Association {
   siret     String?
   rna       String?
   logoUrl   String?           @map("logo_url")
-  status    AssociationStatus @default(pending)
+  status    AssociationStatus @default(PENDING)
 
   createdAt DateTime          @default(now()) @map("created_at")
   updatedAt DateTime          @updatedAt @map("updated_at")
@@ -136,7 +157,7 @@ model Association {
 // Table de liaison (Pivot) entre User et Association
 model AssociationUser {
   id            Int             @id @default(autoincrement())
-  role          AssociationRole @default(admin)
+  role          AssociationRole @default(ADMIN)
   createdAt     DateTime        @default(now()) @map("created_at")
 
   // Liens

@@ -21,7 +21,7 @@ import { MailModule } from './mail/mail.module';
     // On mettra des règles strictes uniquement sur le Login/Register
     ThrottlerModule.forRoot([
       {
-        ttl: 60000, // 60 secondes
+        ttl: 5 * 60 * 1000, // 5 minutes
         limit: 100, // 100 requêtes max par minute par IP
       },
     ]),
