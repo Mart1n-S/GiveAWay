@@ -103,7 +103,7 @@ cd GiveAWay
 cp .env.example .env
 ```
 
-Pour le JWT_SECRET, vous pouvez générer une chaîne aléatoire avec la commande suivante :
+Pour le JWT_ACCESS_SECRET et JWT_REFRESH_SECRET, générer des clés secrètes sécurisées différentes en utilisant la commande suivante 2 fois :
 
 ```bash
 openssl rand -base64 62

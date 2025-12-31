@@ -2,10 +2,13 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { ThrottlerExceptionFilter } from './common/filters/throttler-exception.filter';
+import * as cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const logger = new Logger('Bootstrap');
+
+  app.use(cookieParser());
 
   app.enableCors({
     origin: true, // Accepte toutes les origines en dev (TODO: à restreindre en prod)
@@ -24,10 +27,6 @@ async function bootstrap() {
       forbidNonWhitelisted: true, // Renvoie une erreur si on t'envoie un champ qui n'existe pas
     }),
   );
-
-  // PRÉFIXE GLOBAL (Optionnel mais recommandé)
-  // Ça transforme tes routes en : http://localhost:3000/api/auth/register
-  app.setGlobalPrefix('api');
 
   app.useGlobalFilters(new ThrottlerExceptionFilter());
 

@@ -13,7 +13,7 @@ datasource db {
   provider = "postgresql"
 }
 
-// --- ENUMS (Listes de choix) ---
+// --- ENUMS ---
 
 enum UserStatus {
   pending
@@ -79,8 +79,25 @@ model User {
   address       Address?    @relation(fields: [addressId], references: [id])
 
   associations AssociationUser[] // Un user peut être membre de plusieurs assos
+  refreshTokens RefreshToken[] 
 
   @@map("users")
+}
+
+model RefreshToken {
+  id          String   @id @default(uuid()) // L'ID du token reste un UUID pour la sécurité
+  hashedToken String   @map("hashed_token")
+  
+  userId      Int      @map("user_id") // Doit être Int pour matcher User.id
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  expiresAt   DateTime @map("expires_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  userAgent   String?  @map("user_agent")
+  ip          String?
+
+  @@map("refresh_tokens")
 }
 
 model AssociationCategory {
