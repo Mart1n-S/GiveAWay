@@ -134,6 +134,18 @@ npm run dev
 ```
 
 ---
+## 🧪 Lancer les tests
+A la racine du projet, exécuter les commandes suivantes pour lancer les tests unitaires et d'intégration sur l'ensemble des applications et packages :
+
+```bash
+npm run test
+```
+
+```bash
+npm run test:e2e
+```
+
+---
 
 ## 🌐 Accès aux services
 
