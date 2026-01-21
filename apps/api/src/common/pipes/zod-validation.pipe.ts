@@ -12,7 +12,7 @@ export class ZodValidationPipe implements PipeTransform {
       return parsed.data;
     }
 
-    // Ta super méthode pour structurer l'erreur
+    // Méthode pour structurer l'erreur
     const tree = z.treeifyError(parsed.error);
 
     throw new BadRequestException({

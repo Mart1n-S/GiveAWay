@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class MailService {
   private transporter;
 
-  constructor() {
-    // Pour le dev, on simule juste (ou utilise Ethereal.email)
-    // Plus tard, tu mettras ici tes identifiants Gmail ou Resend
+  constructor(private readonly config: ConfigService) {
+    // Configuration du transporteur (Mock pour le moment)
     this.transporter = nodemailer.createTransport({
       host: 'smtp.ethereal.email',
       port: 587,
@@ -18,15 +18,20 @@ export class MailService {
     });
   }
 
+  // Email de vérification (Inscription)
   async sendVerificationEmail(email: string, token: string) {
-    const url = `http://localhost:3000/auth/verify?token=${token}`;
+    // On récupère l'URL de l'API car la route /verify est une route Backend
+    const apiUrl =
+      this.config.get<string>('API_URL') || 'http://localhost:3000';
 
-    console.log(`📨 [MAIL SERVICE] Simulation d'envoi à : ${email}`);
+    // Le lien pointe vers le contrôleur API qui valide le token
+    const url = `${apiUrl}/auth/verify?token=${token}`;
+
+    console.log(`\n📨 [MAIL SERVICE] Vérification d'email pour : ${email}`);
     console.log(`🔑 Token (brut) : ${token}`);
-    console.log(`🔗 Lien de validation : ${url}`);
+    console.log(`🔗 Lien de validation : ${url}\n`);
 
-    // On simule une attente de 1 seconde.
-    // Ça enlève l'erreur "no await" et ça imite le temps d'envoi réel.
+    // Simulation d'attente (IO)
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
     // En vrai production, on ferait :
@@ -38,5 +43,22 @@ export class MailService {
           html: `<p>Cliquez ici : <a href="${url}">Valider</a></p>`,
         });
         */
+  }
+
+  // Email de réinitialisation du mot de passe (Mot de passe oublié)
+  async sendPasswordResetEmail(email: string, token: string) {
+    // On récupère l'URL du FRONTEND car l'utilisateur doit arriver sur un formulaire
+    // Exemple : "giveaway://reset-password" (Mobile) ou "https://app.com" (Web)
+    const frontendUrl =
+      this.config.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+
+    // Le lien pointe vers l'écran de changement de mot de passe du Front
+    const url = `${frontendUrl}/reset-password?token=${token}`;
+
+    console.log(`📧 [MAIL SERVICE] Reset Password pour : ${email}`);
+    console.log(`🔑 Token (brut) : ${token}`);
+    console.log(`🔗 Lien (Front) : ${url}`);
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 }

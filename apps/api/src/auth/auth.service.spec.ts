@@ -11,13 +11,17 @@ import {
 } from '@nestjs/common';
 import { UserStatus } from '../generated/prisma/client';
 import * as argon2 from 'argon2';
-import { RegisterDto } from '@repo/shared';
+import {
+  RegisterDto,
+  LoginDto,
+  ForgotPasswordDto,
+  ResendVerificationDto,
+} from '@repo/shared';
 
 describe('AuthService (Unit)', () => {
   let service: AuthService;
 
   // --- MOCKS ---
-  // On utilise Record<string, any> ou des types plus précis pour calmer le linter
   const mockPrisma = {
     user: {
       findUnique: jest.fn(),
@@ -44,6 +48,7 @@ describe('AuthService (Unit)', () => {
 
   const mockMail = {
     sendVerificationEmail: jest.fn().mockResolvedValue(undefined),
+    sendPasswordResetEmail: jest.fn().mockResolvedValue(undefined),
   };
 
   const mockConfig = {
@@ -136,7 +141,7 @@ describe('AuthService (Unit)', () => {
   // 3. LOGIN
   // ===========================================================================
   describe('login', () => {
-    const loginData = { email: 'test@test.com', password: 'Password123!' };
+    const dto: LoginDto = { email: 'test@test.com', password: 'Password123!' };
 
     it('✅ Login réussi', async () => {
       mockPrisma.user.findUnique.mockResolvedValue({
@@ -147,7 +152,7 @@ describe('AuthService (Unit)', () => {
       });
       jest.spyOn(argon2, 'verify').mockResolvedValue(true);
 
-      const res = await service.login(loginData, 'agent', 'ip');
+      const res = await service.login(dto, 'agent', 'ip');
 
       expect(res).toHaveProperty('accessToken');
       expect(mockPrisma.refreshToken.create).toHaveBeenCalled();
@@ -161,7 +166,7 @@ describe('AuthService (Unit)', () => {
       });
       jest.spyOn(argon2, 'verify').mockResolvedValue(false);
 
-      await expect(service.login(loginData, 'a', 'i')).rejects.toThrow(
+      await expect(service.login(dto, 'a', 'i')).rejects.toThrow(
         UnauthorizedException,
       );
     });
@@ -238,12 +243,12 @@ describe('AuthService (Unit)', () => {
   // 6. RESEND VERIFICATION
   // ===========================================================================
   describe('resendVerificationEmail', () => {
-    const email = 'test@test.com';
+    const dto: ResendVerificationDto = { email: 'test@test.com' };
 
     it("✅ Doit simuler un succès même si l'utilisateur n'existe pas (Anti-énumération)", async () => {
       mockPrisma.user.findUnique.mockResolvedValue(null);
 
-      const res = await service.resendVerificationEmail(email);
+      const res = await service.resendVerificationEmail(dto);
 
       expect(res.message).toContain('un nouveau lien a été envoyé');
       expect(mockMail.sendVerificationEmail).not.toHaveBeenCalled();
@@ -251,12 +256,11 @@ describe('AuthService (Unit)', () => {
 
     it("✅ Doit simuler un succès si l'email est déjà validé", async () => {
       mockPrisma.user.findUnique.mockResolvedValue({
-        email,
+        email: dto.email,
         emailVerifiedAt: new Date(),
       });
 
-      const res = await service.resendVerificationEmail(email);
-
+      const res = await service.resendVerificationEmail(dto);
       expect(res.message).toContain('un nouveau lien a été envoyé');
       expect(mockMail.sendVerificationEmail).not.toHaveBeenCalled();
     });
@@ -264,14 +268,14 @@ describe('AuthService (Unit)', () => {
     it("✅ Doit envoyer un nouveau mail si l'utilisateur est PENDING", async () => {
       mockPrisma.user.findUnique.mockResolvedValue({
         id: 1,
-        email,
+        email: dto.email,
         emailVerifiedAt: null,
       });
       // Mock pour le helper generateAndSaveToken appelé en interne
       mockPrisma.token.deleteMany.mockResolvedValue({ count: 1 });
       mockPrisma.token.create.mockResolvedValue({ id: 99 });
 
-      const res = await service.resendVerificationEmail(email);
+      const res = await service.resendVerificationEmail(dto);
 
       expect(mockMail.sendVerificationEmail).toHaveBeenCalled();
       expect(res.message).toContain('un nouveau lien a été envoyé');
@@ -281,7 +285,7 @@ describe('AuthService (Unit)', () => {
       // On simule une erreur de connexion à la base de données
       mockPrisma.user.findUnique.mockRejectedValue(new Error('DB_ERROR'));
 
-      await expect(service.resendVerificationEmail(email)).rejects.toThrow(
+      await expect(service.resendVerificationEmail(dto)).rejects.toThrow(
         'DB_ERROR',
       );
     });
@@ -290,20 +294,84 @@ describe('AuthService (Unit)', () => {
       // 1. L'utilisateur existe et doit recevoir un mail
       mockPrisma.user.findUnique.mockResolvedValue({
         id: 1,
-        email,
+        email: dto.email,
         emailVerifiedAt: null,
       });
       mockPrisma.token.deleteMany.mockResolvedValue({ count: 1 });
       mockPrisma.token.create.mockResolvedValue({ id: 99 });
 
-      // 2. On simule un crash du service mail (ex: API Mailgun/Sendgrid en panne)
+      // 2. On simule un crash du service mail
       mockMail.sendVerificationEmail.mockRejectedValue(
         new Error('MAIL_SERVER_DOWN'),
       );
 
-      await expect(service.resendVerificationEmail(email)).rejects.toThrow(
+      await expect(service.resendVerificationEmail(dto)).rejects.toThrow(
         'MAIL_SERVER_DOWN',
       );
+    });
+  });
+
+  // ===========================================================================
+  // 7. FORGOT PASSWORD (NOUVEAU)
+  // ===========================================================================
+  describe('forgotPassword', () => {
+    const dto: ForgotPasswordDto = { email: 'test@test.com' };
+
+    it("✅ Doit envoyer un mail si l'utilisateur existe", async () => {
+      // 1. Mock l'utilisateur trouvé
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 1,
+        email: dto.email,
+        status: UserStatus.ACTIVE,
+      });
+
+      // 2. Mock la génération de token
+      mockPrisma.token.deleteMany.mockResolvedValue({ count: 1 });
+      mockPrisma.token.create.mockResolvedValue({ id: 99, token: 'hashed' });
+
+      const res = await service.forgotPassword(dto);
+
+      expect(mockPrisma.token.create).toHaveBeenCalled();
+      // On vérifie qu'on appelle la bonne méthode du mailer
+      expect(mockMail.sendPasswordResetEmail).toHaveBeenCalledWith(
+        dto.email,
+        expect.any(String),
+      );
+      expect(res.message).toContain('lien de réinitialisation');
+    });
+
+    it("✅ Anti-énumération : Succès silencieux si l'user n'existe pas", async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+
+      const res = await service.forgotPassword(dto);
+
+      expect(mockMail.sendPasswordResetEmail).not.toHaveBeenCalled();
+      expect(mockPrisma.token.create).not.toHaveBeenCalled();
+      expect(res.message).toContain('lien de réinitialisation');
+    });
+
+    it("✅ Anti-énumération : Succès silencieux si l'user est supprimé", async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 1,
+        status: UserStatus.DELETED,
+      });
+
+      const res = await service.forgotPassword(dto);
+
+      expect(mockMail.sendPasswordResetEmail).not.toHaveBeenCalled();
+      expect(res.message).toContain('lien de réinitialisation');
+    });
+
+    it("✅ Anti-énumération : Succès silencieux si l'user est suspendu", async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 1,
+        status: UserStatus.SUSPENDED,
+      });
+
+      const res = await service.forgotPassword(dto);
+
+      expect(mockMail.sendPasswordResetEmail).not.toHaveBeenCalled();
+      expect(res.message).toContain('lien de réinitialisation');
     });
   });
 });

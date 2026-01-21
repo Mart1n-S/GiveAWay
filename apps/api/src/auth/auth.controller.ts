@@ -25,6 +25,8 @@ import {
   LoginSchema,
   ResendVerificationDto,
   ResendVerificationSchema,
+  ForgotPasswordDto,
+  ForgotPasswordSchema,
 } from '@repo/shared';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { AuthenticatedRequest } from '../common/interfaces/authenticated-request.interface';
@@ -102,12 +104,21 @@ export class AuthController {
     return { message: 'Connexion réussie' };
   }
 
+  // Route: POST /auth/forgot-password
+  @Throttle({ default: { limit: 3, ttl: 60 * 60 * 1000 } }) // 3 demandes par heure max
+  @Post('forgot-password')
+  @UsePipes(new ZodValidationPipe(ForgotPasswordSchema))
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    // On passe le DTO directement
+    return this.authService.forgotPassword(dto);
+  }
+
   // Route: POST /auth/resend-verification
   @Throttle({ default: { limit: 3, ttl: 60 * 60 * 1000 } }) // 3 requêtes par heure
   @Post('resend-verification')
   @UsePipes(new ZodValidationPipe(ResendVerificationSchema))
   async resendVerification(@Body() dto: ResendVerificationDto) {
-    return this.authService.resendVerificationEmail(dto.email);
+    return this.authService.resendVerificationEmail(dto);
   }
 
   // Route: POST /auth/logout

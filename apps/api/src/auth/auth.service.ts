@@ -18,7 +18,12 @@ import {
   TokenType,
 } from '../generated/prisma/client';
 import { MailService } from '../mail/mail.service';
-import { RegisterDto, LoginDto } from '@repo/shared';
+import {
+  RegisterDto,
+  LoginDto,
+  ForgotPasswordDto,
+  ResendVerificationDto,
+} from '@repo/shared';
 
 @Injectable()
 export class AuthService {
@@ -136,13 +141,15 @@ export class AuthService {
   // ----------------------------------------------------------------
   // RESEND VERIFICATION EMAIL
   // ----------------------------------------------------------------
-  async resendVerificationEmail(email: string) {
+  async resendVerificationEmail(dto: ResendVerificationDto) {
     const genericMessage = {
       message:
         "Si cet email existe et n'est pas déjà validé, un nouveau lien a été envoyé.",
     };
 
-    const user = await this.prisma.user.findUnique({ where: { email } });
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
 
     // Sécurité (Anti-énumération) + Vérif si déjà validé
     if (!user || user.emailVerifiedAt) {
@@ -207,6 +214,43 @@ export class AuthService {
     await this.saveRefreshToken(user.id, tokens.refreshToken, userAgent, ip);
 
     return tokens;
+  }
+
+  // ----------------------------------------------------------------
+  // FORGOT PASSWORD
+  // ----------------------------------------------------------------
+  async forgotPassword(dto: ForgotPasswordDto) {
+    const genericMessage = {
+      message:
+        'Si un compte existe avec cet email, un lien de réinitialisation a été envoyé.',
+    };
+
+    // 1. Chercher l'utilisateur via dto.email
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+
+    // 2. Anti-énumération & Vérification statut
+    if (
+      !user ||
+      user.status === UserStatus.DELETED ||
+      user.status === UserStatus.SUSPENDED
+    ) {
+      // Pour la sécurité, on fait semblant que tout s'est bien passé
+      // On retourne le même message que si l'utilisateur existait
+      return genericMessage;
+    }
+
+    // 3. Génération du token
+    const rawToken = await this.generateAndSaveToken(
+      user.id,
+      TokenType.PASSWORD_RESET,
+    );
+
+    // 4. Envoi de l'email
+    await this.mailService.sendPasswordResetEmail(user.email, rawToken);
+
+    return genericMessage;
   }
 
   // ----------------------------------------------------------------
