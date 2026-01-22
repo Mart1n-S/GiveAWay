@@ -565,4 +565,121 @@ describe('Auth Module (E2E)', () => {
         .expect(403);
     });
   });
+
+  // ===========================================================================
+  // TEST: CHANGEMENT DE MOT DE PASSE (Web & Mobile)
+  // ===========================================================================
+  describe('POST /auth/change-password', () => {
+    const oldPassword = 'OldPassword123!';
+    const newPassword = 'NewPassword123!';
+    const testEmail = 'change-pwd-flow@test.com';
+
+    // On recrée un utilisateur "propre" avant chaque test
+    beforeEach(async () => {
+      // 1. Hashage manuel
+      const argon2 = await import('argon2');
+      const hashedPassword = await argon2.hash(oldPassword);
+
+      // 2. Création directe en BDD (Bypass Register API)
+      await prisma.user.create({
+        data: {
+          email: testEmail,
+          password: hashedPassword,
+          firstName: 'Tester',
+          lastName: 'Pwd',
+          age: 30,
+          status: UserStatus.ACTIVE, // Important : Active direct
+          emailVerifiedAt: new Date(), // Important : Email validé direct
+          address: {
+            create: {
+              street: 'Pwd St',
+              postalCode: '00000',
+              city: 'TestCity',
+            },
+          },
+        },
+      });
+    });
+
+    it('✅ WEB : Devrait changer le mot de passe et vider les cookies', async () => {
+      // 1. Login WEB (pour avoir les cookies)
+      const loginRes = await request(httpServer)
+        .post('/auth/login')
+        .send({ email: testEmail, password: oldPassword })
+        .expect(200);
+
+      const cookies = loginRes.get('Set-Cookie');
+
+      // 2. Changement de mot de passe (via Cookie)
+      const res = await request(httpServer)
+        .post('/auth/change-password')
+        .set('Cookie', cookies)
+        .send({
+          oldPassword: oldPassword,
+          newPassword: newPassword,
+          confirmPassword: newPassword,
+        })
+        .expect(200);
+
+      // 3. Vérification : Les cookies doivent être supprimés (Déconnexion forcée)
+      const newCookies = res.get('Set-Cookie');
+      expect(newCookies).toBeDefined();
+
+      // On vérifie que le cookie est vidé (Max-Age=0 ou valeur vide)
+      expect(JSON.stringify(newCookies)).toContain('access_token=;');
+      expect(JSON.stringify(newCookies)).toContain('refresh_token=;');
+    });
+
+    it('✅ MOBILE : Devrait fonctionner avec un Bearer Token', async () => {
+      // 1. Login MOBILE (pour avoir le token JSON)
+      const loginRes = await request(httpServer)
+        .post('/auth/login')
+        .set('x-client-type', 'mobile')
+        .send({ email: testEmail, password: oldPassword })
+        .expect(200);
+
+      const body = loginRes.body as ResponseBody;
+
+      // Vérification stricte pour satisfaire TypeScript
+      if (!body.backendTokens || !body.backendTokens.accessToken) {
+        throw new Error('Access Token non reçu lors du login mobile');
+      }
+
+      const accessToken = body.backendTokens.accessToken;
+
+      // 2. Changement de mot de passe (via Header Authorization)
+      await request(httpServer)
+        .post('/auth/change-password')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({
+          oldPassword: oldPassword,
+          newPassword: newPassword,
+          confirmPassword: newPassword,
+        })
+        .expect(200);
+
+      // Note : Sur mobile, on ignore les Set-Cookie de la réponse,
+      // c'est le client mobile qui supprimera son token localement suite au 200 OK.
+    });
+
+    it("❌ Erreur : Devrait refuser si l'ancien mot de passe est faux", async () => {
+      // On se connecte juste pour avoir une session valide
+      const loginRes = await request(httpServer)
+        .post('/auth/login')
+        .send({ email: testEmail, password: oldPassword });
+
+      const cookies = loginRes.get('Set-Cookie');
+
+      // Tentative avec mauvais ancien mot de passe
+      return request(httpServer)
+        .post('/auth/change-password')
+        .set('Cookie', cookies)
+        .send({
+          oldPassword: 'WrongPassword!!!',
+          newPassword: newPassword,
+          confirmPassword: newPassword,
+        })
+        .expect(401);
+    });
+  });
 });

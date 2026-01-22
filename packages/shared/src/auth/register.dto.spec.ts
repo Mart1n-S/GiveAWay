@@ -1,4 +1,4 @@
-import { LoginSchema, RegisterSchema, ForgotPasswordSchema, ResetPasswordSchema } from "./auth.dto";
+import { RegisterSchema } from "./register.dto";
 
 // Données de base valides pour éviter de répéter tout l'objet à chaque test
 const validAddress = {
@@ -22,43 +22,9 @@ const validRegisterData = {
   profilePicture: "https://example.com/avatar.jpg",
 };
 
-describe("Auth DTOs", () => {
+describe("Register DTOs", () => {
   // ===========================================================================
-  // 1. TESTS LOGIN
-  // ===========================================================================
-  describe("LoginSchema", () => {
-    // --- ✅ Cas Valides ---
-    it("Doit valider un login correct", () => {
-      const data = { email: "test@test.com", password: "password" };
-      const res = LoginSchema.safeParse(data);
-      expect(res.success).toBe(true);
-    });
-
-    it("Doit nettoyer (trim/lower) l'email", () => {
-      const data = { email: "  Test@Test.com  ", password: "password" };
-      const res = LoginSchema.safeParse(data);
-      expect(res.success).toBe(true);
-      if (res.success) {
-        expect(res.data.email).toBe("test@test.com");
-      }
-    });
-
-    // --- ❌ Cas Invalides ---
-    it("Doit rejeter un email invalide", () => {
-      const data = { email: "invalid-email", password: "password" };
-      const res = LoginSchema.safeParse(data);
-      expect(res.success).toBe(false);
-    });
-
-    it("Doit rejeter un mot de passe vide", () => {
-      const data = { email: "test@test.com", password: "" };
-      const res = LoginSchema.safeParse(data);
-      expect(res.success).toBe(false);
-    });
-  });
-
-  // ===========================================================================
-  // 2. TESTS REGISTER
+  // TESTS REGISTER
   // ===========================================================================
   describe("RegisterSchema", () => {
     // --- ✅ Cas Valides ---
@@ -270,100 +236,6 @@ describe("Auth DTOs", () => {
         lastName: "Dupont<script>",
       });
       expect(res.success).toBe(false);
-    });
-  });
-
-  // ===========================================================================
-  // 3. TESTS FORGOT PASSWORD
-  // ===========================================================================
-  describe("ForgotPasswordSchema", () => {
-    it("Doit valider un email correct", () => {
-      const res = ForgotPasswordSchema.safeParse({
-        email: "forgot@test.com",
-      });
-      expect(res.success).toBe(true);
-    });
-
-    it("Doit nettoyer (trim + lowercase) l'email", () => {
-      const res = ForgotPasswordSchema.safeParse({
-        email: "  MyEmail@Test.com  ",
-      });
-      expect(res.success).toBe(true);
-      if (res.success) {
-        expect(res.data.email).toBe("myemail@test.com");
-      }
-    });
-
-    it("Doit rejeter un email invalide", () => {
-      const res = ForgotPasswordSchema.safeParse({
-        email: "not-an-email",
-      });
-      expect(res.success).toBe(false);
-    });
-
-    it("Doit rejeter un email vide", () => {
-      const res = ForgotPasswordSchema.safeParse({
-        email: "",
-      });
-      expect(res.success).toBe(false);
-    });
-  });
-
-  // ===========================================================================
-  // 4. TESTS RESET PASSWORD
-  // ===========================================================================
-  describe("ResetPasswordSchema", () => {
-    const validResetData = {
-      token: "valid-token-hash-123",
-      password: "NewPassword123!",
-      confirmPassword: "NewPassword123!",
-    };
-
-    // --- ✅ Cas Valides ---
-    it("Doit valider une réinitialisation correcte", () => {
-      const res = ResetPasswordSchema.safeParse(validResetData);
-      expect(res.success).toBe(true);
-    });
-
-    // --- ❌ Cas Invalides ---
-    it("Doit rejeter si le token est manquant ou vide", () => {
-      const res = ResetPasswordSchema.safeParse({
-        ...validResetData,
-        token: "",
-      });
-      expect(res.success).toBe(false);
-      if (!res.success) {
-        expect(res.error.issues[0].message).toContain("token est invalide");
-      }
-    });
-
-    it("Doit rejeter si les mots de passe ne correspondent pas", () => {
-      const res = ResetPasswordSchema.safeParse({
-        ...validResetData,
-        password: "NewPassword123!",
-        confirmPassword: "DifferentPassword123!",
-      });
-      expect(res.success).toBe(false);
-      if (!res.success) {
-        expect(res.error.issues[0].message).toBe(
-          "Les mots de passe ne correspondent pas",
-        );
-        expect(res.error.issues[0].path).toContain("confirmPassword");
-      }
-    });
-
-    it("Doit rejeter un mot de passe trop faible (Regex check)", () => {
-      // Même regex que Register, on vérifie juste qu'elle est bien appliquée ici aussi
-      const res = ResetPasswordSchema.safeParse({
-        ...validResetData,
-        password: "weak",
-        confirmPassword: "weak",
-      });
-      expect(res.success).toBe(false);
-      if (!res.success) {
-        // Zod peut renvoyer plusieurs erreurs (longueur + regex), on vérifie qu'on a des erreurs
-        expect(res.error.issues.length).toBeGreaterThan(0);
-      }
     });
   });
 });

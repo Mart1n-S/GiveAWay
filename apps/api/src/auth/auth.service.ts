@@ -24,6 +24,7 @@ import {
   ForgotPasswordDto,
   ResetPasswordDto,
   ResendVerificationDto,
+  ChangePasswordDto,
 } from '@repo/shared';
 
 @Injectable()
@@ -313,6 +314,46 @@ export class AuthService {
     return {
       message: 'Mot de passe modifié avec succès. Vous pouvez vous connecter.',
     };
+  }
+
+  // ----------------------------------------------------------------
+  // CHANGE PASSWORD (Utilisateur connecté)
+  // ----------------------------------------------------------------
+  async changePassword(userId: number, dto: ChangePasswordDto) {
+    // 1. Récupérer l'utilisateur pour avoir son mot de passe actuel hashé
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) throw new UnauthorizedException('Utilisateur introuvable');
+
+    // 2. Vérifier que l'ANCIEN mot de passe est correct
+    const isPasswordValid = await verify(user.password, dto.oldPassword);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Ancien mot de passe incorrect');
+    }
+
+    // 3. Hasher le NOUVEAU mot de passe
+    const newHashedPassword = await hash(dto.newPassword);
+
+    // 4. Mise à jour en base
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { password: newHashedPassword },
+    });
+
+    // 5. SÉCURITÉ : On révoque les sessions (Refresh Tokens)
+    // L'utilisateur devra se reconnecter s'il perd son Access Token actuel
+    await this.prisma.refreshToken.deleteMany({
+      where: { userId },
+    });
+
+    // On loggue l'événement important
+    this.logger.log(
+      `Mot de passe mis à jour pour l'utilisateur ID : ${userId};`,
+    );
+
+    return { message: 'Mot de passe modifié avec succès' };
   }
 
   // ----------------------------------------------------------------

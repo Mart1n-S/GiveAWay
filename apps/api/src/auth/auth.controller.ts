@@ -30,6 +30,8 @@ import {
   ForgotPasswordSchema,
   ResetPasswordDto,
   ResetPasswordSchema,
+  ChangePasswordDto,
+  ChangePasswordSchema,
 } from '@repo/shared';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { AuthenticatedRequest } from '../common/interfaces/authenticated-request.interface';
@@ -126,6 +128,30 @@ export class AuthController {
   @UsePipes(new ZodValidationPipe(ResetPasswordSchema))
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
+  }
+
+  // Route: POST /auth/change-password
+  @UseGuards(AuthGuard('jwt'))
+  @Throttle({ default: { limit: 5, ttl: 15 * 60 * 1000 } }) // 5 tentatives / 15 min
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(ChangePasswordSchema))
+  async changePassword(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: ChangePasswordDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    // On extrait l'ID de l'utilisateur depuis le token décodé (req.user)
+    const userId = req.user.id;
+
+    // 1. On fait le changement en BDD (qui supprime les refresh tokens)
+    const result = await this.authService.changePassword(userId, dto);
+
+    // 2. On nettoie les cookies du navigateur pour le déconnecter tout de suite
+    res.clearCookie('access_token');
+    res.clearCookie('refresh_token');
+
+    return result;
   }
 
   // Route: POST /auth/resend-verification

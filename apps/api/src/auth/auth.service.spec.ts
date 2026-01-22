@@ -527,4 +527,90 @@ describe('AuthService (Unit)', () => {
       });
     });
   });
+
+  // ===========================================================================
+  // 9. CHANGE PASSWORD
+  // ===========================================================================
+  describe('changePassword', () => {
+    const userId = 1;
+    const dto = {
+      oldPassword: 'OldPassword123!',
+      newPassword: 'NewPassword123!',
+      confirmPassword: 'NewPassword123!',
+    };
+
+    it('✅ Changement de mot de passe réussi', async () => {
+      // 1. Setup : Utilisateur existant avec un hash
+      const mockUser = { id: userId, password: 'hashed_old_password' };
+
+      // 2. Configuration des Mocks
+      mockPrisma.user.findUnique.mockResolvedValue(mockUser);
+      (argon2.verify as jest.Mock).mockResolvedValue(true); // Ancien mdp OK
+      (argon2.hash as jest.Mock).mockResolvedValue('hashed_new_password'); // Nouveau hash généré
+
+      // On simule l'update qui renvoie l'user modifié
+      mockPrisma.user.update.mockResolvedValue({
+        ...mockUser,
+        password: 'hashed_new_password',
+      });
+
+      // On simule la suppression des refresh tokens
+      mockPrisma.refreshToken.deleteMany.mockResolvedValue({ count: 1 });
+
+      // 3. Exécution
+      const res = await service.changePassword(userId, dto);
+
+      // 4. Vérifications
+      // On vérifie qu'on a bien cherché l'utilisateur
+      expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
+        where: { id: userId },
+      });
+
+      // On vérifie qu'on a comparé le hash en BDD avec l'ancien mot de passe fourni
+      expect(argon2.verify).toHaveBeenCalledWith(
+        mockUser.password,
+        dto.oldPassword,
+      );
+
+      // On vérifie qu'on a hashé le NOUVEAU mot de passe
+      expect(argon2.hash).toHaveBeenCalledWith(dto.newPassword);
+
+      // On vérifie la mise à jour en BDD
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: { password: 'hashed_new_password' },
+      });
+
+      // SÉCURITÉ : On vérifie que les sessions ont été révoquées
+      expect(mockPrisma.refreshToken.deleteMany).toHaveBeenCalledWith({
+        where: { userId },
+      });
+
+      expect(res.message).toContain('succès');
+    });
+
+    it('❌ Doit lever UnauthorizedException si utilisateur introuvable', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+
+      await expect(service.changePassword(userId, dto)).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('❌ Doit lever UnauthorizedException si ancien mot de passe incorrect', async () => {
+      const mockUser = { id: userId, password: 'hashed_old_password' };
+      mockPrisma.user.findUnique.mockResolvedValue(mockUser);
+
+      // Simulation : argon2 dit que le mot de passe ne correspond pas
+      (argon2.verify as jest.Mock).mockResolvedValue(false);
+
+      await expect(service.changePassword(userId, dto)).rejects.toThrow(
+        UnauthorizedException, // "Ancien mot de passe incorrect"
+      );
+
+      // SÉCURITÉ : On vérifie que rien n'a été modifié ni hashé
+      expect(argon2.hash).not.toHaveBeenCalled();
+      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+    });
+  });
 });
