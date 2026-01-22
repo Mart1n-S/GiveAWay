@@ -24,7 +24,7 @@ async function bootstrap() {
     new ValidationPipe({
       whitelist: true,
       transform: true,
-      forbidNonWhitelisted: true, // Renvoie une erreur si on t'envoie un champ qui n'existe pas
+      forbidNonWhitelisted: true, // Renvoie une erreur si on reçoit un champ qui n'existe pas
     }),
   );
 

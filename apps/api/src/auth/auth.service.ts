@@ -22,6 +22,7 @@ import {
   RegisterDto,
   LoginDto,
   ForgotPasswordDto,
+  ResetPasswordDto,
   ResendVerificationDto,
 } from '@repo/shared';
 
@@ -104,11 +105,10 @@ export class AuthService {
     // 1. On cherche dans la table Token
     const dbToken = await this.prisma.token.findUnique({
       where: { token: hashedToken },
-      include: { user: true },
     });
 
     // 2. Vérifications
-    if (!dbToken) {
+    if (!dbToken || dbToken.type !== TokenType.EMAIL_VERIFICATION) {
       throw new UnauthorizedException('Lien de validation invalide');
     }
 
@@ -234,7 +234,8 @@ export class AuthService {
     if (
       !user ||
       user.status === UserStatus.DELETED ||
-      user.status === UserStatus.SUSPENDED
+      user.status === UserStatus.SUSPENDED ||
+      user.status === UserStatus.PENDING
     ) {
       // Pour la sécurité, on fait semblant que tout s'est bien passé
       // On retourne le même message que si l'utilisateur existait
@@ -251,6 +252,67 @@ export class AuthService {
     await this.mailService.sendPasswordResetEmail(user.email, rawToken);
 
     return genericMessage;
+  }
+
+  // ----------------------------------------------------------------
+  // RESET PASSWORD (Effectif)
+  // ----------------------------------------------------------------
+  async resetPassword(dto: ResetPasswordDto) {
+    // 1. On re-hash le token reçu pour le comparer à la BDD
+    const hashedToken = crypto
+      .createHash('sha256')
+      .update(dto.token)
+      .digest('hex');
+
+    // 2. On cherche le token en base
+    const dbToken = await this.prisma.token.findUnique({
+      where: { token: hashedToken },
+    });
+
+    if (!dbToken || dbToken.type !== TokenType.PASSWORD_RESET) {
+      this.logger.warn('Tentative de reset password avec token invalide');
+      throw new UnauthorizedException('Lien invalide ou déjà utilisé');
+    }
+
+    // 3. Vérification expiration
+    if (dbToken.expiresAt < new Date()) {
+      this.logger.warn(
+        `Tentative de reset avec token expiré (userId: ${dbToken.userId})`,
+      );
+      await this.prisma.token.delete({ where: { id: dbToken.id } });
+      throw new UnauthorizedException('Le lien a expiré');
+    }
+
+    // 4. Hashage du nouveau mot de passe
+    const hashedPassword = await hash(dto.password);
+
+    // 5. Mise à jour de l'utilisateur
+    await this.prisma.user.update({
+      where: { id: dbToken.userId },
+      data: {
+        password: hashedPassword,
+      },
+    });
+
+    // 6. SÉCURITÉ : Nettoyage complet
+    // a) On supprime le token de reset utilisé
+    await this.prisma.token.delete({ where: { id: dbToken.id } });
+
+    // b) CRITIQUE : On supprime TOUS les RefreshTokens de cet utilisateur.
+    // Pourquoi ? Si un pirate avait accès au compte, il est maintenant déconnecté de partout.
+    // L'utilisateur devra se reloguer avec son nouveau mot de passe.
+    await this.prisma.refreshToken.deleteMany({
+      where: { userId: dbToken.userId },
+    });
+
+    // On loggue l'événement important
+    this.logger.log(
+      `Mot de passe réinitialisé pour l'utilisateur ID : ${dbToken.userId};`,
+    );
+
+    return {
+      message: 'Mot de passe modifié avec succès. Vous pouvez vous connecter.',
+    };
   }
 
   // ----------------------------------------------------------------
@@ -343,40 +405,49 @@ export class AuthService {
   // ----------------------------------------------------------------
   // Cette fonction génère les signatures cryptographiques JWT
   private async generateTokens(userId: number, email: string) {
-    const accessSecret = this.config.getOrThrow<string>('JWT_ACCESS_SECRET');
-    const refreshSecret = this.config.getOrThrow<string>('JWT_REFRESH_SECRET');
+    try {
+      const accessSecret = this.config.getOrThrow<string>('JWT_ACCESS_SECRET');
+      const refreshSecret =
+        this.config.getOrThrow<string>('JWT_REFRESH_SECRET');
 
-    // On force le typage pour dire à TypeScript que ce sont bien des formats valides pour JWT (ex: "15m", "7d")
-    const accessExpires = this.config.getOrThrow<string>(
-      'JWT_ACCESS_EXPIRES_IN',
-    ) as SignOptions['expiresIn'];
+      // On force le typage pour dire à TypeScript que ce sont bien des formats valides pour JWT (ex: "15m", "7d")
+      const accessExpires = this.config.getOrThrow<string>(
+        'JWT_ACCESS_EXPIRES_IN',
+      ) as SignOptions['expiresIn'];
 
-    const refreshExpires = this.config.getOrThrow<string>(
-      'JWT_REFRESH_EXPIRES_IN',
-    ) as SignOptions['expiresIn'];
+      const refreshExpires = this.config.getOrThrow<string>(
+        'JWT_REFRESH_EXPIRES_IN',
+      ) as SignOptions['expiresIn'];
 
-    // Promise.all permet de générer les deux tokens EN PARALLÈLE (plus rapide)
-    // au lieu d'attendre l'un après l'autre.
-    const [accessToken, refreshToken] = await Promise.all([
-      // Token d'accès (courte durée, sert aux requêtes API)
-      this.jwtService.signAsync(
-        { sub: userId.toString(), email },
-        {
-          secret: accessSecret,
-          expiresIn: accessExpires,
-        },
-      ),
-      // Token de rafraîchissement (longue durée, sert à obtenir un nouveau token d'accès)
-      this.jwtService.signAsync(
-        { sub: userId.toString(), email },
-        {
-          secret: refreshSecret,
-          expiresIn: refreshExpires,
-        },
-      ),
-    ]);
+      // Promise.all permet de générer les deux tokens EN PARALLÈLE (plus rapide)
+      // au lieu d'attendre l'un après l'autre.
+      const [accessToken, refreshToken] = await Promise.all([
+        // Token d'accès (courte durée, sert aux requêtes API)
+        this.jwtService.signAsync(
+          { sub: userId.toString(), email },
+          {
+            secret: accessSecret,
+            expiresIn: accessExpires,
+          },
+        ),
+        // Token de rafraîchissement (longue durée, sert à obtenir un nouveau token d'accès)
+        this.jwtService.signAsync(
+          { sub: userId.toString(), email },
+          {
+            secret: refreshSecret,
+            expiresIn: refreshExpires,
+          },
+        ),
+      ]);
 
-    return { accessToken, refreshToken };
+      return { accessToken, refreshToken };
+    } catch (error) {
+      this.logger.error(
+        `Erreur lors de la génération des JWT pour userId ${userId}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      throw error;
+    }
   }
 
   // Cette fonction gère le stockage sécurisé en BDD
@@ -386,23 +457,31 @@ export class AuthService {
     userAgent: string,
     ip: string,
   ) {
-    // 1. SÉCURITÉ : On hashe le token avant de l'écrire.
-    const hashedToken = await hash(token);
+    try {
+      // 1. SÉCURITÉ : On hashe le token avant de l'écrire.
+      const hashedToken = await hash(token);
 
-    // 2. On calcule la date d'expiration (+7 jours)
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
+      // 2. On calcule la date d'expiration (+7 jours)
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
 
-    // 3. On insère dans la table RefreshToken
-    await this.prisma.refreshToken.create({
-      data: {
-        userId,
-        hashedToken,
-        expiresAt,
-        userAgent,
-        ip,
-      },
-    });
+      // 3. On insère dans la table RefreshToken
+      await this.prisma.refreshToken.create({
+        data: {
+          userId,
+          hashedToken,
+          expiresAt,
+          userAgent,
+          ip,
+        },
+      });
+    } catch (error) {
+      this.logger.error(
+        `Impossible de sauvegarder le refresh token pour userId ${userId}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      throw error;
+    }
   }
 
   /**
@@ -413,36 +492,44 @@ export class AuthService {
     userId: number,
     type: TokenType,
   ): Promise<string> {
-    // 1. Nettoyage : On supprime les anciens tokens de ce type pour cet user
-    // Cela garantit qu'il n'y a toujours qu'un seul token valide par type.
-    await this.prisma.token.deleteMany({
-      where: { userId, type },
-    });
+    try {
+      // 1. Nettoyage : On supprime les anciens tokens de ce type pour cet user
+      // Cela garantit qu'il n'y a toujours qu'un seul token valide par type.
+      await this.prisma.token.deleteMany({
+        where: { userId, type },
+      });
 
-    // 2. Génération du token brut (celui qu'on envoie par mail)
-    const rawToken = crypto.randomBytes(32).toString('hex');
+      // 2. Génération du token brut (celui qu'on envoie par mail)
+      const rawToken = crypto.randomBytes(32).toString('hex');
 
-    // 3. Hashage pour la BDD
-    const hashedToken = crypto
-      .createHash('sha256')
-      .update(rawToken)
-      .digest('hex');
+      // 3. Hashage pour la BDD
+      const hashedToken = crypto
+        .createHash('sha256')
+        .update(rawToken)
+        .digest('hex');
 
-    // 4. Calcul de l'expiration (15 minutes)
-    const expiresAt = new Date();
-    expiresAt.setMinutes(expiresAt.getMinutes() + 15);
+      // 4. Calcul de l'expiration (15 minutes)
+      const expiresAt = new Date();
+      expiresAt.setMinutes(expiresAt.getMinutes() + 15);
 
-    // 5. Sauvegarde
-    await this.prisma.token.create({
-      data: {
-        token: hashedToken,
-        type: type,
-        expiresAt: expiresAt,
-        userId: userId,
-      },
-    });
+      // 5. Sauvegarde
+      await this.prisma.token.create({
+        data: {
+          token: hashedToken,
+          type: type,
+          expiresAt: expiresAt,
+          userId: userId,
+        },
+      });
 
-    // On retourne le token brut pour pouvoir l'envoyer par email
-    return rawToken;
+      // On retourne le token brut pour pouvoir l'envoyer par email
+      return rawToken;
+    } catch (error) {
+      this.logger.error(
+        `Erreur lors de la génération du token ${type} pour userId ${userId}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      throw error;
+    }
   }
 }

@@ -13,7 +13,7 @@ const NO_HTML_TAGS = /^[^<>]*$/;
 // - Au moins 1 majuscule
 // - Au moins 1 chiffre
 // - Au moins 1 caractère spécial
-// Note : La longueur est gérée par .min() plus bas, donc on retire {8,} de la regex pour éviter les doublons d'erreurs
+// Note : La longueur est gérée par .min() et .max() plus bas, donc on retire {12,50} de la regex pour éviter les doublons d'erreurs
 const PASSWORD_REGEX =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/;
 
@@ -135,3 +135,38 @@ export const ForgotPasswordSchema = z.object({
 });
 
 export type ForgotPasswordDto = z.infer<typeof ForgotPasswordSchema>;
+
+// ----------------------------------------------------------------------
+// RESET PASSWORD
+// ----------------------------------------------------------------------
+export const ResetPasswordSchema = z
+  .object({
+    token: z.string().min(1, 'Le token est invalide ou manquant'),
+    password: z
+      .string()
+      .min(1, { message: "Le mot de passe est obligatoire" })
+      .min(12, { message: "Le mot de passe doit faire au moins 12 caractères" })
+      .max(50, {
+        message: "Le mot de passe ne peut pas dépasser 50 caractères",
+      })
+      .regex(PASSWORD_REGEX, {
+        message:
+          "Le mot de passe doit contenir au minimum 1 majuscule, 1 minuscule, 1 chiffre et 1 caractère spécial (@$!%*?&)",
+      }),
+
+    confirmPassword: z
+      .string()
+      .min(1, { message: "La confirmation du mot de passe est obligatoire" }),
+  })
+  .superRefine((data, ctx) => {
+    // Validation croisée : mot de passe == confirmation
+    if (data.password !== data.confirmPassword) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["confirmPassword"],
+        message: "Les mots de passe ne correspondent pas",
+      });
+    }
+  });
+
+export type ResetPasswordDto = z.infer<typeof ResetPasswordSchema>;

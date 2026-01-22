@@ -8,7 +8,7 @@ if (!connectionString) {
   throw new Error('DATABASE_URL is not defined in .env.test');
 }
 
-// 2. On instancie l'adapter directement (comme dans ton service)
+// 2. On instancie l'adapter directement
 const adapter = new PrismaPg({
   connectionString: connectionString,
 });

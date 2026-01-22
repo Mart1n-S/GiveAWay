@@ -9,12 +9,13 @@ import {
   UnauthorizedException,
   ForbiddenException,
 } from '@nestjs/common';
-import { UserStatus } from '../generated/prisma/client';
+import { Prisma, UserStatus, TokenType } from '../generated/prisma/client';
 import * as argon2 from 'argon2';
 import {
   RegisterDto,
   LoginDto,
   ForgotPasswordDto,
+  ResetPasswordDto,
   ResendVerificationDto,
 } from '@repo/shared';
 
@@ -39,6 +40,7 @@ describe('AuthService (Unit)', () => {
       create: jest.fn(),
       findMany: jest.fn(),
       delete: jest.fn(),
+      deleteMany: jest.fn(),
     },
   };
 
@@ -118,14 +120,23 @@ describe('AuthService (Unit)', () => {
       const dbToken = {
         id: 10,
         userId: 1,
+        //On spécifie le bon type
+        type: TokenType.EMAIL_VERIFICATION,
         expiresAt: new Date(Date.now() + 10000),
       };
       mockPrisma.token.findUnique.mockResolvedValue(dbToken);
 
       const res = await service.verifyEmail('raw-token');
 
-      expect(mockPrisma.user.update).toHaveBeenCalled();
-      expect(mockPrisma.token.delete).toHaveBeenCalled();
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+        where: { id: dbToken.userId },
+        data: expect.objectContaining({
+          status: UserStatus.ACTIVE,
+        }) as Prisma.UserUpdateInput,
+      });
+      expect(mockPrisma.token.delete).toHaveBeenCalledWith({
+        where: { id: dbToken.id },
+      });
       expect(res.message).toContain('validé avec succès');
     });
 
@@ -134,6 +145,40 @@ describe('AuthService (Unit)', () => {
       await expect(service.verifyEmail('bad')).rejects.toThrow(
         UnauthorizedException,
       );
+    });
+
+    it("❌ Doit lever Unauthorized si c'est un token de Reset Password", async () => {
+      const dbToken = {
+        id: 10,
+        userId: 1,
+        type: TokenType.PASSWORD_RESET, // Mauvais type
+        expiresAt: new Date(Date.now() + 10000),
+      };
+      mockPrisma.token.findUnique.mockResolvedValue(dbToken);
+
+      await expect(service.verifyEmail('raw-token')).rejects.toThrow(
+        UnauthorizedException, // "Lien de validation invalide"
+      );
+    });
+
+    it('❌ Doit lever Unauthorized si token expiré', async () => {
+      const dbToken = {
+        id: 10,
+        userId: 1,
+        // Pour atteindre l'erreur "Expiré", le type DOIT être valide d'abord
+        type: TokenType.EMAIL_VERIFICATION,
+        expiresAt: new Date(Date.now() - 1000), // Dans le passé
+      };
+      mockPrisma.token.findUnique.mockResolvedValue(dbToken);
+
+      await expect(service.verifyEmail('token')).rejects.toThrow(
+        'Le lien a expiré',
+      );
+
+      // On vérifie le nettoyage
+      expect(mockPrisma.token.delete).toHaveBeenCalledWith({
+        where: { id: dbToken.id },
+      });
     });
   });
 
@@ -372,6 +417,114 @@ describe('AuthService (Unit)', () => {
 
       expect(mockMail.sendPasswordResetEmail).not.toHaveBeenCalled();
       expect(res.message).toContain('lien de réinitialisation');
+    });
+
+    it("✅ Anti-énumération : Succès silencieux si l'user n'a pas encore validé son email", async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 1,
+        status: UserStatus.PENDING,
+      });
+
+      const res = await service.forgotPassword(dto);
+
+      expect(mockMail.sendPasswordResetEmail).not.toHaveBeenCalled();
+      expect(res.message).toContain('lien de réinitialisation');
+    });
+  });
+
+  // ===========================================================================
+  // 8. RESET PASSWORD
+  // ===========================================================================
+  describe('resetPassword', () => {
+    // On utilise le DTO complet pour le typage
+    const dto: ResetPasswordDto = {
+      token: 'raw-token-string',
+      password: 'NewPassword123!',
+      confirmPassword: 'NewPassword123!',
+    };
+
+    it('✅ Succès : Doit changer le mdp, supprimer le token et déconnecter les sessions', async () => {
+      // 1. Mock : Token valide trouvé en base
+      const mockDbToken = {
+        id: 50,
+        userId: 1,
+        type: TokenType.PASSWORD_RESET, // Utilisation de l'Enum
+        expiresAt: new Date(Date.now() + 10000), // Expire dans le futur
+      };
+      mockPrisma.token.findUnique.mockResolvedValue(mockDbToken);
+
+      // 2. Mock : Hashage du nouveau mot de passe
+      const spyHash = jest
+        .spyOn(argon2, 'hash')
+        .mockResolvedValue('new_hashed_pass');
+
+      const res = await service.resetPassword(dto);
+
+      // --- VÉRIFICATIONS ---
+
+      // A. Recherche du token
+      expect(mockPrisma.token.findUnique).toHaveBeenCalled();
+
+      // B. Hashage du nouveau mot de passe
+      expect(spyHash).toHaveBeenCalledWith(dto.password);
+
+      // C. Mise à jour de l'utilisateur
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+        where: { id: mockDbToken.userId },
+        data: { password: 'new_hashed_pass' },
+      });
+
+      // D. SÉCURITÉ : Suppression du token utilisé
+      expect(mockPrisma.token.delete).toHaveBeenCalledWith({
+        where: { id: mockDbToken.id },
+      });
+
+      // E. SÉCURITÉ : Déconnexion forcée (Suppression des Refresh Tokens)
+      expect(mockPrisma.refreshToken.deleteMany).toHaveBeenCalledWith({
+        where: { userId: mockDbToken.userId },
+      });
+
+      expect(res.message).toContain('modifié avec succès');
+    });
+
+    it('❌ Echec : Token introuvable', async () => {
+      mockPrisma.token.findUnique.mockResolvedValue(null);
+
+      await expect(service.resetPassword(dto)).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('❌ Echec : Mauvais Type de Token (ex: Email Verification)', async () => {
+      // Mock : On trouve un token, mais c'est un token de validation d'email
+      const mockDbToken = {
+        id: 50,
+        type: TokenType.EMAIL_VERIFICATION,
+        expiresAt: new Date(Date.now() + 10000),
+      };
+      mockPrisma.token.findUnique.mockResolvedValue(mockDbToken);
+
+      await expect(service.resetPassword(dto)).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('❌ Echec : Token expiré', async () => {
+      const mockDbToken = {
+        id: 50,
+        type: TokenType.PASSWORD_RESET,
+        expiresAt: new Date(Date.now() - 1000), // Dans le passé
+      };
+      mockPrisma.token.findUnique.mockResolvedValue(mockDbToken);
+
+      await expect(service.resetPassword(dto)).rejects.toThrow(
+        UnauthorizedException,
+      );
+
+      // Vérification que le token périmé est bien supprimé automatiquement
+      expect(mockPrisma.token.delete).toHaveBeenCalledWith({
+        where: { id: mockDbToken.id },
+      });
     });
   });
 });

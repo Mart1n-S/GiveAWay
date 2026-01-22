@@ -6,6 +6,7 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { JwtRefreshStrategy } from './jwt-refresh.strategy';
+import { GuestGuard } from './guards/guest.guard';
 
 @Module({
   imports: [ConfigModule, PassportModule, JwtModule.register({})],
@@ -14,6 +15,7 @@ import { JwtRefreshStrategy } from './jwt-refresh.strategy';
     AuthService,
     JwtStrategy, // Gère l'Access Token (Route /me, /logout...)
     JwtRefreshStrategy, // Gère le Refresh Token (Route /refresh)
+    GuestGuard,
   ],
   exports: [AuthService],
 })

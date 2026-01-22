@@ -302,4 +302,267 @@ describe('Auth Module (E2E)', () => {
         .expect(400);
     });
   });
+
+  // ===========================================================================
+  // TEST: DEMANDE DE REINITIALISATION DE MOT DE PASSE
+  // ===========================================================================
+  describe('POST /auth/forgot-password', () => {
+    it("✅ Devrait créer un token en base si l'email existe", async () => {
+      // 1. On crée un utilisateur
+      await request(httpServer).post('/auth/register').send(userDto);
+
+      // On active le compte manuellement
+      // Sinon, la logique métier peut refuser de créer un token pour un compte "PENDING"
+      await prisma.user.update({
+        where: { email: userDto.email },
+        data: { status: UserStatus.ACTIVE },
+      });
+
+      // 2. On appelle la route
+      await request(httpServer)
+        .post('/auth/forgot-password')
+        .send({ email: userDto.email })
+        .expect(201)
+        .expect((res: request.Response) => {
+          const body = res.body as ResponseBody;
+          expect(body.message).toContain('envoyé');
+        });
+
+      // 3. Vérification en BDD : Un token doit avoir été créé
+      const user = await prisma.user.findUnique({
+        where: { email: userDto.email },
+      });
+      const token = await prisma.token.findFirst({
+        where: {
+          userId: user?.id,
+          type: TokenType.PASSWORD_RESET,
+        },
+      });
+
+      expect(token).toBeDefined();
+      expect(token?.token).toBeDefined();
+    });
+
+    it("✅ Devrait répondre succès même si l'email n'existe pas (Sécurité)", async () => {
+      // Pour éviter l'énumération des emails, on ne renvoie pas d'erreur 404
+      return request(httpServer)
+        .post('/auth/forgot-password')
+        .send({ email: 'unknown-user@test.com' })
+        .expect(201)
+        .expect((res: request.Response) => {
+          const body = res.body as ResponseBody;
+          expect(body.message).toContain('envoyé');
+        });
+    });
+
+    it("❌ Devrait échouer (400) si l'email est invalide", async () => {
+      return request(httpServer)
+        .post('/auth/forgot-password')
+        .send({ email: 'not-an-email' })
+        .expect(400);
+    });
+  });
+
+  // ===========================================================================
+  // TEST: REINITIALISATION DU MOT DE PASSE
+  // ===========================================================================
+  describe('POST /auth/reset-password', () => {
+    const rawToken = 'reset-token-secret-123';
+    const newPassword = 'NewPassword123!';
+
+    beforeEach(async () => {
+      // 1. On inscrit l'user initial
+      await request(httpServer).post('/auth/register').send(userDto);
+
+      const user = await prisma.user.update({
+        where: { email: userDto.email },
+        data: {
+          status: UserStatus.ACTIVE,
+          emailVerifiedAt: new Date(),
+        },
+      });
+
+      // 2. On insère MANUELLEMENT un token de reset valide en BDD
+      const hashedToken = crypto
+        .createHash('sha256')
+        .update(rawToken)
+        .digest('hex');
+
+      await prisma.token.create({
+        data: {
+          token: hashedToken,
+          type: TokenType.PASSWORD_RESET,
+          userId: user.id,
+          expiresAt: new Date(Date.now() + 1000 * 60 * 15), // +15 min
+        },
+      });
+    });
+
+    it('✅ Devrait changer le mot de passe avec un token valide', async () => {
+      // 1. Reset du mot de passe
+      await request(httpServer)
+        .post('/auth/reset-password')
+        .send({
+          token: rawToken, // On envoie le token BRUT
+          password: newPassword,
+          confirmPassword: newPassword,
+        })
+        .expect(201); // Succès
+
+      // 2. PREUVE : On essaie de se connecter avec le NOUVEAU mot de passe
+      await request(httpServer)
+        .post('/auth/login')
+        .send({ email: userDto.email, password: newPassword })
+        .expect(200); // Doit réussir (car user est ACTIVE)
+
+      // 3. PREUVE : L'ANCIEN mot de passe ne doit plus marcher
+      await request(httpServer)
+        .post('/auth/login')
+        .send({ email: userDto.email, password: userDto.password })
+        .expect(401); // Unauthorized
+    });
+
+    it('❌ Devrait échouer si le token est invalide ou expiré', async () => {
+      return request(httpServer)
+        .post('/auth/reset-password')
+        .send({
+          token: 'invalid-token',
+          password: newPassword,
+          confirmPassword: newPassword,
+        })
+        .expect(401);
+    });
+
+    it('❌ Devrait échouer si les mots de passe ne correspondent pas', async () => {
+      return request(httpServer)
+        .post('/auth/reset-password')
+        .send({
+          token: rawToken,
+          password: newPassword,
+          confirmPassword: 'MismatchPassword123!',
+        })
+        .expect(400); // Erreur de validation Zod
+    });
+
+    it('❌ Devrait échouer si le mot de passe est trop faible', async () => {
+      return request(httpServer)
+        .post('/auth/reset-password')
+        .send({
+          token: rawToken,
+          password: 'weak',
+          confirmPassword: 'weak',
+        })
+        .expect(400); // Erreur de validation Zod
+    });
+  });
+
+  // ===========================================================================
+  // TEST: GUEST GUARD (Sécurité)
+  // ===========================================================================
+  describe('Guest Guard Protection', () => {
+    let validCookies: string[];
+
+    beforeEach(async () => {
+      const guestUser = { ...userDto, email: 'guest-guard@test.com' };
+
+      // 1. Inscription
+      await request(httpServer).post('/auth/register').send(guestUser);
+
+      // 2. Vérification de l'email (comme dans les autres tests)
+      const user = await prisma.user.findUnique({
+        where: { email: guestUser.email },
+      });
+
+      if (!user) throw new Error('User not found after registration');
+
+      const rawToken = 'verification-token-guest';
+      const hashedToken = crypto
+        .createHash('sha256')
+        .update(rawToken)
+        .digest('hex');
+
+      await prisma.token.create({
+        data: {
+          token: hashedToken,
+          type: TokenType.EMAIL_VERIFICATION,
+          userId: user.id,
+          expiresAt: new Date(Date.now() + 1000 * 60 * 15),
+        },
+      });
+
+      // 3. Vérifier l'email via l'API
+      await request(httpServer)
+        .get(`/auth/verify?token=${rawToken}`)
+        .expect(200);
+
+      // 4. Connexion
+      const loginRes = await request(httpServer)
+        .post('/auth/login')
+        .send({ email: guestUser.email, password: guestUser.password });
+
+      if (loginRes.status !== 200) {
+        throw new Error(
+          `Login failed in setup: ${JSON.stringify(loginRes.body)}`,
+        );
+      }
+
+      validCookies = loginRes.get('Set-Cookie');
+
+      if (!validCookies) {
+        throw new Error('No cookies returned from login');
+      }
+    });
+
+    it('❌ Register : Devrait être interdit (403) si déjà connecté', async () => {
+      return request(httpServer)
+        .post('/auth/register')
+        .set('Cookie', validCookies)
+        .send(userDto)
+        .expect(403);
+    });
+
+    it('❌ Login : Devrait être interdit (403) si déjà connecté', async () => {
+      return request(httpServer)
+        .post('/auth/login')
+        .set('Cookie', validCookies)
+        .send({ email: 'guest-guard@test.com', password: userDto.password })
+        .expect(403);
+    });
+
+    it('❌ Forgot Password : Devrait être interdit (403) si déjà connecté', async () => {
+      return request(httpServer)
+        .post('/auth/forgot-password')
+        .set('Cookie', validCookies)
+        .send({ email: 'guest-guard@test.com' })
+        .expect(403);
+    });
+
+    it('❌ Verify Email : Devrait être interdit (403) si déjà connecté', async () => {
+      // Pas besoin d'un vrai token valide en BDD, le Guard bloque AVANT le Service
+      return request(httpServer)
+        .get('/auth/verify?token=any-dummy-token')
+        .set('Cookie', validCookies)
+        .expect(403);
+    });
+
+    it('❌ Resend Verification : Devrait être interdit (403) si déjà connecté', async () => {
+      return request(httpServer)
+        .post('/auth/resend-verification')
+        .set('Cookie', validCookies)
+        .send({ email: 'guest-guard@test.com' })
+        .expect(403);
+    });
+
+    it('❌ Reset Password : Devrait être interdit (403) si déjà connecté', async () => {
+      return request(httpServer)
+        .post('/auth/reset-password')
+        .set('Cookie', validCookies)
+        .send({
+          token: 'dummy-token',
+          password: 'NewPassword123!',
+          confirmPassword: 'NewPassword123!',
+        })
+        .expect(403);
+    });
+  });
 });

@@ -19,12 +19,27 @@ import { MailModule } from './mail/mail.module';
     // 2. Sécurité Anti-Bot (Rate Limiting)
     // Configuration "Large" pour l'ensemble du site (Navigation normale)
     // On mettra des règles strictes uniquement sur le Login/Register
-    ThrottlerModule.forRoot([
-      {
-        ttl: 5 * 60 * 1000, // 5 minutes
-        limit: 100, // 100 requêtes max par minute par IP
+    ThrottlerModule.forRootAsync({
+      useFactory: () => {
+        // Désactivation en E2E / test
+        if (process.env.THROTTLER_DISABLED === 'true') {
+          return [
+            {
+              ttl: 1,
+              limit: Number.MAX_SAFE_INTEGER,
+            },
+          ];
+        }
+
+        // Configuration normale (prod / dev)
+        return [
+          {
+            ttl: 5 * 60 * 1000, // 5 minutes
+            limit: 100, // 100 requêtes max par minute par IP
+          },
+        ];
       },
-    ]),
+    }),
 
     // 3. Nos Modules Métiers
     PrismaModule, // Base de données
@@ -34,11 +49,16 @@ import { MailModule } from './mail/mail.module';
   controllers: [AppController],
   providers: [
     AppService,
-    // Active le garde du corps (Anti-Bot) sur toute l'application
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
+
+    // Guard global Throttler - DÉSACTIVÉ en test
+    ...(process.env.THROTTLER_DISABLED === 'true'
+      ? [] // Pas de guard en test
+      : [
+          {
+            provide: APP_GUARD,
+            useClass: ThrottlerGuard,
+          },
+        ]),
   ],
 })
 export class AppModule {}

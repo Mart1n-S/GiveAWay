@@ -13,6 +13,7 @@ import {
   UseGuards,
   Ip,
 } from '@nestjs/common';
+import { GuestGuard } from './guards/guest.guard';
 import { Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { AuthGuard } from '@nestjs/passport';
@@ -27,6 +28,8 @@ import {
   ResendVerificationSchema,
   ForgotPasswordDto,
   ForgotPasswordSchema,
+  ResetPasswordDto,
+  ResetPasswordSchema,
 } from '@repo/shared';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { AuthenticatedRequest } from '../common/interfaces/authenticated-request.interface';
@@ -36,6 +39,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   // Route: POST /auth/register
+  @UseGuards(GuestGuard)
   @Throttle({ default: { limit: 5, ttl: 5 * 60 * 1000 } })
   @Post('register')
   @UsePipes(new ZodValidationPipe(RegisterSchema))
@@ -44,12 +48,14 @@ export class AuthController {
   }
 
   // Route: GET /auth/verify
+  @UseGuards(GuestGuard)
   @Get('verify')
   verifyEmail(@Query('token') token: string) {
     return this.authService.verifyEmail(token);
   }
 
   // Route: POST /auth/login
+  @UseGuards(GuestGuard)
   @Throttle({ default: { limit: 5, ttl: 60 * 60 * 1000 } }) // 5 requêtes par heure
   @HttpCode(HttpStatus.OK)
   @Post('login')
@@ -105,15 +111,25 @@ export class AuthController {
   }
 
   // Route: POST /auth/forgot-password
+  @UseGuards(GuestGuard)
   @Throttle({ default: { limit: 3, ttl: 60 * 60 * 1000 } }) // 3 demandes par heure max
   @Post('forgot-password')
   @UsePipes(new ZodValidationPipe(ForgotPasswordSchema))
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
-    // On passe le DTO directement
     return this.authService.forgotPassword(dto);
   }
 
+  // Route: POST /auth/reset-password
+  @UseGuards(GuestGuard)
+  @Throttle({ default: { limit: 5, ttl: 15 * 60 * 1000 } }) // 5 tentatives / 15 min
+  @Post('reset-password')
+  @UsePipes(new ZodValidationPipe(ResetPasswordSchema))
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto);
+  }
+
   // Route: POST /auth/resend-verification
+  @UseGuards(GuestGuard)
   @Throttle({ default: { limit: 3, ttl: 60 * 60 * 1000 } }) // 3 requêtes par heure
   @Post('resend-verification')
   @UsePipes(new ZodValidationPipe(ResendVerificationSchema))
