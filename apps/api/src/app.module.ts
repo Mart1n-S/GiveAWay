@@ -8,6 +8,9 @@ import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { MailModule } from './mail/mail.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
+import { FilesModule } from './common/files/files.module';
 
 @Module({
   imports: [
@@ -15,6 +18,12 @@ import { MailModule } from './mail/mail.module';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '../../.env',
+    }),
+
+    // configuration uploads locaux
+    ServeStaticModule.forRoot({
+      rootPath: join(process.cwd(), 'uploads'), // Chemin sur le disque : apps/api/uploads
+      serveRoot: '/uploads', // URL : http://localhost:3000/uploads/...
     }),
 
     MulterModule.register({
@@ -51,6 +60,7 @@ import { MailModule } from './mail/mail.module';
     PrismaModule, // Base de données
     MailModule, // Gestion des Emails
     AuthModule, // Authentification
+    FilesModule, // Gestion des fichiers (upload, stockage, suppression)
   ],
   controllers: [AppController],
   providers: [

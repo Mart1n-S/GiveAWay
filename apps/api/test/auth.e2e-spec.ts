@@ -50,7 +50,7 @@ const mockFileService = {
   // On simule un succès immédiat avec une URL bidon
   uploadFile: jest.fn().mockResolvedValue({
     publicId: 'giveaway/avatars/mock_image_id',
-    url: 'https://res.cloudinary.com/demo/image/upload/mock.jpg',
+    url: 'https://mock-url/demo/image/upload/mock.jpg',
   }),
   // On simule une suppression immédiate
   deleteFile: jest.fn().mockResolvedValue(undefined),

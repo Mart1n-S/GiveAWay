@@ -109,6 +109,26 @@ Pour le JWT_ACCESS_SECRET et JWT_REFRESH_SECRET, générer des clés secrètes s
 openssl rand -base64 62
 ``` 
 
+### 💾 Stockage des fichiers (Images) 
+
+Le projet supporte deux modes de stockage pour les avatars et images :
+
+- Mode Local (Recommandé pour le Dev) : Les images sont stockées dans le dossier apps/api/uploads et servies directement par l'API.
+
+```bash
+STORAGE_TYPE=local
+```
+
+- Mode Cloudinary (Recommandé pour la Prod) : Les images sont hébergées sur les serveurs de Cloudinary (CDN).
+```bash
+STORAGE_TYPE=cloudinary
+
+CLOUDINARY_CLOUD_NAME=votre_cloud_name
+CLOUDINARY_API_KEY=votre_api_key
+CLOUDINARY_API_SECRET=votre_api_secret
+```
+<em>Si vous utilisez le mode local, vous pouvez laisser les variables Cloudinary vides</em>
+
 ---
 
 ### 3️⃣ Installer les dépendances
