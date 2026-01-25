@@ -42,14 +42,8 @@ export class AuthService {
   // REGISTER
   // ----------------------------------------------------------------
   async register(dto: RegisterDto) {
-    // 1. Vérifier si l'email existe déjà
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email: dto.email },
-    });
-
-    if (existingUser) {
-      throw new ConflictException('Cet email est déjà utilisé');
-    }
+    // 1. Vérifier si l'email est déjà pris
+    await this.checkEmailAvailability(dto.email);
 
     // 2. Hasher le mot de passe
     const hashedPassword = await hash(dto.password);
@@ -444,6 +438,21 @@ export class AuthService {
   // ----------------------------------------------------------------
   // PRIVATE HELPERS
   // ----------------------------------------------------------------
+  /**
+   * Vérifie simplement si un email est déjà pris.
+   * Utilise 'select' pour être ultra-rapide (ne charge pas tout le user).
+   */
+  async checkEmailAvailability(email: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      select: { id: true },
+    });
+
+    if (user) {
+      throw new ConflictException('Cet email est déjà utilisé');
+    }
+  }
+
   // Cette fonction génère les signatures cryptographiques JWT
   private async generateTokens(userId: number, email: string) {
     try {

@@ -7,9 +7,10 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { JwtRefreshStrategy } from './jwt-refresh.strategy';
 import { GuestGuard } from './guards/guest.guard';
+import { FilesModule } from '../common/files/files.module';
 
 @Module({
-  imports: [ConfigModule, PassportModule, JwtModule.register({})],
+  imports: [ConfigModule, PassportModule, JwtModule.register({}), FilesModule],
   controllers: [AuthController],
   providers: [
     AuthService,

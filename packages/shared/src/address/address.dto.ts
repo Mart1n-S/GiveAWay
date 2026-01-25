@@ -35,9 +35,16 @@ export const AddressSchema = z
         NO_HTML_TAGS,
         "La ville contient des caractères interdits (< ou >)",
       ),
+      
+    latitude: z.preprocess(
+      (val) => (typeof val === "string" ? parseFloat(val) : val),
+      z.number().min(-90).max(90).optional(),
+    ),
 
-    latitude: z.number().min(-90).max(90).optional(),
-    longitude: z.number().min(-180).max(180).optional(),
+    longitude: z.preprocess(
+      (val) => (typeof val === "string" ? parseFloat(val) : val),
+      z.number().min(-180).max(180).optional(),
+    ),
   })
   .transform((data) => ({
     ...data,

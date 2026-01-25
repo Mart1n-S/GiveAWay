@@ -6,6 +6,8 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  UploadedFile,
+  UseInterceptors,
   Query,
   UsePipes,
   Res,
@@ -17,7 +19,12 @@ import { GuestGuard } from './guards/guest.guard';
 import { Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { AuthGuard } from '@nestjs/passport';
-
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  IFileService,
+  FILE_SERVICE,
+} from '../common/files/interfaces/file-service.interface';
+import { Inject } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
   RegisterDto,
@@ -34,19 +41,57 @@ import {
   ChangePasswordSchema,
 } from '@repo/shared';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { ImageValidationPipe } from '../common/pipes/image-validation.pipe';
 import { AuthenticatedRequest } from '../common/interfaces/authenticated-request.interface';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    @Inject(FILE_SERVICE) private readonly fileService: IFileService,
+  ) {}
 
   // Route: POST /auth/register
   @UseGuards(GuestGuard)
   @Throttle({ default: { limit: 5, ttl: 5 * 60 * 1000 } })
   @Post('register')
-  @UsePipes(new ZodValidationPipe(RegisterSchema))
-  register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
+  @UseInterceptors(FileInterceptor('profilePicture'))
+  async register(
+    @Body(new ZodValidationPipe(RegisterSchema)) dto: RegisterDto,
+    @UploadedFile(new ImageValidationPipe(false)) file?: Express.Multer.File,
+  ) {
+    // 1. vérification métier
+    // Si l'email est pris, ça coupe ici. On n'upload rien.
+    await this.authService.checkEmailAvailability(dto.email);
+
+    let profilePictureUrl: string | undefined;
+
+    // 2. Upload de l'image si fournie
+    if (file) {
+      const uploadResult = await this.fileService.uploadFile(file, 'avatars');
+      profilePictureUrl = uploadResult.publicId;
+    }
+
+    // 3. Création de l'utilisateur
+    // On prépare le DTO avec l'ID de l'image
+    const dtoWithImage = {
+      ...dto,
+      profilePicture: profilePictureUrl || undefined,
+    };
+
+    try {
+      return await this.authService.register(dtoWithImage);
+    } catch (error) {
+      // 4. Filet de sécurité (Rollback)
+      // Si la BDD plante au dernier moment, on nettoie l'image.
+      console.error("Erreur lors de l'inscription, nettoyage en cours", error);
+      if (profilePictureUrl) {
+        this.fileService
+          .deleteFile(profilePictureUrl)
+          .catch((e) => console.error('Erreur nettoyage image', e));
+      }
+      throw error;
+    }
   }
 
   // Route: GET /auth/verify

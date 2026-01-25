@@ -205,12 +205,13 @@ describe("Register DTOs", () => {
     });
 
     // --- Profile Picture ---
-    it("Doit rejeter une URL invalide", () => {
+    it("Doit accepter une chaîne arbitraire pour profilePicture", () => {
       const res = RegisterSchema.safeParse({
         ...validRegisterData,
         profilePicture: "not-an-url",
       });
-      expect(res.success).toBe(false);
+
+      expect(res.success).toBe(true);
     });
 
     it("Doit rejeter une inscription si l'adresse est invalide (Propagation)", () => {

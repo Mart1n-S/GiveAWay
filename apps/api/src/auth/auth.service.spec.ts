@@ -83,6 +83,33 @@ describe('AuthService (Unit)', () => {
   // ===========================================================================
   // 1. REGISTER
   // ===========================================================================
+  describe('checkEmailAvailability', () => {
+    it("✅ Ne doit rien faire si l'email est libre", async () => {
+      // Mock : Aucun utilisateur trouvé (null)
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+
+      // On s'attend à ce que la promesse se résolve sans erreur
+      await expect(
+        service.checkEmailAvailability('libre@test.com'),
+      ).resolves.not.toThrow();
+
+      // Vérification que Prisma a bien été appelé avec le bon email
+      expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
+        where: { email: 'libre@test.com' },
+        select: { id: true },
+      });
+    });
+
+    it("❌ Doit lever ConflictException si l'email est pris", async () => {
+      // Mock : Un utilisateur est trouvé
+      mockPrisma.user.findUnique.mockResolvedValue({ id: 1 });
+
+      await expect(
+        service.checkEmailAvailability('pris@test.com'),
+      ).rejects.toThrow(ConflictException);
+    });
+  });
+
   describe('register', () => {
     const dto: RegisterDto = {
       email: 'test@test.com',
@@ -106,9 +133,14 @@ describe('AuthService (Unit)', () => {
       expect(res.message).toContain('Inscription réussie');
     });
 
-    it('❌ Doit lever ConflictException si email déjà pris', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue({ id: 1 });
+    it('❌ Doit lever ConflictException si email déjà pris (Double Check)', async () => {
+      // Si register appelle checkEmailAvailability ou fait un findUnique interne
+      mockPrisma.user.findUnique.mockResolvedValue({ id: 99 });
+
       await expect(service.register(dto)).rejects.toThrow(ConflictException);
+
+      // On s'assure que create n'est JAMAIS appelé si l'email existe
+      expect(mockPrisma.user.create).not.toHaveBeenCalled();
     });
   });
 

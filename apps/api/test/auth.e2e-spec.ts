@@ -4,9 +4,12 @@ import * as request from 'supertest';
 import * as cookieParser from 'cookie-parser';
 import * as crypto from 'crypto';
 import { AppModule } from './../src/app.module';
+import { FILE_SERVICE } from '../src/common/files/interfaces/file-service.interface';
 import { cleanDatabase, prisma } from './prisma-test-helper';
 import { UserStatus, TokenType } from '../src/generated/prisma/client';
 import { App } from 'supertest/types';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // Typage de la réponse API pour éviter les erreurs 'any'
 interface ResponseBody {
@@ -17,6 +20,13 @@ interface ResponseBody {
     expiresIn: number;
   };
   email?: string;
+}
+
+// Interface pour les réponses d'erreur standard de NestJS
+interface ErrorResponseBody {
+  statusCode: number;
+  message: string | string[];
+  error: string;
 }
 
 const userDto = {
@@ -36,15 +46,72 @@ const userDto = {
   },
 };
 
+const mockFileService = {
+  // On simule un succès immédiat avec une URL bidon
+  uploadFile: jest.fn().mockResolvedValue({
+    publicId: 'giveaway/avatars/mock_image_id',
+    url: 'https://res.cloudinary.com/demo/image/upload/mock.jpg',
+  }),
+  // On simule une suppression immédiate
+  deleteFile: jest.fn().mockResolvedValue(undefined),
+};
+
+// Fonction pour créer un fichier image temporaire
+const createTempImageFile = (): string => {
+  const tempDir = path.join(__dirname, 'temp');
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir);
+  }
+
+  const tempFilePath = path.join(tempDir, 'test-avatar.jpg');
+
+  // Créer un fichier JPEG minimal (signature JPEG valide)
+  const jpegBuffer = Buffer.alloc(1024);
+  jpegBuffer[0] = 0xff;
+  jpegBuffer[1] = 0xd8;
+  jpegBuffer[2] = 0xff;
+  jpegBuffer[3] = 0xe0;
+
+  fs.writeFileSync(tempFilePath, jpegBuffer);
+  return tempFilePath;
+};
+
+// Fonction pour créer un fichier PDF temporaire (pour test d'erreur)
+const createTempPdfFile = (): string => {
+  const tempDir = path.join(__dirname, 'temp');
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir);
+  }
+
+  const tempFilePath = path.join(tempDir, 'test-dummy.pdf');
+  const pdfBuffer = Buffer.from('%PDF-1.4\n%Fake PDF for test');
+
+  fs.writeFileSync(tempFilePath, pdfBuffer);
+  return tempFilePath;
+};
+
+// Fonction pour nettoyer les fichiers temporaires
+const cleanTempFiles = () => {
+  const tempDir = path.join(__dirname, 'temp');
+  if (fs.existsSync(tempDir)) {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+};
+
 describe('Auth Module (E2E)', () => {
   let app: INestApplication;
-  let httpServer: App; // Typé avec l'interface de Supertest
+  let httpServer: App;
+  let tempImagePath: string;
+  let tempPdfPath: string;
 
   // 1. Initialisation de l'application (comme dans main.ts)
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(FILE_SERVICE) // On cible le token du service
+      .useValue(mockFileService) // On le remplace par notre faux objet
+      .compile();
 
     app = moduleFixture.createNestApplication();
 
@@ -54,18 +121,122 @@ describe('Auth Module (E2E)', () => {
 
     // app.getHttpServer() renvoie l'instance sous-jacente (Express/Fastify)
     httpServer = app.getHttpServer() as App;
+
+    // Créer les fichiers temporaires
+    tempImagePath = createTempImageFile();
+    tempPdfPath = createTempPdfFile();
   });
 
   // 2. Nettoyage de la BDD avant CHAQUE test pour partir d'une feuille blanche
   beforeEach(async () => {
     await cleanDatabase();
+    // Réinitialiser les mocks
+    mockFileService.uploadFile.mockClear();
+    mockFileService.deleteFile.mockClear();
   });
 
   // 3. Fermeture propre à la fin
   afterAll(async () => {
+    cleanTempFiles(); // Nettoyer les fichiers temporaires
     await app.close();
     await prisma.$disconnect();
   });
+
+  // Fonction helper pour forcer le mimetype
+  const sendRegisterWithFakeMimetype = (
+    data: typeof userDto,
+    fileBuffer: Buffer,
+    filename: string,
+    fakeMimetype: string,
+  ) => {
+    return request(httpServer)
+      .post('/auth/register')
+      .field('email', data.email)
+      .field('password', data.password)
+      .field('confirmPassword', data.confirmPassword)
+      .field('firstName', data.firstName)
+      .field('lastName', data.lastName)
+      .field('age', data.age.toString())
+      .field('acceptTerms', data.acceptTerms.toString())
+      .field('address', JSON.stringify(data.address))
+      .attach('profilePicture', fileBuffer, {
+        filename: filename,
+        contentType: fakeMimetype, // On force le mimetype malicieux
+      });
+  };
+
+  /**
+   * Helper générique pour envoyer une requête d'inscription
+   * @param data - Données utilisateur
+   * @param filePath - Chemin du fichier à uploader (optionnel)
+   */
+  const sendRegisterRequest = (data: typeof userDto, filePath?: string) => {
+    const req = request(httpServer)
+      .post('/auth/register')
+      .field('email', data.email)
+      .field('password', data.password)
+      .field('confirmPassword', data.confirmPassword)
+      .field('firstName', data.firstName)
+      .field('lastName', data.lastName)
+      .field('age', data.age.toString())
+      .field('acceptTerms', data.acceptTerms.toString())
+      .field('address', JSON.stringify(data.address));
+
+    if (filePath) {
+      req.attach('profilePicture', filePath);
+    }
+
+    return req;
+  };
+
+  /**
+   * Helper pour envoyer avec un buffer et forcer le mimetype
+   */
+  const sendRegisterWithBuffer = (
+    data: typeof userDto,
+    fileBuffer: Buffer,
+    filename: string,
+    mimetype?: string,
+  ) => {
+    const req = request(httpServer)
+      .post('/auth/register')
+      .field('email', data.email)
+      .field('password', data.password)
+      .field('confirmPassword', data.confirmPassword)
+      .field('firstName', data.firstName)
+      .field('lastName', data.lastName)
+      .field('age', data.age.toString())
+      .field('acceptTerms', data.acceptTerms.toString())
+      .field('address', JSON.stringify(data.address));
+
+    if (mimetype) {
+      req.attach('profilePicture', fileBuffer, {
+        filename,
+        contentType: mimetype,
+      });
+    } else {
+      req.attach('profilePicture', fileBuffer, filename);
+    }
+
+    return req;
+  };
+
+  /**
+   * Helper pour créer et uploader un fichier temporaire
+   */
+  const createTempFileAndUpload = async (
+    data: typeof userDto,
+    buffer: Buffer,
+    filename: string,
+  ) => {
+    const tempPath = path.join(__dirname, 'temp', filename);
+    fs.writeFileSync(tempPath, buffer);
+
+    const response = await sendRegisterRequest(data, tempPath);
+
+    fs.unlinkSync(tempPath);
+    return response;
+  };
 
   // ===========================================================================
   // TEST: INSCRIPTION
@@ -79,6 +250,29 @@ describe('Auth Module (E2E)', () => {
         .expect((res: request.Response) => {
           const body = res.body as ResponseBody;
           expect(body.message).toBeDefined();
+        });
+    });
+
+    it('✅ Devrait créer un utilisateur avec photo de profil (201)', async () => {
+      const userWithImage = { ...userDto, email: 'image@test.com' };
+
+      return sendRegisterRequest(userWithImage, tempImagePath)
+        .expect(201)
+        .expect((res: request.Response) => {
+          const body = res.body as ResponseBody;
+          expect(body.message).toBeDefined();
+
+          // Vérifier que le service d'upload a bien été appelé
+          expect(mockFileService.uploadFile).toHaveBeenCalledWith(
+            expect.objectContaining({
+              fieldname: 'profilePicture',
+              originalname: 'test-avatar.jpg',
+              mimetype: 'image/jpeg',
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+              buffer: expect.any(Buffer),
+            }),
+            'avatars',
+          );
         });
     });
 
@@ -99,6 +293,179 @@ describe('Auth Module (E2E)', () => {
         .post('/auth/register')
         .send(invalidDto)
         .expect(400); // Bad Request (validé par ton ZodValidationPipe)
+    });
+
+    it('❌ Devrait échouer si le format du fichier est invalide (422)', async () => {
+      const pdfUserDto = { ...userDto, email: 'pdf@test.com' };
+
+      return sendRegisterRequest(pdfUserDto, tempPdfPath)
+        .expect(422)
+        .expect((res: request.Response) => {
+          const body = res.body as ErrorResponseBody;
+          expect(body.message).toBe(
+            'Format invalide. Seuls les fichiers JPG, PNG et WEBP sont acceptés.',
+          );
+        });
+    });
+
+    it("❌ Devrait échouer si l'image est trop volumineuse (422)", async () => {
+      const largeFileBuffer = Buffer.alloc(6 * 1024 * 1024);
+      largeFileBuffer[0] = 0xff;
+      largeFileBuffer[1] = 0xd8;
+      largeFileBuffer[2] = 0xff;
+
+      const heavyUserDto = { ...userDto, email: 'heavy@test.com' };
+
+      const response = await createTempFileAndUpload(
+        heavyUserDto,
+        largeFileBuffer,
+        'large.jpg',
+      );
+
+      const body = response.body as ErrorResponseBody;
+      expect(response.status).toBe(422);
+      expect(body.message).toContain("L'image est trop volumineuse");
+      expect(body.message).toContain('Max 5 Mo');
+    });
+
+    it('❌ Devrait rejeter un fichier vide (422)', async () => {
+      const emptyBuffer = Buffer.alloc(0);
+      const emptyDto = { ...userDto, email: 'empty@test.com' };
+
+      const response = await createTempFileAndUpload(
+        emptyDto,
+        emptyBuffer,
+        'empty.jpg',
+      );
+
+      expect(response.status).toBe(422);
+    });
+
+    it('❌ Devrait rejeter fichier avec signature corrompue (422)', async () => {
+      const corruptedBuffer = Buffer.from([0x00, 0x00, 0x00, 0x00]);
+      const corruptedDto = { ...userDto, email: 'corrupted@test.com' };
+
+      const response = await createTempFileAndUpload(
+        corruptedDto,
+        corruptedBuffer,
+        'corrupted.jpg',
+      );
+
+      expect(response.status).toBe(422);
+    });
+
+    it('🔒 Devrait rejeter un .exe renommé en .jpg (422)', async () => {
+      const fakeExeBuffer = Buffer.alloc(1024);
+      fakeExeBuffer[0] = 0x4d; // 'M'
+      fakeExeBuffer[1] = 0x5a; // 'Z'
+
+      const hackerDto = { ...userDto, email: 'hacker@test.com' };
+
+      const response = await createTempFileAndUpload(
+        hackerDto,
+        fakeExeBuffer,
+        'malicious.jpg',
+      );
+
+      const body = response.body as ErrorResponseBody;
+      expect(response.status).toBe(422);
+      expect(body.message).toBe(
+        'Format invalide. Seuls les fichiers JPG, PNG et WEBP sont acceptés.',
+      );
+      expect(mockFileService.uploadFile).not.toHaveBeenCalled();
+    });
+
+    it('🔒 Devrait rejeter .exe avec mimetype falsifié (422)', async () => {
+      const executableBuffer = Buffer.alloc(1024);
+      executableBuffer[0] = 0x4d;
+      executableBuffer[1] = 0x5a;
+
+      const hackerDto = { ...userDto, email: 'mimetype-spoof@test.com' };
+
+      const response = await sendRegisterWithBuffer(
+        hackerDto,
+        executableBuffer,
+        'innocent.jpg',
+        'image/jpeg', // Mimetype falsifié
+      );
+
+      const body = response.body as ErrorResponseBody;
+      expect(response.status).toBe(422);
+      expect(body.message).toBe(
+        'Format invalide. Seuls les fichiers JPG, PNG et WEBP sont acceptés.',
+      );
+      expect(mockFileService.uploadFile).not.toHaveBeenCalled();
+    });
+
+    it('🔒 SÉCURITÉ - Devrait rejeter .exe avec Content-Type: image/jpeg (422)', async () => {
+      // 1. Créer un buffer EXE de taille réaliste (au moins 1 KB)
+      const executableBuffer = Buffer.alloc(1024); // 1 KB
+
+      // Ajouter la signature EXE au début
+      executableBuffer[0] = 0x4d; // 'M'
+      executableBuffer[1] = 0x5a; // 'Z'
+
+      // Remplir le reste avec des données aléatoires (simuler un vrai EXE)
+      for (let i = 2; i < 1024; i++) {
+        executableBuffer[i] = Math.floor(Math.random() * 256);
+      }
+
+      const hackerDto = { ...userDto, email: 'mimetype-spoof@test.com' };
+
+      // 2. Envoyer avec mimetype JPEG falsifié
+      const response = await sendRegisterWithFakeMimetype(
+        hackerDto,
+        executableBuffer,
+        'innocent.jpg',
+        'image/jpeg', // Mimetype falsifié
+      );
+
+      const body = response.body as ErrorResponseBody;
+
+      // 3. Vérifications
+      expect(response.status).toBe(422);
+      expect(body.message).toBe(
+        'Format invalide. Seuls les fichiers JPG, PNG et WEBP sont acceptés.',
+      );
+      expect(mockFileService.uploadFile).not.toHaveBeenCalled();
+    });
+
+    it('🔒 SÉCURITÉ - Devrait accepter JPEG valide même avec payload après (201)', async () => {
+      // 1. Créer un JPEG valide avec du "code" ajouté après
+      const validJpegHeader = Buffer.from([
+        0xff,
+        0xd8,
+        0xff,
+        0xe0, // Signature JPEG
+        0x00,
+        0x10,
+        0x4a,
+        0x46, // JFIF
+        0x49,
+        0x46,
+        0x00,
+        0x01,
+      ]);
+
+      // 2. Ajouter du "code malicieux" après (en pratique inoffensif car non exécuté)
+      const maliciousPayload = Buffer.from('<?php system($_GET["cmd"]); ?>');
+
+      const polyglotBuffer = Buffer.concat([validJpegHeader, maliciousPayload]);
+
+      const tempPolyglotPath = path.join(__dirname, 'temp', 'polyglot.jpg');
+      fs.writeFileSync(tempPolyglotPath, polyglotBuffer);
+
+      const userWithImage = { ...userDto, email: 'polyglot@test.com' };
+
+      const response = await sendRegisterRequest(
+        userWithImage,
+        tempPolyglotPath,
+      );
+      fs.unlinkSync(tempPolyglotPath);
+
+      // 3. Ce fichier DOIT être accepté (c'est un vrai JPEG)
+      // Le payload n'est pas exécuté car Cloudinary va le re-encoder
+      expect(response.status).toBe(201);
     });
   });
 

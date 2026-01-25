@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AppController } from './app.controller';
+import { MulterModule } from '@nestjs/platform-express';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
@@ -14,6 +15,11 @@ import { MailModule } from './mail/mail.module';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '../../.env',
+    }),
+
+    MulterModule.register({
+      // On utilise le storage mémoire par défaut
+      // Chaque FileInterceptor peut override cette config si besoin
     }),
 
     // 2. Sécurité Anti-Bot (Rate Limiting)

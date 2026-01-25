@@ -52,17 +52,25 @@ export const RegisterSchema = z
       .string()
       .min(1, { message: "La confirmation du mot de passe est obligatoire" }),
 
-    acceptTerms: z.literal(true, {
-      message: "Vous devez accepter les conditions générales d'utilisation",
-    }),
-
-    age: z
-      .number()
-      .int({ message: "L'âge doit être un nombre entier" })
-      .min(18, {
-        message: "Vous devez avoir au moins 18 ans pour vous inscrire",
-      })
-      .max(100, { message: "Âge invalide" }),
+    acceptTerms: z.preprocess(
+      // On transforme la string "true" en booléen true
+      (val) => val === "true" || val === true,
+      // Ensuite on valide que c'est bien true
+      z.literal(true, {
+        message: "Vous devez accepter les conditions générales d'utilisation",
+      }),
+    ),
+    
+    age: z.preprocess(
+      (val) => (typeof val === "string" ? parseInt(val, 10) : val),
+      z
+        .number()
+        .int({ message: "L'âge doit être un nombre entier" })
+        .min(18, {
+          message: "Vous devez avoir au moins 18 ans pour vous inscrire",
+        })
+        .max(100, { message: "Âge invalide" }),
+    ),
 
     biography: z
       .string()
@@ -75,10 +83,23 @@ export const RegisterSchema = z
       })
       .optional(),
 
-    profilePicture: z.url().optional(),
+    profilePicture: z.string().optional(),
 
     // On réutilise notre schéma Address
-    address: AddressSchema,
+    address: z.preprocess(
+      (val) => {
+        // Si c'est une string (cas du Multipart), on parse le JSON
+        if (typeof val === "string") {
+          try {
+            return JSON.parse(val);
+          } catch {
+            return val; // Si c'est pas du JSON valide, on laisse Zod échouer après
+          }
+        }
+        return val; // Si c'est déjà un objet (cas des tests ou autre), on touche pas
+      },
+      AddressSchema, // Une fois parsé, on applique ton schéma d'adresse
+    ),
   })
   .superRefine((data, ctx) => {
     // Validation croisée : mot de passe == confirmation
