@@ -2,8 +2,6 @@ import { PressableProps as NativePressableProps } from 'react-native';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'tertiary';
 
-// J'ai supprimé la notion de "size" puisque tu utilises une taille unique standard.
-
 export interface ButtonProps extends NativePressableProps {
     /** Le contenu du bouton (Texte) */
     children?: React.ReactNode;

@@ -97,7 +97,7 @@ export function Input({
 
           // Couleurs
           disabled
-            ? "bg-grey-300 border-grey-600"
+            ? "bg-grey-100 border-grey-600"
             : [
                 "bg-white",
                 isError

@@ -3,6 +3,7 @@ import { z } from "zod";
 // Regex simple pour éviter les injections HTML basiques (< et >)
 const NO_HTML_TAGS = /^[^<>]*$/;
 
+// Input (Requête API)
 export const AddressSchema = z
   .object({
     street: z
@@ -35,7 +36,7 @@ export const AddressSchema = z
         NO_HTML_TAGS,
         "La ville contient des caractères interdits (< ou >)",
       ),
-      
+
     latitude: z.preprocess(
       (val) => (typeof val === "string" ? parseFloat(val) : val),
       z.number().min(-90).max(90).optional(),
@@ -55,3 +56,14 @@ export const AddressSchema = z
   }));
 
 export type AddressDto = z.infer<typeof AddressSchema>;
+
+// Output (Réponse API)
+// C'est ce que Prisma renvoie (avec l'ID)
+export interface Address {
+  id: number;
+  street: string;
+  postalCode: string;
+  city: string;
+  latitude: number | null;
+  longitude: number | null;
+}

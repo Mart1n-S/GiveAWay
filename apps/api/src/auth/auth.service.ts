@@ -25,6 +25,9 @@ import {
   ResetPasswordDto,
   ResendVerificationDto,
   ChangePasswordDto,
+  User,
+  UserStatus as SharedUserStatus,
+  AssociationRole as SharedAssociationRole,
 } from '@repo/shared';
 
 @Injectable()
@@ -171,6 +174,14 @@ export class AuthService {
     // 1. Chercher l'utilisateur
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
+      include: {
+        address: true,
+        associations: {
+          include: {
+            association: true, // Pour avoir le nom de l'asso
+          },
+        },
+      },
     });
 
     if (!user) {
@@ -185,8 +196,8 @@ export class AuthService {
     }
 
     if (
-      user.status == UserStatus.DELETED ||
-      user.status == UserStatus.SUSPENDED
+      user.status === UserStatus.DELETED ||
+      user.status === UserStatus.SUSPENDED
     ) {
       throw new UnauthorizedException(
         'Votre compte a été supprimé ou suspendu. Veuillez contacter le support.',
@@ -197,7 +208,7 @@ export class AuthService {
     const isMatch = await verify(user.password, dto.password);
 
     if (!isMatch) {
-      // 2. On loggue l'échec (Super utile pour fail2ban ou le débug)
+      // On loggue l'échec (Super utile pour fail2ban ou le débug)
       this.logger.warn(
         `Tentative de connexion échouée pour l'email : ${dto.email}`,
       );
@@ -208,7 +219,45 @@ export class AuthService {
 
     await this.saveRefreshToken(user.id, tokens.refreshToken, userAgent, ip);
 
-    return tokens;
+    // return tokens;
+    // 4. MAPPING : On nettoie l'objet pour le front
+    // On enlève le mot de passe, les champs internes, etc.
+    const userResponse: User = {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      age: user.age,
+      biography: user.biography,
+      profilePicture: user.profilePicture,
+      status: user.status as unknown as SharedUserStatus,
+
+      createdAt: user.createdAt.toISOString(),
+      updatedAt: user.updatedAt.toISOString(),
+
+      address: user.address
+        ? {
+            id: user.address.id,
+            street: user.address.street,
+            postalCode: user.address.postalCode,
+            city: user.address.city,
+            latitude: user.address.latitude
+              ? Number(user.address.latitude)
+              : null,
+            longitude: user.address.longitude
+              ? Number(user.address.longitude)
+              : null,
+          }
+        : null,
+      // Si c'est un membre d'une asso, on inclut les infos d'association
+      associations: user.associations.map((assocUser) => ({
+        associationId: assocUser.associationId,
+        name: assocUser.association.name,
+        role: assocUser.role as unknown as SharedAssociationRole,
+      })),
+    };
+
+    return { tokens, user: userResponse };
   }
 
   // ----------------------------------------------------------------
@@ -433,6 +482,81 @@ export class AuthService {
     await this.saveRefreshToken(user.id, newTokens.refreshToken, userAgent, ip);
 
     return newTokens;
+  }
+
+  // ----------------------------------------------------------------
+  // GET PROFILE (ME)
+  // ----------------------------------------------------------------
+  async getMe(userId: number) {
+    // 1. Chercher l'utilisateur avec ses relations
+    // Exactement comme le login, mais par ID (garanti par le token)
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        address: true,
+        associations: {
+          include: {
+            association: true, // Pour avoir le nom de l'asso
+          },
+        },
+      },
+    });
+
+    // 2. Vérifications de sécurité
+    // Même si le token est valide, l'user a pu être supprimé entre temps
+    if (!user) {
+      throw new UnauthorizedException('Utilisateur introuvable');
+    }
+
+    // Si un admin a banni l'user pendant sa session, on le bloque ici
+    if (
+      user.status === UserStatus.DELETED ||
+      user.status === UserStatus.SUSPENDED
+    ) {
+      throw new UnauthorizedException(
+        'Votre compte a été supprimé ou suspendu.',
+      );
+    }
+
+    // 3. MAPPING : On reprend la logique EXACTE du login
+    // Cela garantit la cohérence des données User côté Front
+    const userResponse: User = {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      age: user.age,
+      biography: user.biography,
+      profilePicture: user.profilePicture,
+      // On caste l'enum Prisma vers l'enum Shared
+      status: user.status as unknown as SharedUserStatus,
+
+      createdAt: user.createdAt.toISOString(),
+      updatedAt: user.updatedAt.toISOString(),
+
+      address: user.address
+        ? {
+            id: user.address.id,
+            street: user.address.street,
+            postalCode: user.address.postalCode,
+            city: user.address.city,
+            latitude: user.address.latitude
+              ? Number(user.address.latitude)
+              : null,
+            longitude: user.address.longitude
+              ? Number(user.address.longitude)
+              : null,
+          }
+        : null,
+
+      associations: user.associations.map((assocUser) => ({
+        associationId: assocUser.associationId,
+        name: assocUser.association.name,
+        role: assocUser.role as unknown as SharedAssociationRole,
+      })),
+    };
+
+    return userResponse;
   }
 
   // ----------------------------------------------------------------

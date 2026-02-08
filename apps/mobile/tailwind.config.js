@@ -20,7 +20,7 @@ module.exports = {
     extend: {
       colors: {
         /* --- Brand --- */
-        // On mappe tes couleurs primaires aux tokens
+        // On mappe les couleurs primaires aux tokens
         primary: {
           DEFAULT: colors.primary.default,
           hover: colors.primary.hover,
@@ -40,7 +40,7 @@ module.exports = {
         /* --- Feedback --- */
         focus: colors.focus,
 
-        // On garde tes classes existantes (error-100) mais on utilise la valeur du token (error.strong)
+        // On garde les classes existantes (error-100) mais on utilise la valeur du token (error.strong)
         error: {
           100: colors.error.strong,
           30: colors.error.soft,

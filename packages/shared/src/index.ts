@@ -6,3 +6,7 @@ export * from "./auth/login.dto";
 export * from "./auth/forgot-password.dto";
 export * from "./auth/reset-password.dto";
 export * from "./auth/change-password.dto";
+export * from "./user/user.dto";
+export * from "./user/user.enums";
+export * from "./user/user-association.dto";
+export * from "./responses/auth.responses";

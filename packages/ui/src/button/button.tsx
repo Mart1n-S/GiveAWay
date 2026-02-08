@@ -91,7 +91,7 @@ export function Button({
         //  ÉTAT DISABLED STRICT (Gris)
         // ===============================================
         // S'applique uniquement si la prop disabled est true (pas juste loading)
-        disabled && "bg-grey-300 border border-grey-300",
+        disabled && "bg-grey-100 border border-grey-100",
 
         className
       )}

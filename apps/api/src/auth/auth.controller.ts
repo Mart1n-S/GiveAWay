@@ -14,6 +14,7 @@ import {
   Req,
   UseGuards,
   Ip,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { GuestGuard } from './guards/guest.guard';
 import { Response } from 'express';
@@ -39,6 +40,8 @@ import {
   ResetPasswordSchema,
   ChangePasswordDto,
   ChangePasswordSchema,
+  AuthResponse,
+  User,
 } from '@repo/shared';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { ImageValidationPipe } from '../common/pipes/image-validation.pipe';
@@ -113,15 +116,15 @@ export class AuthController {
     @Req() req: AuthenticatedRequest,
     @Ip() ip: string,
     @Headers('x-client-type') clientType?: string,
-  ) {
+  ): Promise<AuthResponse> {
     // Cela gère les cas où user-agent est undefined ou un tableau, sans erreur ESLint.
     const userAgent = `${req.headers['user-agent'] || 'Unknown'}`;
 
-    const { accessToken, refreshToken } = await this.authService.login(
-      dto,
-      userAgent,
-      ip,
-    );
+    // On récupère tokens ET user
+    const { tokens, user } = await this.authService.login(dto, userAgent, ip);
+
+    // On extrait accessToken et refreshToken
+    const { accessToken, refreshToken } = tokens;
 
     const isProd = process.env.NODE_ENV === 'production';
 
@@ -141,11 +144,11 @@ export class AuthController {
     });
 
     // 2. LOGIQUE CONDITIONNELLE
-    // Si le header dit "mobile", on renvoie les tokens dans le JSON.
-    // Sinon (Web), on ne renvoie que le message de succès.
+    // Si le header dit "mobile", on renvoie les tokens dans le JSON + l'User.
     if (clientType === 'mobile') {
       return {
         message: 'Connexion réussie',
+        user: user,
         backendTokens: {
           accessToken,
           refreshToken,
@@ -154,7 +157,11 @@ export class AuthController {
       };
     }
 
-    return { message: 'Connexion réussie' };
+    // Sinon (Web), on renvoie l'user (les tokens sont dans les cookies)
+    return {
+      message: 'Connexion réussie',
+      user: user,
+    };
   }
 
   // Route: POST /auth/forgot-password
@@ -288,7 +295,13 @@ export class AuthController {
   // Route: GET /auth/me
   @UseGuards(AuthGuard('jwt'))
   @Get('me')
-  getProfile(@Req() req: AuthenticatedRequest) {
-    return req.user;
+  @HttpCode(HttpStatus.OK)
+  async getProfile(@Req() req: AuthenticatedRequest): Promise<User> {
+    if (!req.user.id) {
+      throw new UnauthorizedException('Utilisateur non identifié');
+    }
+
+    // Ici, TypeScript sait que req.user.id est un 'number' (plus besoin de !)
+    return this.authService.getMe(req.user.id);
   }
 }

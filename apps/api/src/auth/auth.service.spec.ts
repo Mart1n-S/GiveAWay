@@ -220,30 +220,63 @@ describe('AuthService (Unit)', () => {
   describe('login', () => {
     const dto: LoginDto = { email: 'test@test.com', password: 'Password123!' };
 
-    it('✅ Login réussi', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue({
+    // Un utilisateur complet pour mocker le retour de Prisma
+    const mockUser = {
+      id: 1,
+      email: 'test@test.com',
+      password: 'hashed_password',
+      firstName: 'Test',
+      lastName: 'User',
+      age: 25,
+      emailVerifiedAt: new Date(),
+      status: UserStatus.ACTIVE,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      address: {
         id: 1,
-        password: 'hashed_password',
-        emailVerifiedAt: new Date(),
-        status: UserStatus.ACTIVE,
-      });
+        street: 'Rue de la Paix',
+        postalCode: '75000',
+        city: 'Paris',
+        latitude: null,
+        longitude: null,
+      },
+      associations: [],
+    };
+
+    it('✅ Login réussi - Retourne Tokens et User mappé', async () => {
+      // 1. On mock Prisma pour qu'il retourne l'user complet
+      mockPrisma.user.findUnique.mockResolvedValue(mockUser);
+
+      // 2. On mock Argon2 pour dire "le mot de passe est bon"
       jest.spyOn(argon2, 'verify').mockResolvedValue(true);
 
-      const res = await service.login(dto, 'agent', 'ip');
+      // 3. Appel
+      const res = await service.login(dto, 'Mozilla/5.0', '127.0.0.1');
 
-      expect(res).toHaveProperty('accessToken');
+      // 4. Vérifications
+      expect(res).toHaveProperty('tokens');
+      expect(res).toHaveProperty('user');
+      expect(res.tokens).toHaveProperty('accessToken');
+      expect(res.user.email).toBe(dto.email);
+
+      // Vérif que le refresh token est bien sauvegardé
       expect(mockPrisma.refreshToken.create).toHaveBeenCalled();
     });
 
     it('❌ Doit lever Unauthorized si mdp incorrect', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue({
-        password: 'h',
-        emailVerifiedAt: new Date(),
-        status: UserStatus.ACTIVE,
-      });
+      mockPrisma.user.findUnique.mockResolvedValue(mockUser);
+      // On simule un mauvais mot de passe
       jest.spyOn(argon2, 'verify').mockResolvedValue(false);
 
-      await expect(service.login(dto, 'a', 'i')).rejects.toThrow(
+      await expect(service.login(dto, 'agent', 'ip')).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('❌ Doit lever Unauthorized si user non trouvé', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+
+      await expect(service.login(dto, 'agent', 'ip')).rejects.toThrow(
         UnauthorizedException,
       );
     });
@@ -643,6 +676,89 @@ describe('AuthService (Unit)', () => {
       // SÉCURITÉ : On vérifie que rien n'a été modifié ni hashé
       expect(argon2.hash).not.toHaveBeenCalled();
       expect(mockPrisma.user.update).not.toHaveBeenCalled();
+    });
+  });
+
+  // ===========================================================================
+  // 10. GET ME
+  // ===========================================================================
+  describe('getMe', () => {
+    // On définit un mockUser complet pour tester le mapping
+    const mockUserComplete = {
+      id: 1,
+      email: 'me@test.com',
+      firstName: 'Me',
+      lastName: 'Myself',
+      age: 30,
+      biography: 'Bio',
+      profilePicture: null,
+      password: 'hash',
+      emailVerifiedAt: new Date(),
+      status: UserStatus.ACTIVE,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      address: {
+        id: 10,
+        street: 'Rue Test',
+        postalCode: '75000',
+        city: 'Paris',
+        latitude: 48.85,
+        longitude: 2.35,
+      },
+      associations: [
+        {
+          associationId: 5,
+          role: 'PRESIDENT',
+          association: { name: 'Asso Test' },
+        },
+      ],
+    };
+
+    it('✅ Doit retourner un User mappé (Format Shared DTO)', async () => {
+      // 1. Mock Prisma
+      mockPrisma.user.findUnique.mockResolvedValue(mockUserComplete);
+
+      // 2. Appel
+      const res = await service.getMe(1);
+
+      // 3. Vérifications (Mapping)
+      expect(res.id).toBe(1);
+      expect(res.email).toBe('me@test.com');
+
+      // Vérif que les dates sont bien converties en string (ISO)
+      expect(typeof res.createdAt).toBe('string');
+
+      // Vérif que l'adresse est bien là
+      expect(res.address).not.toBeNull();
+      expect(res.address?.city).toBe('Paris');
+
+      // Vérif des associations
+      expect(res.associations).toHaveLength(1);
+      expect(res.associations?.[0]?.name).toBe('Asso Test');
+    });
+
+    it('❌ Doit lever Unauthorized si user non trouvé', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+
+      await expect(service.getMe(999)).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('❌ Doit lever Unauthorized si user SUSPENDU', async () => {
+      // On reprend l'user mais on change son statut
+      const suspendedUser = {
+        ...mockUserComplete,
+        status: UserStatus.SUSPENDED,
+      };
+      mockPrisma.user.findUnique.mockResolvedValue(suspendedUser);
+
+      await expect(service.getMe(1)).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('❌ Doit lever Unauthorized si user SUPPRIMÉ', async () => {
+      const deletedUser = { ...mockUserComplete, status: UserStatus.DELETED };
+      mockPrisma.user.findUnique.mockResolvedValue(deletedUser);
+
+      await expect(service.getMe(1)).rejects.toThrow(UnauthorizedException);
     });
   });
 });

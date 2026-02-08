@@ -44,7 +44,12 @@ config.resolver.nodeModulesPaths = [
 
 // Force la résolution unique des paquets (évite les doublons de React)
 config.resolver.disableHierarchicalLookup = true;
-
+config.resolver.unstable_enablePackageExports = true;
+config.resolver.unstable_conditionNames = [
+    'require',
+    'react-native',
+    'default',
+]
 // =================================================================
 // 5. EXPORT AVEC NATIVEWIND
 // =================================================================
