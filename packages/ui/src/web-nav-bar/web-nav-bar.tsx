@@ -22,12 +22,15 @@ export function WebNavBar({
   user,
   mainLinks,
   secondaryLinks,
+  bottomLinks = [],
   onLoginPress,
   onRegisterPress,
   onProfilePress,
+  onLogoutPress,
   logoComponent,
   menuIcon,
   closeIcon,
+  logoutIcon,
   className,
   ...props
 }: WebNavBarProps) {
@@ -53,7 +56,6 @@ export function WebNavBar({
       setIsModalVisible(true);
       slideAnim.setValue(drawerWidth);
       fadeAnim.setValue(0);
-
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -69,7 +71,6 @@ export function WebNavBar({
       ]).start();
     } else {
       if (!isModalVisible) return;
-
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 0,
@@ -82,62 +83,58 @@ export function WebNavBar({
           easing: Easing.in(Easing.quad),
           useNativeDriver: true,
         }),
-      ]).start(() => {
-        setIsModalVisible(false);
-      });
+      ]).start(() => setIsModalVisible(false));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMenuOpen, drawerWidth]);
 
-  // --- RENDER : LINKS (Desktop Center) ---
-  const renderDesktopLinks = () => (
-    <View className="flex-row items-center gap-1" accessibilityRole="menubar">
-      {mainLinks.map((link) => {
-        const isPageActive = link.isActive;
-
-        const content = (
-          <Pressable
-            key={link.id}
-            onPress={link.onPress}
-            accessibilityRole="menuitem"
-            accessibilityState={{ selected: isPageActive }}
-            className={clsx(
-              // --- BASE ---
-              "px-4 py-2 rounded-md transition-all duration-200",
-
-              // --- HOVER / ACTIVE (Géré par CSS NativeWind) ---
-              "hover:bg-primary-50 active:bg-primary-100",
-
-              // --- FOCUS (Clavier) ---
-              "web:outline-none focus:outline-none",
-              "web:focus-visible:ring-2 web:focus-visible:ring-focus web:focus-visible:ring-offset-2",
-            )}
-          >
-            <Text
+  const renderDesktopLinks = () => {
+    const allLinks = [...mainLinks, ...bottomLinks];
+    return (
+      <View className="flex-row items-center gap-1" accessibilityRole="menubar">
+        {allLinks.map((link) => {
+          const isPageActive = link.isActive;
+          const content = (
+            <Pressable
+              key={link.id}
+              onPress={link.onPress}
+              accessibilityRole="menuitem"
+              accessibilityState={{ selected: isPageActive }}
               className={clsx(
-                "text-sm font-semibold transition-colors",
-                isPageActive
-                  ? "text-primary-active underline decoration-2 underline-offset-8 decoration-primary-active"
-                  : "text-grey-600 hover:text-primary-hover active:text-primary-active",
+                // --- BASE ---
+                "px-4 py-2 rounded-md transition-all duration-200",
+
+                // --- HOVER / ACTIVE (Géré par CSS NativeWind) ---
+                "hover:bg-primary-50 active:bg-primary-100",
+
+                // --- FOCUS (Clavier) ---
+                "web:outline-none focus:outline-none",
+                "web:focus-visible:ring-2 web:focus-visible:ring-focus web:focus-visible:ring-offset-2",
               )}
             >
-              {link.label}
-            </Text>
-          </Pressable>
-        );
-
-        if (link.href) {
-          return (
+              <Text
+                className={clsx(
+                  "text-sm font-semibold transition-colors",
+                  isPageActive
+                    ? "text-primary-active underline decoration-2 underline-offset-8 decoration-primary-active"
+                    : "text-grey-900 hover:text-primary-hover active:text-primary-active",
+                )}
+              >
+                {link.label}
+              </Text>
+            </Pressable>
+          );
+          return link.href ? (
             <Link key={link.id} href={link.href} asChild>
               {content}
             </Link>
+          ) : (
+            content
           );
-        }
-
-        return content;
-      })}
-    </View>
-  );
+        })}
+      </View>
+    );
+  };
 
   // --- RENDER : ACTIONS (Desktop Right) ---
   const renderDesktopActions = () => {
@@ -168,6 +165,16 @@ export function WebNavBar({
               readonly
             />
           </Pressable>
+
+          <View className="h-6 w-[1px] bg-grey-300" />
+
+          <Button
+            onPress={onLogoutPress}
+            icon={logoutIcon}
+            className="text-white bg-red-600 border-red-600 hover:bg-red-700 hover:border-red-700 active:bg-red-800"
+          >
+            Se déconnecter
+          </Button>
         </View>
       );
     }
@@ -185,24 +192,20 @@ export function WebNavBar({
 
   return (
     <>
-      {/* --- BARRE DE NAVIGATION --- */}
       <View
         className={clsx(
-          "w-full h-16 bg-white border-b border-grey-200 px-4 md:px-8 z-50",
-          "flex-row items-center justify-between",
+          "w-full h-16 bg-white border-b border-grey-200 px-4 md:px-8 z-50 flex-row items-center justify-between",
           className,
         )}
         accessibilityRole="header"
         {...props}
       >
         <View className="flex-shrink-0">{logoComponent}</View>
-
         {isDesktop && (
           <View className="absolute left-0 right-0 items-center justify-center pointer-events-none">
             <View className="pointer-events-auto">{renderDesktopLinks()}</View>
           </View>
         )}
-
         <View>
           {isDesktop ? (
             renderDesktopActions()
@@ -238,12 +241,11 @@ export function WebNavBar({
               }}
             >
               <Pressable
-                style={{ flex: 1, width: "100%", height: "100%" }}
+                style={{ flex: 1 }}
                 onPress={() => setIsMenuOpen(false)}
                 accessibilityLabel="Fermer le menu"
               />
             </Animated.View>
-
             <Animated.View
               style={{
                 transform: [{ translateX: slideAnim }],
@@ -280,6 +282,7 @@ export function WebNavBar({
                   isGuest={!user}
                   mainLinks={mainLinks}
                   secondaryLinks={secondaryLinks}
+                  bottomLinks={bottomLinks}
                   onLoginPress={() => {
                     setIsMenuOpen(false);
                     onLoginPress?.();
@@ -288,6 +291,11 @@ export function WebNavBar({
                     setIsMenuOpen(false);
                     onRegisterPress?.();
                   }}
+                  onLogoutPress={() => {
+                    setIsMenuOpen(false);
+                    onLogoutPress?.();
+                  }}
+                  logoutIcon={logoutIcon}
                 />
               </SafeAreaView>
             </Animated.View>

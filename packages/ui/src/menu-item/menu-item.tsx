@@ -26,7 +26,7 @@ export function MenuItem({
     !disabled &&
       !isDestructive &&
       !isActive &&
-      "text-grey-700 group-active:text-primary-active group-hover:text-primary-hover",
+      "text-grey-800 group-active:text-primary-active group-hover:text-primary-hover",
   );
 
   const renderedIcon = useMemo(() => {
@@ -47,7 +47,7 @@ export function MenuItem({
       !disabled &&
         !isDestructive &&
         !isActive &&
-        "text-grey-600 group-active:text-primary-active group-hover:text-primary-hover",
+        "text-grey-800 group-active:text-primary-active group-hover:text-primary-hover",
     );
 
     return cloneElement(rightIcon as ReactElement<{ className?: string }>, {

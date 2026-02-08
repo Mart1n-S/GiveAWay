@@ -12,8 +12,11 @@ export function NavigationMenu({
   isGuest = false,
   mainLinks,
   secondaryLinks = [],
+  bottomLinks = [],
   onLoginPress,
   onRegisterPress,
+  onLogoutPress,
+  logoutIcon,
   className,
   style,
   ...props
@@ -58,7 +61,7 @@ export function NavigationMenu({
     >
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }}
         className="flex-1"
       >
         {/* --- HEADER (User ou Guest) --- */}
@@ -68,7 +71,7 @@ export function NavigationMenu({
               <Text className="mb-1 text-xl font-bold text-grey-900">
                 Bienvenue sur GiveAWay !
               </Text>
-              <Text className="mb-4 text-sm text-grey-500">
+              <Text className="mb-4 text-sm text-grey-600">
                 Connectez-vous pour accéder à toutes les fonctionnalités.
               </Text>
               <View className="flex-row gap-3">
@@ -108,7 +111,7 @@ export function NavigationMenu({
                   {user?.name}
                 </Text>
                 {user?.email && (
-                  <Text className="text-sm text-grey-500" numberOfLines={1}>
+                  <Text className="text-sm text-grey-600" numberOfLines={1}>
                     {user?.email}
                   </Text>
                 )}
@@ -124,12 +127,36 @@ export function NavigationMenu({
 
         {/* --- LISTE SECONDAIRE --- */}
         {secondaryLinks.length > 0 && (
-          <View className="h-px mx-6 my-2 bg-grey-100" />
+          <>
+            <View className="h-px mx-6 my-2 bg-grey-100" />
+            <View className="gap-1 px-4 py-4">
+              {secondaryLinks.map((link) => renderItem(link))}
+            </View>
+          </>
         )}
 
-        {secondaryLinks.length > 0 && (
-          <View className="gap-1 px-4 py-4">
-            {secondaryLinks.map((link) => renderItem(link))}
+        <View className="flex-1" />
+
+        {/* --- FOOTER (Bottom Links + Logout) --- */}
+        {(bottomLinks.length > 0 || (!isGuestMode && onLogoutPress)) && (
+          <View className="px-4 pb-2 mt-4">
+            {/* Separator Line */}
+            <View className="w-full h-px mb-4 bg-grey-200" />
+
+            <View className="gap-1">
+              {/* Bottom Links (e.g., Settings) */}
+              {bottomLinks.map((link) => renderItem(link))}
+
+              {/* Logout Button */}
+              {!isGuestMode && onLogoutPress && (
+                <MenuItem
+                  label="Se déconnecter"
+                  icon={logoutIcon}
+                  isDestructive
+                  onPress={onLogoutPress}
+                />
+              )}
+            </View>
           </View>
         )}
       </ScrollView>

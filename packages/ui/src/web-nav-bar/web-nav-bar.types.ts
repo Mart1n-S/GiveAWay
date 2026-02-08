@@ -16,8 +16,10 @@ export interface WebNavBarProps extends ViewProps {
   /** Liens affichés au centre (Desktop) et dans le menu (Mobile) */
   mainLinks: MenuLink[];
 
-  /** Liens affichés uniquement dans le menu mobile (bas de page) */
+  /** Liens affichés uniquement dans le menu mobile */
   secondaryLinks?: MenuLink[];
+  /** Liens affichés tout en bas du menu mobile (ex: Paramètres) */
+  bottomLinks?: MenuLink[];
 
   /** Callback bouton Connexion */
   onLoginPress?: () => void;
@@ -27,6 +29,8 @@ export interface WebNavBarProps extends ViewProps {
 
   /** Callback bouton Profil (clic sur l'avatar) */
   onProfilePress?: () => void;
+  /** Callback bouton Déconnexion (dans le menu) */
+  onLogoutPress?: () => void;
 
   /** Le composant Logo (déjà configuré avec l'icône) */
   logoComponent: ReactNode;
@@ -36,4 +40,7 @@ export interface WebNavBarProps extends ViewProps {
 
   /** Icône de fermeture du menu (croix) */
   closeIcon: ReactNode;
+
+  /** Icône de déconnexion*/
+  logoutIcon?: ReactNode;
 }

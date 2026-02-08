@@ -55,7 +55,7 @@ export default function RootLayout() {
            s'ouvrira comme une Modale par-dessus le reste.
         */}
         <Stack.Screen
-          name="(dev)/design-system"
+          name="(dev)"
           options={{
             headerShown: false,
             presentation: "modal",

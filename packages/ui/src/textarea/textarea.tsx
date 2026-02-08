@@ -122,7 +122,7 @@ export function TextArea({
             nativeID={charCountId}
             className={clsx(
               "text-xs",
-              textLength >= maxLength ? "text-error-100" : "text-grey-500",
+              textLength >= maxLength ? "text-error-100" : "text-grey-600",
               disabled && "text-grey-400"
             )}
           >

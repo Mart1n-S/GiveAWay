@@ -131,7 +131,7 @@ export default function LoginScreen() {
           <View className="w-full max-w-md p-6 bg-white shadow-xl rounded-3xl">
             {/* Header */}
             <View className="items-center mb-8">
-              <Text className="mb-2 text-3xl font-bold text-center text-primary-900">
+              <Text className="mb-2 text-3xl font-bold text-center text-grey-900">
                 Bon retour ! 👋
               </Text>
               <Text className="text-center text-grey-600">
@@ -207,7 +207,7 @@ export default function LoginScreen() {
 
             {/* Footer Inscription */}
             <View className="flex-row justify-center gap-1 pt-4 mt-8 border-t border-gray-100">
-              <Text className="text-grey-600">Pas encore de compte ?</Text>
+              <Text className="text-grey-700">Pas encore de compte ?</Text>
               <Link href="/inscription" asChild>
                 <TouchableOpacity>
                   <Text className="font-bold text-primary-600">S'inscrire</Text>

@@ -41,10 +41,16 @@ export interface NavigationMenuProps extends ViewProps {
   mainLinks: MenuLink[];
 
   /**
-   * Liste secondaire (Bas du menu, séparé par une ligne).
+   * Liste secondaire (Milieu du menu, séparé par une ligne).
    * Ex: Mentions légales, Aide...
    */
   secondaryLinks?: MenuLink[];
+
+  /**
+   * Liste des liens affichés tout en bas (Pied de page).
+   * Ex: Paramètres.
+   */
+  bottomLinks?: MenuLink[];
 
   /**
    * Callback déclenché quand on clique sur "Se connecter" (Mode Invité).
@@ -55,6 +61,16 @@ export interface NavigationMenuProps extends ViewProps {
    * Callback déclenché quand on clique sur "S'inscrire" (Mode Invité).
    */
   onRegisterPress?: () => void;
+
+  /**
+   * Callback déclenché quand on clique sur "Se déconnecter" (Mode Connecté).
+   */
+  onLogoutPress?: () => void;
+
+  /**
+   * Icône spécifique pour le bouton de déconnexion dans le menu
+   */
+  logoutIcon?: ReactNode;
 
   className?: string;
 }

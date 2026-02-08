@@ -7,7 +7,7 @@ export function Text({ className, style, ...props }: TextProps) {
     <RNText
       {...props}
       style={style}
-      className={clsx("font-sans text-grey-800", className)}
+      className={clsx("font-sans", className)}
     />
   );
 }

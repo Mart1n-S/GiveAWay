@@ -122,7 +122,7 @@ export function Input({
         {/* ---------- LEFT ICON ---------- */}
         {leftIcon && (
           <View
-            className={clsx(disabled ? "opacity-100" : "text-grey-700")}
+            className={clsx(disabled ? "opacity-100" : "text-grey-800")}
             accessibilityRole="image"
           >
             {leftIcon}
@@ -148,7 +148,7 @@ export function Input({
           className={clsx(
             "flex-1 h-full bg-transparent p-0 border-0 text-base font-sans",
             isWeb && "outline-none",
-            disabled ? "text-grey-disabledText" : "text-grey-800",
+            disabled ? "text-grey-disabledText" : "text-grey-900",
             className
           )}
         />
@@ -173,7 +173,7 @@ export function Input({
             </Pressable>
           ) : (
             <View
-              className={clsx(disabled ? "opacity-100" : "text-grey-700")}
+              className={clsx(disabled ? "opacity-100" : "text-grey-800")}
               accessibilityRole="image"
             >
               {rightIcon}
