@@ -1,5 +1,5 @@
 import { View, ScrollView } from "react-native";
-import { Text } from "@repo/ui";
+import { Text } from "@/components/ui";
 
 export default function HomeScreen() {
   return (

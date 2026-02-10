@@ -1,10 +1,10 @@
 import { Tabs } from "expo-router";
 import { Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "@repo/ui";
+import { colors } from "@/components/ui";
 
 // On importe notre Shell et l'icône Home (exportée depuis AppShell)
-import { AppShell, HomeIcon } from "../../src/components/layouts/AppShell";
+import { AppShell, HomeIcon } from "@/components/layouts/AppShell";
 
 export default function MainLayout() {
   const insets = useSafeAreaInsets();

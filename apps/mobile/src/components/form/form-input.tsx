@@ -1,6 +1,5 @@
 import { Controller, Control, FieldValues, Path } from "react-hook-form";
-// On importe le composant ET le type depuis la racine du paquet @repo/ui
-import { Input, InputProps } from "@repo/ui";
+import { Input, InputProps } from "@/components/ui";
 
 /**
  * Props du FormInput :

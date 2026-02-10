@@ -13,8 +13,8 @@ import { useRouter, Link } from "expo-router";
 
 // --- Imports Monorepo ---
 import { LoginSchema, LoginDto } from "@repo/shared";
-import { Button, Text, colors } from "@repo/ui";
-import { FormInput } from "@repo/form-ui";
+import { Button, Text, colors } from "@/components/ui";
+import { FormInput } from "@/components/form/form-input";
 
 // --- Services ---
 import { AuthService } from "../../src/services/auth.service";

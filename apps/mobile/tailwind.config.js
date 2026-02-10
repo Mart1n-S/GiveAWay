@@ -1,10 +1,10 @@
-// On importe tes tokens (le chemin remonte de apps/mobile vers packages/ui)
+// On importe tes tokens
 const {
   colors,
   radius,
   sizing,
   typography,
-} = require("../../packages/ui/src/theme/tokens");
+} = require("./src/components/ui/theme/tokens");
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
@@ -13,7 +13,6 @@ module.exports = {
     "./App.{js,jsx,ts,tsx}",
     "./app/**/*.{js,jsx,ts,tsx}",
     "./src/**/*.{js,jsx,ts,tsx}",
-    "../../packages/ui/src/**/*.{js,jsx,ts,tsx}",
   ],
   presets: [require("nativewind/preset")],
   theme: {

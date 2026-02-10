@@ -12,7 +12,7 @@ import {
   colors,
   NavigationMenu,
   WebNavBar,
-} from "@repo/ui";
+} from "@/components/ui";
 
 // --- CONFIGURATION DES ICÔNES ---
 import AddIconSource from "../../assets/icons/ic_add.svg";

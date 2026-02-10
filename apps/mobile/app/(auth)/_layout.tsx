@@ -1,6 +1,6 @@
 import { Stack } from "expo-router";
 import { Platform } from "react-native";
-import { AppShell } from "../../src/components/layouts/AppShell";
+import { AppShell } from "@/components/layouts/AppShell";
 
 export default function AuthLayout() {
   const isWeb = Platform.OS === "web";

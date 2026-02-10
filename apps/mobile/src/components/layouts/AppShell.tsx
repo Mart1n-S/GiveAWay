@@ -6,7 +6,7 @@ import { StatusBar } from "expo-status-bar";
 import { cssInterop } from "nativewind";
 
 // --- UI & CONFIG ---
-import { WebNavBar, Logo } from "@repo/ui";
+import { WebNavBar, Logo } from "@/components/ui";
 import { PUBLIC_LINKS, USER_LINKS, AUTH_ROUTES } from "../../config/navigation";
 import { useAuthStore } from "../../stores/auth.store";
 import { AuthService } from "../../services/auth.service";

@@ -15,6 +15,7 @@
     "@expo/metro-runtime": "~6.1.2",
     "@hookform/resolvers": "^5.2.2",
     "axios": "^1.6.8",
+    "clsx": "^2.1.1",
     "expo": "^54.0.30",
     "expo-constants": "~18.0.12",
     "expo-image-picker": "~17.0.10",
@@ -39,6 +40,7 @@
   "devDependencies": {
     "@repo/eslint-config": "*",
     "@types/react": "~19.1.10",
+    "babel-plugin-module-resolver": "^5.0.2",
     "eslint": "^9.18.0",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "react-native-svg-transformer": "^1.5.2",
