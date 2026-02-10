@@ -7,19 +7,21 @@ Ce document définit les règles d'architecture, les conventions de code et les 
 
 ## 1. 🏗️ Architecture Globale (Monorepo)
 
-Le projet utilise **Turborepo**. La philosophie centrale est **"Shared First"**.
+Le projet utilise **Turborepo**. La philosophie centrale est **"Shared First"** pour la logique métier, mais l'UI est  locale au mobile.
 
 ### Arborescence Simplifiée
-- **`apps/api`** : Backend (NestJS + Prisma).
-- **`apps/mobile`** : Frontend (Expo / React Native).
-- **`packages/shared`** : DTOs, Types, Enums, Logique métier partagée (Zod).
-- **`packages/ui`** : Design System (Composants React Native agnostiques).
+
+* **`apps/api`** : Backend (NestJS + Prisma).
+* **`apps/mobile`** : Frontend (Expo / React Native). Contient désormais le Design System et les formulaires.
+* **`packages/shared`** : DTOs, Types, Enums, Logique métier partagée (Zod).
 
 ### 🚨 Règle d'Or : "Shared First"
+
 Si une interface, un DTO, une validation Zod ou une constante est utilisée (ou susceptible d'être utilisée) par le Back **ET** le Front :
-1.  Elle **DOIT** être créée dans `@repo/shared`.
-2.  Chaque DTO doit avoir son propre fichier (ex: `login.dto.ts`) et son fichier de test associé (`login.dto.spec.ts`).
-3.  Jamais de duplication de types entre `apps/api` et `apps/mobile`.
+
+1. Elle **DOIT** être créée dans `@repo/shared`.
+2. Chaque DTO doit avoir son propre fichier (ex: `login.dto.ts`) et son fichier de test associé (`login.dto.spec.ts`).
+3. Jamais de duplication de types entre `apps/api` et `apps/mobile`.
 
 ---
 
@@ -28,37 +30,53 @@ Si une interface, un DTO, une validation Zod ou une constante est utilisée (ou 
 **Stack :** NestJS, Prisma (PostgreSQL), Passport (JWT), Jest.
 
 ### Structure & Clean Architecture
-- **Modules :** Découpage par fonctionnalité (ex: `auth`, `users`).
-- **Controller :** Gère uniquement le routing HTTP et l'appel aux services. Pas de logique métier complexe.
-- **Service :** Contient la logique métier (Business Logic).
-- **Common (`src/common`) :**
-    - Contient ce qui est transversal : Guards, Interceptors, Decorators, Filters.
-    - **`files` module :** Utilise un pattern **Factory** pour basculer dynamiquement entre le stockage **Local** (Dev) et **Cloudinary** (Prod) via `STORAGE_TYPE` dans le `.env`.
-    - **Pipes :** Utilisation de Pipes personnalisés (ex: `image-validation.pipe.ts`) pour valider types MIME (Magic Numbers) et taille.
+
+* **Modules :** Découpage par fonctionnalité (ex: `auth`, `users`).
+* **Controller :** Gère uniquement le routing HTTP et l'appel aux services. Pas de logique métier complexe.
+* **Service :** Contient la logique métier (Business Logic).
+* **Common (`src/common`) :**
+* Contient ce qui est transversal : Guards, Interceptors, Decorators, Filters.
+* **`files` module :** Utilise un pattern **Factory** pour basculer dynamiquement entre le stockage **Local** (Dev) et **Cloudinary** (Prod) via `STORAGE_TYPE` dans le `.env`.
+* **Pipes :** Utilisation de Pipes personnalisés (ex: `image-validation.pipe.ts`) pour valider types MIME (Magic Numbers) et taille.
+
+
 
 ### Base de Données (Prisma)
-- Utiliser `prisma.schema` pour la définition.
-- Les migrations sont obligatoires pour tout changement de schéma.
-- Ne jamais exposer les entités Prisma brutes si elles contiennent des données sensibles (password), utiliser les DTOs de `@repo/shared` pour la réponse.
+
+* Utiliser `prisma.schema` pour la définition.
+* Les migrations sont obligatoires pour tout changement de schéma.
+* Ne jamais exposer les entités Prisma brutes si elles contiennent des données sensibles (password), utiliser les DTOs de `@repo/shared` pour la réponse.
 
 ### 🧪 Stratégie de Test (Obligatoire)
-1.  **Tests Unitaires (`.spec.ts`) :**
-    - Chaque service doit être testé isolément.
-    - **Mocker systématiquement** les dépendances externes (Prisma, MailService, Cloudinary/FileService).
-2.  **Tests E2E (`test/*.e2e-spec.ts`) :**
-    - Utiliser une base de données de test dédiée (Docker).
-    - **Reset DB** : La BDD doit être nettoyée avant chaque test (`prisma-test-helper`).
-    - **Override** : Il est **interdit** d'appeler de vraies APIs externes (Cloudinary, SMTP) en test E2E. Utiliser `.overrideProvider()` pour injecter des mocks.
+
+1. **Tests Unitaires (`.spec.ts`) :**
+* Chaque service doit être testé isolément.
+* **Mocker systématiquement** les dépendances externes (Prisma, MailService, Cloudinary/FileService).
+
+
+2. **Tests E2E (`test/*.e2e-spec.ts`) :**
+* Utiliser une base de données de test dédiée (Docker).
+* **Reset DB** : La BDD doit être nettoyée avant chaque test (`prisma-test-helper`).
+* **Override** : Il est **interdit** d'appeler de vraies APIs externes (Cloudinary, SMTP) en test E2E. Utiliser `.overrideProvider()` pour injecter des mocks.
+
+
 
 ---
 
 ## 3. 📱 Frontend (`apps/mobile`)
 
 **Stack :** Expo (React Native), Expo Router, NativeWind (Tailwind).
-
-### Architecture
+**Imports :** Utilisation de l'alias `@/` pour pointer vers `src/`.
 - **Services API :** Les appels API (`fetch` ou `axios`) doivent être encapsulés dans des services dédiés (ex: `auth.service.ts`), jamais directement dans les composants UI.
 - **Navigation :** Basée sur les fichiers (`app/_layout.tsx`, `app/index.tsx`).
+
+### Architecture des Dossiers (`src/`)
+
+* **`components/ui`** : Design System "bête" (Boutons, Inputs, Cards).
+* **`components/form`** : Wrappers pour React Hook Form (ex: `FormInput`).
+* **`components/layouts`** : Structure globale (AppShell).
+* **`services`** : Appels API (ex: `auth.service.ts`).
+* **`stores`** : État global (Zustand).
 
 ### 🧭 Navigation & Layouts (Architecture Unifiée)
 
@@ -66,11 +84,10 @@ L'application utilise une approche **"AppShell"** pour garantir une expérience 
 
 #### Le Composant `AppShell`
 
-Situé dans `apps/mobile/src/components/layouts/AppShell.tsx`, il est le parent obligatoire de tous les `_layout.tsx` (`(main)`, `(auth)`, `(dev)`).
-Il centralise :
+Situé dans `@/components/layouts/AppShell.tsx`, il est le parent obligatoire de tous les `_layout.tsx` (`(main)`, `(auth)`, `(dev)`). Il centralise :
 
-1. **StatusBar :** Force le style `dark` (texte noir) pour la lisibilité sur fond blanc.
-2. **Logique Utilisateur :** Récupère l'état d'authentification (`useAuthStore`) pour calculer les liens disponibles.
+1. **StatusBar :** Force le style `dark` (texte noir).
+2. **Logique Utilisateur :** Récupère l'état d'authentification (`useAuthStore`).
 3. **WebNavBar :** Gère l'affichage de la barre de navigation responsive.
 
 #### Stratégie Responsive
@@ -93,30 +110,36 @@ L'`AppShell` accepte une prop `layoutType` :
 C'est la source de vérité unique pour les menus.
 
 * Propriété **`hideInMobileDrawer: true`** :
-* Si `true` : Le lien est caché du Menu Burger sur Mobile (car il est présent physiquement dans la Bottom Bar, ex: Accueil, Favoris, Profil).
+* Si `true` : Le lien est caché du Menu Burger sur Mobile (car présent physiquement dans la Bottom Bar).
 * Sur Web : Cette propriété est ignorée (le lien apparaît toujours dans la NavBar).
 
-### Design System (`@repo/ui`)
-- Les composants UI (Boutons, Inputs, Cards) doivent être dans `packages/ui`.
-- **Agnostiques :** Ces composants ne doivent contenir **AUCUNE** logique métier ni appel API. Ils reçoivent des données (Props) et émettent des événements.
-- **Robustesse :** Les composants gèrent leurs états visuels (loading, error, disabled) via les props (ex: l'Input gère l'affichage rouge si `errorMessage` est présent).
-- **Exports :** Tout composant doit être exporté via `packages/ui/src/index.ts`.
 
-Pour garder le Design System (`packages/ui`) totalement agnostique et sans dépendances lourdes, la logique de connexion aux formulaires est isolée dans ce package.
 
-### `FormInput` (Wrapper Intelligent)
+### 🎨 Design System Local (`@/components/ui`)
 
-Ce composant agit comme un pont ("Controller") entre **React Hook Form** et les composants UI bruts.
+* Les composants UI de base se trouvent dans `src/components/ui`.
+* **Agnostiques :** Ils ne contiennent **AUCUNE** logique métier ni appel API. Ils reçoivent des données (Props) et émettent des événements.
+* **Robustesse :** Ils gèrent leurs états visuels via les props (ex: `error`, `isLoading`).
 
-* **Rôle :** Connecte automatiquement les props de gestion d'état (`value`, `onChange`, `onBlur`) et les erreurs (`errorMessage`) du Design System à la logique de formulaire.
-* **Typage :** Utilise des génériques (`T extends FieldValues`) pour garantir que `name` correspond strictement aux clés du schéma Zod défini.
+### 🧩 Form System (`@/components/form`)
+
+Pour garder le Design System pur, la logique de connexion aux formulaires est isolée dans `src/components/form`.
+
+#### `FormInput` (Wrapper Intelligent)
+
+Ce composant agit comme un pont entre **React Hook Form** et le composant `Input` UI.
+
+* **Rôle :** Connecte automatiquement `value`, `onChange`, `onBlur` et les erreurs (`errorMessage`).
+* **Typage :** Utilise des génériques (`T extends FieldValues`) pour garantir que `name` correspond au schéma Zod.
 * **Utilisation :**
+
 ```tsx
+import { FormInput } from "@/components/form/form-input";
+
 // ✅ CORRECT
 <FormInput control={control} name="email" label="Email" />
 
-// ❌ INTERDIT
-// Ne pas passer manuellement value/onChange, c'est géré par le control
+// ❌ INTERDIT (Ne pas passer value/onChange manuellement)
 <FormInput value={email} onChangeText={setEmail} ... />
 
 ```
@@ -126,33 +149,38 @@ Ce composant agit comme un pont ("Controller") entre **React Hook Form** et les 
 ## 4. 📝 Conventions de Code
 
 ### Commentaires & Documentation
-- **Complexité :** Utiliser JSDoc `/** ... */` au-dessus des méthodes ou algorithmes complexes pour expliquer le *pourquoi* et les *paramètres*.
-- **Concision :** Éviter les commentaires évidents (ex: `// Fonction qui ajoute 1`). Pas de pavés de texte inutiles.
+
+* **Complexité :** Utiliser JSDoc `/** ... */` au-dessus des méthodes complexes.
+* **Concision :** Pas de commentaires évidents.
 
 ### Nommage
-- **Fichiers :** `kebab-case` (ex: `auth.service.ts`, `user-profile.tsx`).
-- **Classes/Interfaces :** `PascalCase` (ex: `AuthService`, `LoginDto`).
-- **Variables/Méthodes :** `camelCase` (ex: `uploadFile`, `isEmailValid`).
-- **Pas de "Magic Numbers" :** Utiliser des constantes nommées ou des variables de configuration.
+
+* **Fichiers :** `kebab-case` (ex: `auth.service.ts`, `user-profile.tsx`).
+* **Classes/Interfaces :** `PascalCase` (ex: `AuthService`, `LoginDto`).
+* **Variables/Méthodes :** `camelCase` (ex: `uploadFile`, `isEmailValid`).
+* **Pas de "Magic Numbers" :** Utiliser des constantes nommées.
 
 ### Sécurité
-- **Validation :** Tout input (Body, Query, Params) doit passer par un `ZodValidationPipe`.
-- **Fichiers :** Validation stricte des uploads (Signature binaire / Magic Numbers) côté Back.
-- **Environnement :** Les secrets (clés API, JWT secrets) doivent être dans le `.env`, jamais en dur dans le code.
+
+* **Validation :** Tout input API doit passer par un `ZodValidationPipe`.
+* **Secrets :** Clés API et secrets JWT dans le `.env` uniquement.
 
 ---
 
 ## 5. 🛠️ Workflow de Développement
 
-1.  **Création d'une feature :**
-    - Définir le DTO dans `@repo/shared` (+ test).
-    - Implémenter le Backend (`apps/api`) (+ test unitaire & E2E).
-    - Si besoin d'UI, créer/mettre à jour le composant dans `@repo/ui`.
-    - Implémenter l'écran et le service dans `apps/mobile`.
+1. **Création d'une feature :**
+* Définir le DTO dans `@repo/shared` (+ test).
+* Implémenter le Backend (`apps/api`) (+ test unitaire & E2E).
+* Si besoin d'UI, créer/mettre à jour le composant dans `apps/mobile/src/components/ui`.
+* Implémenter l'écran et le service dans `apps/mobile`.
 
-2.  **Upload de fichiers :**
-    - Le projet supporte le mode **Local** (fichiers dans `apps/api/uploads`) et **Cloudinary**.
-    - Le code doit rester agnostique du provider utilisé (via l'interface `IFileService`).
+
+2. **Gestion des Assets :**
+* Les icônes SVG sont gérées via `svgr` et `nativewind` (cssInterop) dans `AppShell` ou localement.
+* Le stockage de fichiers est abstrait via `IFileService` (Back).
+
+
 
 ---
 
