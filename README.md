@@ -29,16 +29,17 @@ L'application repose sur un **algorithme de matching intelligent** qui propose d
 
 Ce projet est conçu comme un **Monorepo** orchestré par **Turborepo**, garantissant une cohérence totale entre le Frontend et le Backend (partage de types TypeScript).
 
-| Domaine          | Technologie             | Usage                                           |
-| :--------------- | :---------------------- | :---------------------------------------------- |
-| **Monorepo**     | **Turborepo**           | Orchestration du build et cache intelligent.    |
-| **Langage**      | **TypeScript**          | Typage strict partagé (End-to-End Type Safety). |
-| **Mobile & Web** | **Expo (React Native)** | Application Cross-platform (iOS, Android, Web). |
-| **Routing**      | **Expo Router**         | Navigation basée sur les fichiers.              |
-| **UI Framework** | **NativeWind (v4)**     | Styles utilitaires basés sur Tailwind CSS.      |
-| **Backend**      | **NestJS**              | Framework Node.js modulaire et robuste.         |
-| **Data**         | **PostgreSQL + Prisma** | Base de données relationnelle et ORM moderne.   |
-| **Infra (Dev)**  | **Docker**              | Conteneurisation de la BDD et outils d'admin.   |
+| Domaine          | Technologie             | Usage                                             |
+| :--------------- | :---------------------- | :------------------------------------------------ |
+| **Monorepo**     | **Turborepo**           | Orchestration du build et cache intelligent.      |
+| **Langage**      | **TypeScript**          | Typage strict partagé (End-to-End Type Safety).   |
+| **Mobile & Web** | **Expo (React Native)** | Application Cross-platform (iOS, Android, Web).   |
+| **Routing**      | **Expo Router**         | Navigation basée sur les fichiers.                |
+| **UI Framework** | **NativeWind (v4)**     | Styles utilitaires basés sur Tailwind CSS.        |
+| **Forms**        | **React Hook Form**     | Gestion performante des formulaires & validation. |
+| **Backend**      | **NestJS**              | Framework Node.js modulaire et robuste.           |
+| **Data**         | **PostgreSQL + Prisma** | Base de données relationnelle et ORM moderne.     |
+| **Infra (Dev)**  | **Docker**              | Conteneurisation de la BDD et outils d'admin.     |
 
 ---
 
@@ -49,10 +50,13 @@ Giveaway/
 ├── apps/
 │   ├── api/          # Backend NestJS (Port 3000)
 │   └── mobile/       # Application Expo iOS/Android/Web
-│       └── app/      # Navigation & Pages (Expo Router)
+│       ├── app/      # Navigation & Pages (Expo Router)
+│       └── src/
+│           ├── components/ # Design System & Wrappers de formulaires
+│           ├── services/   # Appels API
+│           └── stores/     # État global (Zustand)
 ├── packages/
-│   ├── shared/       # DTOs, Types et Interfaces partagés
-│   └── ui/           # Design System & Composants Réutilisables
+│   └── shared/       # DTOs, Types et Interfaces partagés (Back & Front)
 └── docker-compose.yml # Infrastructure locale (Postgres, Adminer)
 
 ```
@@ -61,17 +65,18 @@ Giveaway/
 
 ## 🎨 Design System
 
-L'interface utilisateur repose sur une bibliothèque de composants isolée (`packages/ui`) pour garantir une cohérence visuelle parfaite.
+L'interface utilisateur repose sur une bibliothèque de composants locale située dans `apps/mobile/src/components/ui`. Elle garantit une cohérence visuelle parfaite sur mobile et web.
 
-Nous disposons actuellement de **3 composants fondamentaux** déclinés en plusieurs variantes et états (Hover, Active, Loading, Disabled, Error...) :
+Nous disposons actuellement de composants fondamentaux déclinés en plusieurs variantes et états (Hover, Active, Loading, Disabled, Error...) :
 
 1. **Button :** Boutons primaires, secondaires, tertiaires avec gestion d'icônes et spinner de chargement.
 2. **Input :** Champs de saisie avec icônes (gauche/droite), textes d'aide et validation d'erreurs.
 3. **TextArea :** Zones de texte multi-lignes auto-extensibles avec compteurs de caractères.
+4. **AppShell :** Structure globale gérant la navigation responsive (NavBar Web / Tabs Mobile).
 
 ### 🕹️ Documentation Interactive (Playground)
 
-Une page de documentation "Storybook interne" est intégrée à l'application. Elle est **accessible uniquement en mode développement** et permet de tester tous les composants en temps réel.
+Une page "Design System" est intégrée à l'application. Elle est **accessible uniquement en mode développement** via le menu de navigation et permet de visualiser tous les composants en temps réel.
 
 🔗 **Accès Web :** [http://localhost:8081/design-system](http://localhost:8081/design-system)
 
@@ -103,31 +108,35 @@ cd GiveAWay
 cp .env.example .env
 ```
 
-Pour le JWT_ACCESS_SECRET et JWT_REFRESH_SECRET, générer des clés secrètes sécurisées différentes en utilisant la commande suivante 2 fois :
+Pour le `JWT_ACCESS_SECRET` et `JWT_REFRESH_SECRET`, générer des clés secrètes sécurisées différentes en utilisant la commande suivante 2 fois :
 
 ```bash
 openssl rand -base64 62
 ``` 
 
-### 💾 Stockage des fichiers (Images) 
+### 💾 Stockage des fichiers (Images)
 
 Le projet supporte deux modes de stockage pour les avatars et images :
 
-- Mode Local (Recommandé pour le Dev) : Les images sont stockées dans le dossier apps/api/uploads et servies directement par l'API.
+* **Mode Local** (Recommandé pour le Dev) : Les images sont stockées dans le dossier `apps/api/uploads` et servies directement par l'API.
 
 ```bash
 STORAGE_TYPE=local
+
 ```
 
-- Mode Cloudinary (Recommandé pour la Prod) : Les images sont hébergées sur les serveurs de Cloudinary (CDN).
+* **Mode Cloudinary** (Recommandé pour la Prod) : Les images sont hébergées sur les serveurs de Cloudinary (CDN).
+
 ```bash
 STORAGE_TYPE=cloudinary
 
 CLOUDINARY_CLOUD_NAME=votre_cloud_name
 CLOUDINARY_API_KEY=votre_api_key
 CLOUDINARY_API_SECRET=votre_api_secret
+
 ```
-<em>Si vous utilisez le mode local, vous pouvez laisser les variables Cloudinary vides</em>
+
+*Si vous utilisez le mode local, vous pouvez laisser les variables Cloudinary vides.*
 
 ---
 
@@ -154,8 +163,10 @@ npm run dev
 ```
 
 ---
+
 ## 🧪 Lancer les tests
-A la racine du projet, exécuter les commandes suivantes pour lancer les tests unitaires et d'intégration sur l'ensemble des applications et packages :
+
+A la racine du projet, exécuter les commandes suivantes pour lancer les tests unitaires et d'intégration sur l'ensemble des applications et packages :
 
 ```bash
 npm run test
