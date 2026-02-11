@@ -114,7 +114,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <View className="flex-1 bg-gray-100">
+    <View className="flex-1 bg-gray-50">
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="justify-center flex-1"

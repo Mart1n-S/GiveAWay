@@ -16,3 +16,5 @@ export * from "./navigation-menu/navigation-menu.types";
 export * from "./web-nav-bar/web-nav-bar";
 export * from "./web-nav-bar/web-nav-bar.types";
 export * from "./hooks/use-media-query";
+export * from "./selection-card/selection-card";
+export * from "./selection-card/selection-card.types";
