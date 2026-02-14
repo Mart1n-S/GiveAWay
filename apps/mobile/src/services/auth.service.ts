@@ -132,17 +132,16 @@ export const AuthService = {
   },
 
   /**
-   * GET /auth/verify?token=...
-   * Validation de l'email via le token reçu par mail (Deep Link)
+   * POST /auth/verify
+   * Validation de l'email via le code à 6 chiffres reçu par mail
    */
-  verifyEmail: async (token: string) => {
-    const response = await api.get<{ message: string }>("/auth/verify", {
-      params: { token }, // Axios va transformer ça en : /auth/verify?token=xyz
+  verifyEmail: async (code: string) => {
+    const response = await api.post<{ message: string }>("/auth/verify", {
+      code,
     });
 
     return response.data;
   },
-
   /**
    * POST /auth/resend-verification
    * Demande le renvoi de l'email de validation.

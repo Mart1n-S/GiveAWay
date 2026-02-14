@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 
 export interface SelectionCardProps {
-  /** Titre principal de la carte (ex: "Je suis un particulier") */
+  /** Titre principal de la carte (ex: "Je suis un bénévole") */
   title: string;
 
   /** Description courte sous le titre */

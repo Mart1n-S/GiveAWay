@@ -5,6 +5,8 @@ import {
   configureReanimatedLogger,
   ReanimatedLogLevel,
 } from "react-native-reanimated";
+import Toast from "react-native-toast-message";
+import { toastConfig } from "@/components/ui";
 import "../global.css";
 
 // Import du store
@@ -62,6 +64,7 @@ export default function RootLayout() {
           }}
         />
       </Stack>
+      <Toast config={toastConfig} />
     </SafeAreaProvider>
   );
 }

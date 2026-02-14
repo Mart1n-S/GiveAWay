@@ -21,6 +21,7 @@ export function Input({
   errorMessage,
   error = false,
   disabled = false,
+  required = false,
   leftIcon,
   rightIcon,
   onRightIconPress,
@@ -79,10 +80,11 @@ export function Input({
             "text-sm font-semibold",
             isError ? "text-error-100" : "text-grey-800",
             isWeb && !disabled && "cursor-pointer",
-            isWeb && disabled && "cursor-not-allowed"
+            isWeb && disabled && "cursor-not-allowed",
           )}
         >
           {label}
+          {required && <Text className="text-error-100"> *</Text>}
         </Text>
       )}
 
@@ -137,7 +139,7 @@ export function Input({
           accessibilityLabelledBy={labelId}
           aria-describedby={clsx(
             helperText && helperTextId,
-            errorMessage && errorTextId
+            errorMessage && errorTextId,
           )}
           editable={!disabled}
           selectTextOnFocus={!disabled}
@@ -149,7 +151,7 @@ export function Input({
             "flex-1 h-full bg-transparent p-0 border-0 text-base font-sans",
             isWeb && "outline-none",
             disabled ? "text-grey-disabledText" : "text-grey-900",
-            className
+            className,
           )}
         />
 
@@ -166,7 +168,7 @@ export function Input({
                 isWeb &&
                   "outline-none focus:outline-none focus-visible:outline-none",
                 isWeb &&
-                  "focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+                  "focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2",
               )}
             >
               {rightIcon}

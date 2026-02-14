@@ -7,12 +7,14 @@ const sizeClasses = {
   sm: "w-8 h-8",
   md: "w-10 h-10",
   lg: "w-12 h-12",
+  xl: "w-24 h-24"
 };
 
 const textSizeClasses = {
   sm: "text-xs",
   md: "text-sm",
   lg: "text-base",
+  xl: "text-3xl",
 };
 
 export function AvatarButton({

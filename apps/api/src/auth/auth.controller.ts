@@ -8,7 +8,6 @@ import {
   Post,
   UploadedFile,
   UseInterceptors,
-  Query,
   UsePipes,
   Res,
   Req,
@@ -32,6 +31,8 @@ import {
   RegisterSchema,
   LoginDto,
   LoginSchema,
+  VerifyEmailDto,
+  VerifyEmailSchema,
   ResendVerificationDto,
   ResendVerificationSchema,
   ForgotPasswordDto,
@@ -97,11 +98,14 @@ export class AuthController {
     }
   }
 
-  // Route: GET /auth/verify
+  // Route: POST /auth/verify
   @UseGuards(GuestGuard)
-  @Get('verify')
-  verifyEmail(@Query('token') token: string) {
-    return this.authService.verifyEmail(token);
+  @Post('verify')
+  @HttpCode(200)
+  async verifyEmail(
+    @Body(new ZodValidationPipe(VerifyEmailSchema)) dto: VerifyEmailDto,
+  ) {
+    return this.authService.verifyEmail(dto.code);
   }
 
   // Route: POST /auth/login

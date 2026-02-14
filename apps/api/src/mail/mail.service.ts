@@ -19,17 +19,10 @@ export class MailService {
   }
 
   // Email de vérification (Inscription)
-  async sendVerificationEmail(email: string, token: string) {
-    // On récupère l'URL de l'API car la route /verify est une route Backend
-    const apiUrl =
-      this.config.get<string>('API_URL') || 'http://localhost:3000';
-
-    // Le lien pointe vers le contrôleur API qui valide le token
-    const url = `${apiUrl}/auth/verify?token=${token}`;
-
+  async sendVerificationEmail(email: string, code: string) {
     console.log(`\n📨 [MAIL SERVICE] Vérification d'email pour : ${email}`);
-    console.log(`🔑 Token (brut) : ${token}`);
-    console.log(`🔗 Lien de validation : ${url}\n`);
+    console.log(`🔢 Code de validation : ${code}`);
+    console.log(`⏳ Expire dans : 15 minutes\n`);
 
     // Simulation d'attente (IO)
     await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -39,10 +32,19 @@ export class MailService {
         await this.transporter.sendMail({
           from: '"GiveAway Team" <no-reply@giveaway.com>',
           to: email,
-          subject: 'Validez votre compte',
-          html: `<p>Cliquez ici : <a href="${url}">Valider</a></p>`,
+          subject: 'Votre code de validation GiveAway',
+          html: `
+            <div style="font-family: sans-serif; text-align: center;">
+              <h2>Bienvenue sur GiveAway !</h2>
+              <p>Pour finaliser votre inscription, veuillez entrer le code suivant dans l'application :</p>
+              <p style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #CC460F; margin: 20px 0;">
+                ${code}
+              </p>
+              <p>Ce code est valide pendant 15 minutes.</p>
+            </div>
+          `,
         });
-        */
+    */
   }
 
   // Email de réinitialisation du mot de passe (Mot de passe oublié)

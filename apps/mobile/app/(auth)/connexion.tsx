@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import {
   View,
-  Alert,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
@@ -10,6 +9,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter, Link } from "expo-router";
+import Toast from "react-native-toast-message";
 
 // --- Imports Monorepo ---
 import { LoginSchema, LoginDto } from "@repo/shared";
@@ -17,11 +17,11 @@ import { Button, Text, colors } from "@/components/ui";
 import { FormInput } from "@/components/form/form-input";
 
 // --- Services ---
-import { AuthService } from "../../src/services/auth.service";
+import { AuthService } from "@/services/auth.service";
 
-import EmailIcon from "../../assets/icons/ic_email.svg";
-import LockIcon from "../../assets/icons/ic_lock.svg";
-import UnlockIcon from "../../assets/icons/ic_unlock.svg";
+import EmailIcon from "@assets/icons/ic_email.svg";
+import LockIcon from "@assets/icons/ic_lock.svg";
+import UnlockIcon from "@assets/icons/ic_unlock.svg";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -105,10 +105,13 @@ export default function LoginScreen() {
 
       // CAS AUTRES
       else {
-        Alert.alert(
-          "Oups",
-          "Problème de connexion au serveur. Vérifiez votre internet.",
-        );
+        Toast.show({
+          type: "error",
+          text1: "Erreur réseau",
+          text2: "Impossible de contacter le serveur. Vérifiez votre connexion.",
+          visibilityTime: 10000,
+          onPress: () => Toast.hide(),
+        });
       }
     }
   };

@@ -2,32 +2,34 @@ import { TextInputProps } from "react-native";
 import { ReactNode } from "react";
 
 export interface InputProps extends TextInputProps {
-    label?: string;
+  label?: string;
 
-    /** Texte d'aide permanent (gris) affiché sous l'input */
-    helperText?: string;
+  required?: boolean;
 
-    /** Message d'erreur (rouge) affiché sous le helperText. 
-     * Sa présence active automatiquement la bordure rouge. */
-    errorMessage?: string;
+  /** Texte d'aide permanent (gris) affiché sous l'input */
+  helperText?: string;
 
-    /** Force l'état d'erreur visuel (bordure rouge) même sans message */
-    error?: boolean;
+  /** Message d'erreur (rouge) affiché sous le helperText.
+   * Sa présence active automatiquement la bordure rouge. */
+  errorMessage?: string;
 
-    id?: string;
+  /** Force l'état d'erreur visuel (bordure rouge) même sans message */
+  error?: boolean;
 
-    /** Désactive l'input */
-    disabled?: boolean;
+  id?: string;
 
-    /** Icône à gauche (non cliquable, ex: email) */
-    leftIcon?: ReactNode;
+  /** Désactive l'input */
+  disabled?: boolean;
 
-    /** Icône à droite (ex: oeil mot de passe) */
-    rightIcon?: ReactNode;
+  /** Icône à gauche (non cliquable, ex: email) */
+  leftIcon?: ReactNode;
 
-    /** Action au clic sur l'icône de droite */
-    onRightIconPress?: () => void;
+  /** Icône à droite (ex: oeil mot de passe) */
+  rightIcon?: ReactNode;
 
-    /** Classes CSS supplémentaires pour le conteneur global */
-    containerClassName?: string;
+  /** Action au clic sur l'icône de droite */
+  onRightIconPress?: () => void;
+
+  /** Classes CSS supplémentaires pour le conteneur global */
+  containerClassName?: string;
 }

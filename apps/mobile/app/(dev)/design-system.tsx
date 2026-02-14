@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Stack } from "expo-router";
 import { ScrollView, Text, View } from "react-native";
 import { cssInterop } from "nativewind";
+import Toast from "react-native-toast-message";
 import {
   Button,
   Input,
@@ -614,6 +615,11 @@ export default function DesignSystemScreen() {
                 type="boolean"
                 desc="Masque le texte (mot de passe)."
               />
+              <ApiProp
+                name="required"
+                type="boolean"
+                desc="Indique si le champ est obligatoire."
+              />
             </View>
 
             <View className="gap-8">
@@ -656,6 +662,17 @@ export default function DesignSystemScreen() {
                     helperText="Utilisez votre email d'entreprise."
                     leftIcon={<EmailIcon className="w-5 h-5 text-grey-700" />}
                     keyboardType="email-address"
+                  />
+                </View>
+
+                <View>
+                  <VariantLabel title="Input obligatoire" />
+                  <Input
+                    label="Email"
+                    placeholder="exemple@mail.com"
+                    leftIcon={<EmailIcon className="w-5 h-5 text-grey-700" />}
+                    keyboardType="email-address"
+                    required
                   />
                 </View>
               </View>
@@ -937,7 +954,7 @@ export default function DesignSystemScreen() {
               />
               <ApiProp
                 name="size"
-                type="'sm' | 'md' | 'lg'"
+                type="'sm' | 'md' | 'lg' | 'xl'"
                 defaultValue="'md'"
                 desc="Taille du cercle."
               />
@@ -1003,6 +1020,11 @@ export default function DesignSystemScreen() {
                   <View className="items-center gap-1">
                     <AvatarButton initials="LG" size="lg" />
                     <Text className="text-[10px] text-grey-400">lg</Text>
+                  </View>
+
+                  <View className="items-center gap-1">
+                    <AvatarButton initials="XL" size="xl" />
+                    <Text className="text-[10px] text-grey-400">xl</Text>
                   </View>
                 </View>
               </View>
@@ -1565,6 +1587,195 @@ export default function DesignSystemScreen() {
             </View>
           </View>
           {/* FIN CHAPITRE 8 */}
+
+          {/* ============================================================
+              CHAPITRE 9 : NOTIFICATIONS (TOASTS) 🔔
+              ============================================================ */}
+          <View>
+            <SectionTitle
+              title="9. Global Notifications"
+              description="Système de Toasts impératifs. Design 50/800 pour un contraste maximal."
+            />
+
+            {/* --- 📚 DOC API --- */}
+            <View className="p-4 mb-8 border border-blue-200 rounded-lg bg-blue-50/50">
+              <Text className="mb-4 text-sm font-bold text-blue-800 uppercase">
+                📚 Toast Service API
+              </Text>
+              <ApiProp
+                name="type"
+                type="'success' | 'error' | 'info' | 'warning'"
+                desc="Définit l'ambiance visuelle (Couleurs 50/800)."
+              />
+              <ApiProp
+                name="text1"
+                type="string"
+                desc="Titre en gras (couleur 800)."
+              />
+              <ApiProp
+                name="text2"
+                type="string"
+                desc="Message détaillé. Gère le multi-ligne automatiquement."
+              />
+              <ApiProp
+                name="onPress"
+                type="() => void"
+                desc="Action au clic. Utilisé pour fermer manuellement via Toast.hide()."
+              />
+              <ApiProp
+                name="visibilityTime"
+                type="number"
+                desc="Délai avant disparition automatique (ms)."
+              />
+            </View>
+
+            {/* --- DÉMOS : VARIANTES --- */}
+            <View className="p-4 mb-6 bg-white border rounded-lg border-grey-200">
+              <Text className="mb-2 text-lg font-bold text-primary">
+                Variantes & Couleurs
+              </Text>
+              <Text className="mb-4 text-xs text-grey-600">
+                Cliquez sur les boutons pour tester les différents états.
+              </Text>
+
+              <View className="flex-row flex-wrap gap-4">
+                {/* SUCCESS */}
+                <View>
+                  <VariantLabel title="Success" />
+                  <Button
+                    onPress={() =>
+                      Toast.show({
+                        type: "success",
+                        text1: "Compte activé !",
+                        text2: "Votre inscription est maintenant terminée.",
+                        onPress: () => Toast.hide(),
+                      })
+                    }
+                    className="text-white bg-green-600 border-green-600 hover:bg-green-700 hover:border-green-700 active:bg-green-800 active:border-green-800"
+                  >
+                    Déclencher Succès
+                  </Button>
+                </View>
+
+                {/* ERROR */}
+                <View>
+                  <VariantLabel title="Error" />
+                  <Button
+                    onPress={() =>
+                      Toast.show({
+                        type: "error",
+                        text1: "Échec de validation",
+                        text2: "Le code saisi est incorrect ou expiré.",
+                        onPress: () => Toast.hide(),
+                      })
+                    }
+                    className="text-white bg-red-600 border-red-600 hover:bg-red-700 hover:border-red-700 active:bg-red-800 active:border-red-800"
+                  >
+                    Déclencher Erreur
+                  </Button>
+                </View>
+
+                {/* INFO */}
+                <View>
+                  <VariantLabel title="Info" />
+                  <Button
+                    onPress={() =>
+                      Toast.show({
+                        type: "info",
+                        text1: "Mise à jour",
+                        text2:
+                          "Une nouvelle version de GiveAway est disponible.",
+                        onPress: () => Toast.hide(),
+                      })
+                    }
+                    className="text-white bg-blue-600 border-blue-600 hover:bg-blue-700 hover:border-blue-700 active:bg-blue-800 active:border-blue-800"
+                  >
+                    Déclencher Info
+                  </Button>
+                </View>
+
+                {/* WARNING */}
+                <View>
+                  <VariantLabel title="Warning" />
+                  <Button
+                    onPress={() =>
+                      Toast.show({
+                        type: "warning",
+                        text1: "Attention",
+                        text2:
+                          "Veuillez vérifier vos informations avant de valider.",
+                        onPress: () => Toast.hide(),
+                      })
+                    }
+                    // Utilise ton orange Primary
+                  >
+                    Déclencher Warning
+                  </Button>
+                </View>
+              </View>
+            </View>
+
+            {/* --- DÉMOS : COMPORTEMENTS --- */}
+            <View className="p-4 bg-white border rounded-lg border-grey-200">
+              <Text className="mb-2 text-lg font-bold text-grey-800">
+                Tests de Comportement UX
+              </Text>
+
+              <View className="gap-4">
+                <View>
+                  <VariantLabel title="Message Long (Multi-ligne)" />
+                  <Button
+                    variant="secondary"
+                    className="w-full"
+                    onPress={() =>
+                      Toast.show({
+                        type: "info",
+                        text1: "Information détaillée",
+                        text2:
+                          "Ceci est un test pour vérifier que le texte long ne se coupe pas et que le conteneur s'agrandit bien verticalement sur mobile et sur web.",
+                        visibilityTime: 8000,
+                      })
+                    }
+                  >
+                    Tester le multi-ligne
+                  </Button>
+                </View>
+
+                <View>
+                  <VariantLabel title="Persistance & Fermeture Manuelle" />
+                  <Button
+                    variant="tertiary"
+                    className="w-full"
+                    onPress={() =>
+                      Toast.show({
+                        type: "success",
+                        text1: "Toast persistant (10s)",
+                        text2:
+                          "Cliquez sur l'icône de fermeture ou sur le toast pour masquer.",
+                        visibilityTime: 10000,
+                        onPress: () => Toast.hide(),
+                      })
+                    }
+                  >
+                    Afficher 10 secondes
+                  </Button>
+                </View>
+              </View>
+
+              {/* Rappel Responsive */}
+              <View className="p-3 mt-6 border rounded border-grey-100 bg-grey-50">
+                <Text className="text-[10px] font-bold text-grey-400 uppercase mb-1">
+                  💡 Rappel Responsive
+                </Text>
+                <Text className="text-xs italic text-grey-500">
+                  Sur Web: Top-Right décalé (Desktop) ou Pleine largeur
+                  (Mobile-Web).{"\n"}
+                  Sur Natif: Centré en haut (iOS/Android).
+                </Text>
+              </View>
+            </View>
+          </View>
+          {/* FIN CHAPITRE 9 */}
         </View>
       </ScrollView>
     </>

@@ -124,7 +124,8 @@ api.interceptors.response.use(
       //    - Du Login (car c'est une erreur "Mauvais mot de passe", pas "Token expiré")
       if (
         originalRequest.url?.includes("/auth/refresh") ||
-        originalRequest.url?.includes("/auth/login")
+        originalRequest.url?.includes("/auth/login") ||
+        originalRequest.url?.includes("/auth/verify")
       ) {
         // Si c'était le refresh qui a échoué, on déconnecte vraiment (Session expirée)
         if (originalRequest.url?.includes("/auth/refresh")) {

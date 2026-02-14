@@ -22,7 +22,7 @@ export default function AuthLayout() {
       >
         <Stack.Screen name="connexion" options={{ headerTitle: "Connexion" }} />
         <Stack.Screen
-          name="inscription"
+          name="inscription/index"
           options={{ headerTitle: "Inscription" }}
         />
       </Stack>

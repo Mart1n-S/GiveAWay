@@ -46,10 +46,10 @@ export default function RegisterChoiceScreen() {
           </View>
 
           <View className="flex-col gap-6 md:flex-row">
-            {/* --- CARTE PARTICULIER --- */}
+            {/* --- CARTE BENEVOLe --- */}
             <SelectionCard
               className="flex-1 h-full"
-              title="Je suis un particulier"
+              title="Je suis un bénévole"
               description="Vous souhaitez vous engager, donner de votre temps ou faire des dons ? Trouvez des missions qui correspondent à vos valeurs."
               icon={<UserIcon className="w-8 h-8 text-primary" />}
               features={[
@@ -58,7 +58,7 @@ export default function RegisterChoiceScreen() {
                 "Gérez votre temps selon vos disponibilités",
               ]}
               actionLabel="Créer mon compte"
-              onPress={() => router.push("/(auth)/inscription/particulier")}
+              onPress={() => router.push("/inscription/benevole")}
             />
 
             {/* --- CARTE ASSOCIATION --- */}
@@ -74,7 +74,7 @@ export default function RegisterChoiceScreen() {
                 "Atteignez une communauté engagée",
               ]}
               actionLabel="Inscrire mon association"
-              onPress={() => router.push("/(auth)/inscription/association")}
+              onPress={() => router.push("/inscription/association")}
             />
           </View>
         </View>

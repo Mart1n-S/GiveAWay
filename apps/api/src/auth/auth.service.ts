@@ -10,6 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import type { SignOptions } from 'jsonwebtoken';
 import { hash, verify } from 'argon2';
 import * as crypto from 'crypto';
+import { randomInt } from 'crypto';
 
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -79,41 +80,41 @@ export class AuthService {
 
     // 4. Génération et Sauvegarde du Token (Via notre Helper)
     // Cela crée l'entrée dans la table Token avec expiration +15min
-    const rawToken = await this.generateAndSaveToken(
+    const rawCode = await this.generateAndSaveToken(
       newUser.id,
       TokenType.EMAIL_VERIFICATION,
     );
 
     // 5. Envoi Email
-    await this.mailService.sendVerificationEmail(dto.email, rawToken);
+    await this.mailService.sendVerificationEmail(dto.email, rawCode);
 
     // 6. Réponse succès
     return {
       message:
-        'Inscription réussie ! Veuillez vérifier vos emails pour activer votre compte (Lien valide 15 min).',
+        'Inscription réussie ! Veuillez vérifier vos emails pour activer votre compte (Code valide 15 min).',
     };
   }
 
   // ----------------------------------------------------------------
   // VERIFY EMAIL
   // ----------------------------------------------------------------
-  async verifyEmail(token: string) {
-    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+  async verifyEmail(code: string) {
+    const hashedCode = crypto.createHash('sha256').update(code).digest('hex');
 
     // 1. On cherche dans la table Token
     const dbToken = await this.prisma.token.findUnique({
-      where: { token: hashedToken },
+      where: { token: hashedCode },
     });
 
     // 2. Vérifications
     if (!dbToken || dbToken.type !== TokenType.EMAIL_VERIFICATION) {
-      throw new UnauthorizedException('Lien de validation invalide');
+      throw new UnauthorizedException('Code de validation invalide');
     }
 
     if (dbToken.expiresAt < new Date()) {
       // Nettoyage optionnel ici (ou via un cron job)
       await this.prisma.token.delete({ where: { id: dbToken.id } });
-      throw new UnauthorizedException('Le lien a expiré');
+      throw new UnauthorizedException('Le code a expiré');
     }
 
     // 3. Validation de l'utilisateur
@@ -132,7 +133,7 @@ export class AuthService {
 
     return {
       message:
-        'Email validé avec succès ! Vous pouvez maintenant vous connecter',
+        'Email validé avec succès ! Vous pouvez maintenant vous connecter.',
     };
   }
 
@@ -673,13 +674,13 @@ export class AuthService {
         where: { userId, type },
       });
 
-      // 2. Génération du token brut (celui qu'on envoie par mail)
-      const rawToken = crypto.randomBytes(32).toString('hex');
+      // 2. Génération du code à 6 chiffres
+      const code = randomInt(100000, 1000000).toString();
 
       // 3. Hashage pour la BDD
       const hashedToken = crypto
         .createHash('sha256')
-        .update(rawToken)
+        .update(code)
         .digest('hex');
 
       // 4. Calcul de l'expiration (15 minutes)
@@ -696,8 +697,8 @@ export class AuthService {
         },
       });
 
-      // On retourne le token brut pour pouvoir l'envoyer par email
-      return rawToken;
+      // On retourne le code brut pour pouvoir l'envoyer par email
+      return code;
     } catch (error) {
       this.logger.error(
         `Erreur lors de la génération du token ${type} pour userId ${userId}`,

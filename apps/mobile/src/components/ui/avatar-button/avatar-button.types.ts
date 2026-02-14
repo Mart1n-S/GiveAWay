@@ -15,7 +15,7 @@ export interface AvatarButtonProps extends PressableProps {
   guestIcon?: ReactNode;
 
   /** Taille du cercle */
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
 
   /** Classes additionnelles pour le positionnement */
   className?: string;
