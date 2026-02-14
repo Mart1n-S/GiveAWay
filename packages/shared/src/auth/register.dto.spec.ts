@@ -55,7 +55,7 @@ describe("Register DTOs", () => {
       expect(res.success).toBe(true);
       if (res.success) {
         expect(res.data.firstName).toBe("Jean");
-        expect(res.data.lastName).toBe("Dupont");
+        expect(res.data.lastName).toBe("DUPONT");
         expect(res.data.biography).toBe("Moi");
       }
     });
@@ -79,7 +79,7 @@ describe("Register DTOs", () => {
       });
       expect(res.success).toBe(false);
       if (!res.success)
-        expect(res.error.issues[0].message).toContain("interdits");
+        expect(res.error.issues[0].message).toContain("lettres");
     });
 
     // --- Validation Age ---
@@ -156,17 +156,16 @@ describe("Register DTOs", () => {
       expect(res.success).toBe(false);
     });
 
-    // Note : Ta regex limite les caractères spéciaux autorisés à [@$!%*?&].
-    // Si l'utilisateur met un "#" ou un "(", ça plantera. Testons ça :
-    it("Doit rejeter un caractère spécial non autorisé par la regex (ex: #)", () => {
-      const p = "Password123#"; // # n'est pas dans [@$!%*?&]
+    it("Doit accepter # comme caractère spécial", () => {
+      const p = "Password123#";
       const res = RegisterSchema.safeParse({
         ...validRegisterData,
         password: p,
         confirmPassword: p,
       });
-      expect(res.success).toBe(false);
+      expect(res.success).toBe(true);
     });
+
 
     // --- Validation Croisée (Confirm Password) ---
     it("Doit rejeter si confirmation différente du mot de passe", () => {

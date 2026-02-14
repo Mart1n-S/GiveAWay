@@ -193,7 +193,7 @@ describe('AuthService (Unit)', () => {
       );
     });
 
-    it('❌ Doit lever Unauthorized si token expiré', async () => {
+    it('❌ Doit lever Unauthorized si le code à expiré', async () => {
       const dbToken = {
         id: 10,
         userId: 1,
@@ -204,7 +204,7 @@ describe('AuthService (Unit)', () => {
       mockPrisma.token.findUnique.mockResolvedValue(dbToken);
 
       await expect(service.verifyEmail('token')).rejects.toThrow(
-        'Le lien a expiré',
+        'Le code a expiré',
       );
 
       // On vérifie le nettoyage

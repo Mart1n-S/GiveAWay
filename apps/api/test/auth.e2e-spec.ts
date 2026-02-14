@@ -472,41 +472,57 @@ describe('Auth Module (E2E)', () => {
   // ===========================================================================
   // TEST: VÉRIFICATION EMAIL
   // ===========================================================================
-  describe('GET /auth/verify', () => {
-    it('✅ Devrait valider le compte avec un bon token', async () => {
-      // 1. On inscrit l'user
+  describe('POST /auth/verify', () => {
+    // 1. Changement de GET à POST
+    it('✅ Devrait valider le compte avec un code OTP valide', async () => {
+      // 1. Inscription de l'utilisateur
       await request(httpServer).post('/auth/register').send(userDto);
 
-      // 2. Comme on ne reçoit pas le vrai mail, on va chercher l'user en BDD
-      // pour créer un token valide manuellement (simuler le lien reçu par mail)
+      // 2. Récupération de l'utilisateur pour lier le token
       const user = await prisma.user.findUnique({
         where: { email: userDto.email },
       });
       if (!user) throw new Error('User not found');
 
-      const rawToken = 'mon-token-secret';
+      // 3. Création manuelle d'un code OTP (ex: 123456)
+      const otpCode = '123456';
       const hashedToken = crypto
         .createHash('sha256')
-        .update(rawToken)
+        .update(otpCode)
         .digest('hex');
 
-      // On insère le token manuellement via Prisma
+      // On insère le code dans la table Token (ou VerificationCode selon ton schéma)
       await prisma.token.create({
         data: {
           token: hashedToken,
           type: TokenType.EMAIL_VERIFICATION,
           userId: user.id,
-          expiresAt: new Date(Date.now() + 1000 * 60 * 15), // +15 min
+          expiresAt: new Date(Date.now() + 1000 * 60 * 15), // Valide 15 min
         },
       });
 
-      // 3. On appelle la route avec le token brut
+      // 4. Appel de la route en POST avec le DTO (code)
       return request(httpServer)
-        .get(`/auth/verify?token=${rawToken}`)
+        .post('/auth/verify') // Changement de GET à POST
+        .send({ code: otpCode }) // Envoi du body au lieu du query param
         .expect(200)
         .expect((res: request.Response) => {
           const body = res.body as ResponseBody;
-          expect(body.message).toContain('succès');
+          // Vérifie le message selon ce que renvoie ton AuthService.verifyEmail
+          expect(body.message).toMatch(/succès|activé/i);
+        });
+    });
+
+    it('❌ Devrait échouer avec un code OTP incorrect', async () => {
+      await request(httpServer).post('/auth/register').send(userDto);
+
+      return request(httpServer)
+        .post('/auth/verify')
+        .send({ code: '000000' }) // Mauvais code
+        .expect(401) // Ou 400 selon ta gestion d'erreur
+        .expect((res: request.Response) => {
+          const body = res.body as ResponseBody;
+          expect(body.message).toMatch(/invalide|incorrect/i);
         });
     });
   });
@@ -835,17 +851,19 @@ describe('Auth Module (E2E)', () => {
       // 1. Inscription
       await request(httpServer).post('/auth/register').send(guestUser);
 
-      // 2. Vérification de l'email (comme dans les autres tests)
+      // 2. Récupération de l'utilisateur pour lier le code OTP
       const user = await prisma.user.findUnique({
         where: { email: guestUser.email },
       });
 
       if (!user) throw new Error('User not found after registration');
 
-      const rawToken = 'verification-token-guest';
+      // 3. Création manuelle du code OTP dans la base
+      const otpCode = '999999'; // Code simple pour le setup
+
       const hashedToken = crypto
         .createHash('sha256')
-        .update(rawToken)
+        .update(otpCode)
         .digest('hex');
 
       await prisma.token.create({
@@ -857,12 +875,13 @@ describe('Auth Module (E2E)', () => {
         },
       });
 
-      // 3. Vérifier l'email via l'API
+      // 4. Vérification de l'email via l'API (POST)
       await request(httpServer)
-        .get(`/auth/verify?token=${rawToken}`)
+        .post('/auth/verify')
+        .send({ code: otpCode }) // On envoie le code dans le body
         .expect(200);
 
-      // 4. Connexion
+      // 5. Connexion pour récupérer les cookies de session
       const loginRes = await request(httpServer)
         .post('/auth/login')
         .send({ email: guestUser.email, password: guestUser.password });
@@ -905,10 +924,10 @@ describe('Auth Module (E2E)', () => {
     });
 
     it('❌ Verify Email : Devrait être interdit (403) si déjà connecté', async () => {
-      // Pas besoin d'un vrai token valide en BDD, le Guard bloque AVANT le Service
       return request(httpServer)
-        .get('/auth/verify?token=any-dummy-token')
+        .post('/auth/verify')
         .set('Cookie', validCookies)
+        .send({ code: '123456' })
         .expect(403);
     });
 

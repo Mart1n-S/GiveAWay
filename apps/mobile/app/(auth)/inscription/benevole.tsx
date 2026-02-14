@@ -53,6 +53,7 @@ const LockIcon = cssInterop(LockIconSource, iconConfig);
 const UnlockIcon = cssInterop(UnlockIconSource, iconConfig);
 
 type RegisterFormInput = z.input<typeof RegisterSchema>;
+type RegisterFormCode = z.input<typeof VerifyEmailSchema>;
 type Step = "REGISTER" | "VERIFY";
 
 export default function RegisterBenevoleScreen() {
@@ -95,7 +96,7 @@ export default function RegisterBenevoleScreen() {
     control: controlVerify,
     handleSubmit: handleSubmitVerify,
     setError: setErrorVerify,
-  } = useForm<VerifyEmailDto>({
+  } = useForm<RegisterFormCode>({
     resolver: zodResolver(VerifyEmailSchema),
     defaultValues: {
       code: "",
@@ -168,7 +169,7 @@ export default function RegisterBenevoleScreen() {
       setRegisteredEmail(data.email);
       Toast.show({
         type: "info",
-        text1: "Code envoyé",
+        text1: "Inscription réussie",
         text2: `Un code a été envoyé à ${data.email}`,
       });
       setStep("VERIFY");
@@ -269,19 +270,21 @@ export default function RegisterBenevoleScreen() {
     }
   };
 
-  //Soumission du formulaire de vérification du code (step 2)
-  const onVerifySubmit = async (data: VerifyEmailDto) => {
+  // Soumission du formulaire de vérification du code (step 2)
+  const onVerifySubmit = async (data: RegisterFormCode) => {
     setIsSubmitting(true);
     try {
-      await AuthService.verifyEmail(data.code);
+      const validData = data as unknown as VerifyEmailDto;
 
-        Toast.show({
-          type: "success",
-          text1: "Compte activé !",
-          text2: "Votre compte a été créé et activé avec succès !",
-          visibilityTime: 5000,
-        });
-        router.replace("/connexion");
+      await AuthService.verifyEmail(validData);
+
+      Toast.show({
+        type: "success",
+        text1: "Compte activé !",
+        text2: "Votre compte a été activé avec succès !",
+        visibilityTime: 10000,
+      });
+      router.replace("/connexion");
     } catch (error: unknown) {
       if (isAxiosError(error) && error.response) {
         const status = error.response.status;
