@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text, ScrollView } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { cssInterop } from "nativewind";
-import { SelectionCard } from "@/components/ui";
+import { SelectionCard, Button } from "@/components/ui";
 
 import UserIconSource from "@assets/icons/ic_user.svg";
 import BuildingIconSource from "@assets/icons/ic_building.svg";
@@ -31,7 +31,7 @@ export default function RegisterChoiceScreen() {
 
       <ScrollView
         className="flex-1 bg-gray-50"
-        contentContainerStyle={{ flexGrow: 1, padding: 24, paddingBottom: 40 }}
+        contentContainerStyle={{ flexGrow: 1, padding: 24, paddingBottom: 60 }}
         showsVerticalScrollIndicator={false}
       >
         <View className="w-full max-w-5xl mx-auto">
@@ -46,7 +46,7 @@ export default function RegisterChoiceScreen() {
           </View>
 
           <View className="flex-col gap-6 md:flex-row">
-            {/* --- CARTE BENEVOLe --- */}
+            {/* --- CARTE BENEVOLE --- */}
             <SelectionCard
               className="flex-1 h-full"
               title="Je suis un bénévole"
@@ -76,6 +76,23 @@ export default function RegisterChoiceScreen() {
               actionLabel="Inscrire mon association"
               onPress={() => router.push("/inscription/association")}
             />
+          </View>
+
+          {/* --- PIED DE PAGE : LIEN VERS ACTIVATION --- */}
+          <View className="items-center pt-8 mt-12 border-t border-grey-200">
+            <Text className="mb-4 text-center text-grey-800">
+              Vous avez déjà un compte mais il n'est pas activé ?
+            </Text>
+
+            <Button
+              variant="tertiary"
+              onPress={() =>
+                router.push("/inscription/demande-verification-email")
+              }
+              className="w-full"
+            >
+              Activer mon compte maintenant
+            </Button>
           </View>
         </View>
       </ScrollView>
