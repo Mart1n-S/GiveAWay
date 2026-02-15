@@ -8,6 +8,7 @@ export const TermsCheckbox = ({
   checked,
   onChange,
   errorMessage,
+  testID,
 }: TermsCheckboxProps) => {
   const [modalVisible, setModalVisible] = useState(false);
 
@@ -43,6 +44,7 @@ export const TermsCheckbox = ({
           "web:outline-none",
           "web:focus-visible:ring-2 web:focus-visible:ring-focus web:focus-visible:ring-offset-2 web:rounded",
         )}
+        testID={testID}
         onPress={handlePress}
         // --- Accessibilité ---
         accessibilityRole="checkbox"

@@ -167,6 +167,7 @@ export const AddressAutocomplete = ({
       <View className="relative mb-4">
         <Input
           label="Numéro et libellé de voie"
+          testID="input-address"
           placeholder="Ex: 10 rue de la Paix"
           value={street}
           onChangeText={handleStreetChange}
@@ -230,6 +231,7 @@ export const AddressAutocomplete = ({
         <View className="flex-1">
           <Input
             label="Code Postal"
+            testID="input-postalCode"
             value={postalCode}
             onChangeText={handlePostalCodeChange}
             errorMessage={postalCodeError}
@@ -243,6 +245,7 @@ export const AddressAutocomplete = ({
         <View className="flex-[2]">
           <Input
             label="Ville"
+            testID="input-city"
             value={city}
             onChangeText={handleCityChange}
             errorMessage={cityError}

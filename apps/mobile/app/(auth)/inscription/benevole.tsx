@@ -444,6 +444,7 @@ export default function RegisterBenevoleScreen() {
                     control={control}
                     name="firstName"
                     label="Prénom"
+                    testID="input-firstName"
                     required
                   />
                 </View>
@@ -452,6 +453,7 @@ export default function RegisterBenevoleScreen() {
                     control={control}
                     name="lastName"
                     label="Nom"
+                    testID="input-lastName"
                     required
                   />
                 </View>
@@ -461,6 +463,7 @@ export default function RegisterBenevoleScreen() {
                 control={control}
                 name="email"
                 label="Email"
+                testID="input-email"
                 helperText="Format : jean.dupont@email.com"
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -474,6 +477,7 @@ export default function RegisterBenevoleScreen() {
                 control={control}
                 name="age"
                 label="Âge"
+                testID="input-age"
                 keyboardType="numeric"
                 required
               />
@@ -524,6 +528,7 @@ export default function RegisterBenevoleScreen() {
                   control={control}
                   name="password"
                   label="Mot de passe"
+                  testID="input-password"
                   secureTextEntry={!showPassword}
                   rightIcon={
                     showPassword ? (
@@ -548,6 +553,7 @@ export default function RegisterBenevoleScreen() {
                   control={control}
                   name="confirmPassword"
                   label="Confirmer le mot de passe"
+                  testID="input-confirmPassword"
                   secureTextEntry={!showPassword}
                   rightIcon={
                     showPassword ? (
@@ -579,6 +585,7 @@ export default function RegisterBenevoleScreen() {
                 }) => (
                   <TermsCheckbox
                     checked={value as any}
+                    testID="checkbox-terms"
                     onChange={(isChecked) => {
                       onChange(isChecked);
                       trigger("acceptTerms");
@@ -590,6 +597,7 @@ export default function RegisterBenevoleScreen() {
 
               <TouchableOpacity
                 onPress={handleSubmit(onRegisterSubmit, scrollToTop)}
+                testID="btn-submit-register"
                 disabled={!acceptTerms || isSubmitting}
                 className={clsx(
                   "h-control rounded-md flex-row items-center justify-center mt-4 transition-all",

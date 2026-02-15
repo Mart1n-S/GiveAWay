@@ -78,13 +78,15 @@ export const TermsModal = ({ visible, onClose, onAccept }: TermsModalProps) => {
             accessibilityRole="header"
           >
             <Text className="text-lg font-bold text-center text-grey-900">
-              Conditions Générales d&apos;Utilisation et Politique de Confidentialité
+              Conditions Générales d&apos;Utilisation et Politique de
+              Confidentialité
             </Text>
           </View>
 
           {/* --- CONTENU --- */}
           <ScrollView
             className="flex-1 p-4"
+            testID="terms-scroll-view"
             onScroll={handleScroll}
             scrollEventThrottle={16}
             contentContainerStyle={{ paddingBottom: 20 }}
@@ -124,6 +126,7 @@ export const TermsModal = ({ visible, onClose, onAccept }: TermsModalProps) => {
             {/* BOUTON ACCEPTER */}
             <TouchableOpacity
               onPress={onAccept}
+              testID="btn-accept-terms-modal"
               disabled={!isScrolledToBottom}
               className={clsx(
                 "group relative h-[44px] rounded-md flex-row items-center justify-center transition-all w-full md:flex-1",

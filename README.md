@@ -164,7 +164,7 @@ npm run dev
 
 ---
 
-## 🧪 Lancer les tests
+## 🧪 Tests Backend (Jest)
 
 A la racine du projet, exécuter les commandes suivantes pour lancer les tests unitaires et d'intégration sur l'ensemble des applications et packages :
 
@@ -174,6 +174,48 @@ npm run test
 
 ```bash
 npm run test:e2e
+```
+## 📱 Tests Frontend & Mobile Web (Playwright)
+
+Les tests Playwright simulent le parcours utilisateur complet dans un navigateur. Ils nécessitent que le Backend et le Frontend tournent en **Mode Test**.
+
+#### 1. Préparation (Une seule fois)
+
+Assurez-vous que la base de données de test est synchronisée :
+
+```bash
+npm run db:test:setup
+
+```
+
+#### 2. Lancement des services
+
+Vous devez ouvrir deux terminaux pour faire tourner les applications :
+
+* **Terminal A (API en mode test) :** `npm run start:test --workspace=apps/api`
+* **Terminal B (Web) :** `npm run web --workspace=apps/mobile`
+
+#### 3. Exécution des tests Playwright
+
+Une fois les services démarrés, lancez les tests depuis la racine :
+
+| Commande                        | Description                                                   |
+| ------------------------------- | ------------------------------------------------------------- |
+| `npm run test:e2e:mobile:ui`    | **Recommandé** : Ouvre l'interface interactive de Playwright. |
+| `npm run test:e2e:mobile`       | Lance tous les tests en mode "headless" (console).            |
+| `npm run test:e2e:mobile:debug` | Lance les tests pas à pas pour le débogage.                   |
+
+> [!IMPORTANT]
+> Ne lancez pas les tests e2e sur le serveur de développement standard (`npm run dev`).
+
+---
+
+### 💡 Astuces
+
+Pour lancer un fichier de test spécifique :
+
+```bash
+npm run test:e2e:mobile -- inscription-benevole.spec.ts
 ```
 
 ---

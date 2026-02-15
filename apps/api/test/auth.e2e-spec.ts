@@ -473,7 +473,6 @@ describe('Auth Module (E2E)', () => {
   // TEST: VÉRIFICATION EMAIL
   // ===========================================================================
   describe('POST /auth/verify', () => {
-    // 1. Changement de GET à POST
     it('✅ Devrait valider le compte avec un code OTP valide', async () => {
       // 1. Inscription de l'utilisateur
       await request(httpServer).post('/auth/register').send(userDto);

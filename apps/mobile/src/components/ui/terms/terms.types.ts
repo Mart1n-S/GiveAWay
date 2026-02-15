@@ -15,6 +15,11 @@ export interface TermsCheckboxProps {
    * Utile pour la validation de formulaire (Zod).
    */
   errorMessage?: string;
+
+  /**
+   * TestID optionnel pour les tests automatisés (Playwright, Detox, etc.).
+   */
+  testID?: string;
 }
 
 export interface TermsModalProps {

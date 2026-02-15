@@ -215,6 +215,7 @@ export function WebNavBar({
               icon={menuIcon}
               onPress={() => setIsMenuOpen(true)}
               accessibilityLabel="Ouvrir le menu principal"
+              testID="button-menu"
             />
           )}
         </View>

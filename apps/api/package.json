@@ -24,7 +24,9 @@
     "pretest:e2e": "npm run db:test:restart",
     "test:e2e": "dotenv -e ../../.env.test -- jest --config ./test/jest-e2e.json",
     "check-types": "tsc --noEmit",
-    "prisma:generate": "prisma generate --schema prisma/schema.prisma"
+    "prisma:generate": "prisma generate --schema prisma/schema.prisma",
+    "start:test": "dotenv -e ../../.env.test -- nest start --watch",
+    "db:test:migrate": "dotenv -e ../../.env.test -- prisma migrate dev"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
