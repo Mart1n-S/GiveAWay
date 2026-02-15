@@ -212,7 +212,7 @@ export class AuthController {
 
   // Route: POST /auth/resend-verification
   @UseGuards(GuestGuard)
-  @Throttle({ default: { limit: 3, ttl: 60 * 60 * 1000 } }) // 3 requêtes par heure
+  @Throttle({ default: { limit: 5, ttl: 60 * 60 * 1000 } }) // 5 requêtes par heure
   @Post('resend-verification')
   @UsePipes(new ZodValidationPipe(ResendVerificationSchema))
   async resendVerification(@Body() dto: ResendVerificationDto) {

@@ -157,13 +157,13 @@ export class AuthService {
 
     // 1. Génération et Sauvegarde du nouveau Token
     // Le helper supprime automatiquement les anciens tokens avant d'en créer un nouveau
-    const rawToken = await this.generateAndSaveToken(
+    const rawCode = await this.generateAndSaveToken(
       user.id,
       TokenType.EMAIL_VERIFICATION,
     );
 
     // 2. Envoi Email
-    await this.mailService.sendVerificationEmail(user.email, rawToken);
+    await this.mailService.sendVerificationEmail(user.email, rawCode);
 
     return genericMessage;
   }

@@ -17,6 +17,7 @@ import {
   RegisterDto,
   VerifyEmailSchema,
   VerifyEmailDto,
+  ResendVerificationDto,
 } from "@repo/shared";
 import { z } from "zod";
 import { FormInput, FormTextarea } from "@/components/form/";
@@ -65,6 +66,47 @@ export default function RegisterBenevoleScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState("");
+  const [resendTimer, setResendTimer] = useState(0);
+  const [isResending, setIsResending] = useState(false);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [resendTimer]);
+
+  const handleResendCode = async () => {
+    setIsResending(true);
+    try {
+      const payload: ResendVerificationDto = {
+        email: registeredEmail,
+      };
+
+      // On utilise l'email stocké lors de la step 1
+      await AuthService.resendVerificationEmail(payload);
+
+      setResendTimer(60); // On bloque pendant 60 secondes
+
+      Toast.show({
+        type: "success",
+        text1: "Code renvoyé",
+        text2: "Un nouveau code a été envoyé à votre adresse email.",
+      });
+    } catch (error: any) {
+      const msg = error?.response?.data?.message || "Erreur lors du renvoi.";
+      Toast.show({
+        type: "error",
+        text1: "Action impossible",
+        text2: msg,
+      });
+    } finally {
+      setIsResending(false);
+    }
+  };
 
   // Initialisation du Formulaire
   const {
@@ -605,6 +647,25 @@ export default function RegisterBenevoleScreen() {
               >
                 Valider
               </Button>
+
+              {/* --- SECTION RESEND AVEC BOUTON SECONDARY --- */}
+              <View className="items-center mt-2">
+                <Button
+                  variant="secondary"
+                  onPress={handleResendCode}
+                  disabled={resendTimer > 0}
+                  loading={isResending}
+                  className="w-full"
+                >
+                  {resendTimer > 0
+                    ? `Renvoyer le code (${resendTimer}s)`
+                    : "Je n'ai pas reçu le code"}
+                </Button>
+
+                <Text className="mt-4 text-xs text-center text-grey-600">
+                  Vérifiez également vos courriers indésirables (spams).
+                </Text>
+              </View>
             </View>
           )}
 

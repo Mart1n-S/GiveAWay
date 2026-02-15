@@ -6,7 +6,8 @@ import {
   RegisterDto,
   User,
   AuthResponse,
-  VerifyEmailDto
+  VerifyEmailDto,
+  ResendVerificationDto
 } from "@repo/shared";
 import { ReactNativeFile } from "../types/files.type";
 
@@ -141,17 +142,16 @@ export const AuthService = {
     const response = await api.post<{ message: string }>("/auth/verify", dto);
     return response.data;
   },
-  
+
   /**
    * POST /auth/resend-verification
    * Demande le renvoi de l'email de validation.
    */
-  resendVerificationEmail: async (email: string) => {
+  resendVerificationEmail: async (dto: ResendVerificationDto) => {
     const response = await api.post<{ message: string }>(
       "/auth/resend-verification",
-      { email },
+      dto,
     );
-
     return response.data;
   },
 
