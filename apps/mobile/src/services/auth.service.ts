@@ -7,7 +7,9 @@ import {
   User,
   AuthResponse,
   VerifyEmailDto,
-  ResendVerificationDto
+  ResendVerificationDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
 } from "@repo/shared";
 import { ReactNativeFile } from "../types/files.type";
 
@@ -163,32 +165,24 @@ export const AuthService = {
    * POST /auth/forgot-password
    * Envoie un email avec un lien de reset
    */
-  forgotPassword: async (email: string) => {
+  forgotPassword: async (dto: ForgotPasswordDto) => {
     const response = await api.post<{ message: string }>(
       "/auth/forgot-password",
-      {
-        email,
-      },
+      dto,
     );
     return response.data;
   },
 
   /**
    * POST /auth/reset-password
-   * Définit un nouveau mot de passe via le token reçu par mail
+   * Définit un nouveau mot de passe via le code reçu par mail
    */
   resetPassword: async (
-    password: string,
-    confirmPassword: string,
-    token: string,
+    dto: ResetPasswordDto,
   ) => {
     const response = await api.post<{ message: string }>(
       "/auth/reset-password",
-      {
-        token,
-        password,
-        confirmPassword,
-      },
+      dto,
     );
     return response.data;
   },

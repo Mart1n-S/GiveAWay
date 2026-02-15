@@ -504,7 +504,7 @@ describe('AuthService (Unit)', () => {
   describe('resetPassword', () => {
     // On utilise le DTO complet pour le typage
     const dto: ResetPasswordDto = {
-      token: 'raw-token-string',
+      code: '123456',
       password: 'NewPassword123!',
       confirmPassword: 'NewPassword123!',
     };

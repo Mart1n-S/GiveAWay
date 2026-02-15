@@ -49,18 +49,30 @@ export class MailService {
 
   // Email de réinitialisation du mot de passe (Mot de passe oublié)
   async sendPasswordResetEmail(email: string, token: string) {
-    // On récupère l'URL du FRONTEND car l'utilisateur doit arriver sur un formulaire
-    // Exemple : "giveaway://reset-password" (Mobile) ou "https://app.com" (Web)
-    const frontendUrl =
-      this.config.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    console.log(`\n📨 [MAIL SERVICE] Réinitialisation de mot de passe pour : ${email}`);
+    console.log(`🔢 Code de réinitialisation : ${token}`);
+    console.log(`⏳ Expire dans : 15 minutes\n`);
 
-    // Le lien pointe vers l'écran de changement de mot de passe du Front
-    const url = `${frontendUrl}/reset-password?token=${token}`;
-
-    console.log(`📧 [MAIL SERVICE] Reset Password pour : ${email}`);
-    console.log(`🔑 Token (brut) : ${token}`);
-    console.log(`🔗 Lien (Front) : ${url}`);
-
+    // Simulation d'attente (IO)
     await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // En vrai production, on ferait :
+    /*
+        await this.transporter.sendMail({
+          from: '"GiveAway Team" <no-reply@giveaway.com>',
+          to: email,
+          subject: 'Réinitialisation de votre mot de passe GiveAway',
+          html: `
+            <div style="font-family: sans-serif; text-align: center;">
+              <h2>Réinitialisation de votre mot de passe</h2>
+              <p>Pour réinitialiser votre mot de passe, veuillez entrer le code suivant dans l'application :</p>
+              <p style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #CC460F; margin: 20px 0;">
+                ${token}
+              </p>
+              <p>Ce code est valide pendant 15 minutes.</p>
+            </div>
+          `,
+        });
+    */
   }
 }

@@ -6,7 +6,7 @@ describe("ResetPassword DTOs", () => {
   // ===========================================================================
   describe("ResetPasswordSchema", () => {
     const validResetData = {
-      token: "valid-token-hash-123",
+      code: "123456",
       password: "NewPassword123!",
       confirmPassword: "NewPassword123!",
     };
@@ -18,14 +18,16 @@ describe("ResetPassword DTOs", () => {
     });
 
     // --- ❌ Cas Invalides ---
-    it("Doit rejeter si le token est manquant ou vide", () => {
+    it("Doit rejeter si le code est manquant ou vide", () => {
       const res = ResetPasswordSchema.safeParse({
         ...validResetData,
-        token: "",
+        code: "",
       });
       expect(res.success).toBe(false);
       if (!res.success) {
-        expect(res.error.issues[0].message).toContain("token est invalide");
+        expect(res.error.issues[0].message).toContain(
+          "Le code doit contenir exactement 6 chiffres",
+        );
       }
     });
 

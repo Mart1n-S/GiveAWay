@@ -750,7 +750,7 @@ describe('Auth Module (E2E)', () => {
   // TEST: REINITIALISATION DU MOT DE PASSE
   // ===========================================================================
   describe('POST /auth/reset-password', () => {
-    const rawToken = 'reset-token-secret-123';
+    const rawCode = '123456';
     const newPassword = 'NewPassword123!';
 
     beforeEach(async () => {
@@ -768,7 +768,7 @@ describe('Auth Module (E2E)', () => {
       // 2. On insère MANUELLEMENT un token de reset valide en BDD
       const hashedToken = crypto
         .createHash('sha256')
-        .update(rawToken)
+        .update(rawCode)
         .digest('hex');
 
       await prisma.token.create({
@@ -786,7 +786,7 @@ describe('Auth Module (E2E)', () => {
       await request(httpServer)
         .post('/auth/reset-password')
         .send({
-          token: rawToken, // On envoie le token BRUT
+          code: rawCode, // On envoie le token BRUT
           password: newPassword,
           confirmPassword: newPassword,
         })
@@ -820,7 +820,7 @@ describe('Auth Module (E2E)', () => {
       return request(httpServer)
         .post('/auth/reset-password')
         .send({
-          token: rawToken,
+          code: rawCode,
           password: newPassword,
           confirmPassword: 'MismatchPassword123!',
         })
@@ -831,7 +831,7 @@ describe('Auth Module (E2E)', () => {
       return request(httpServer)
         .post('/auth/reset-password')
         .send({
-          token: rawToken,
+          code: rawCode,
           password: 'weak',
           confirmPassword: 'weak',
         })

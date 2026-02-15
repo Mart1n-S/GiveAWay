@@ -304,10 +304,10 @@ export class AuthService {
   // RESET PASSWORD (Effectif)
   // ----------------------------------------------------------------
   async resetPassword(dto: ResetPasswordDto) {
-    // 1. On re-hash le token reçu pour le comparer à la BDD
+    // 1. On re-hash le code reçu pour le comparer à la BDD
     const hashedToken = crypto
       .createHash('sha256')
-      .update(dto.token)
+      .update(dto.code)
       .digest('hex');
 
     // 2. On cherche le token en base
@@ -316,17 +316,17 @@ export class AuthService {
     });
 
     if (!dbToken || dbToken.type !== TokenType.PASSWORD_RESET) {
-      this.logger.warn('Tentative de reset password avec token invalide');
-      throw new BadRequestException('Lien invalide ou déjà utilisé');
+      this.logger.warn('Tentative de reset password avec un code invalide');
+      throw new BadRequestException('Code invalide ou déjà utilisé');
     }
 
     // 3. Vérification expiration
     if (dbToken.expiresAt < new Date()) {
       this.logger.warn(
-        `Tentative de reset avec token expiré (userId: ${dbToken.userId})`,
+        `Tentative de reset avec un code expiré (userId: ${dbToken.userId})`,
       );
       await this.prisma.token.delete({ where: { id: dbToken.id } });
-      throw new BadRequestException('Le lien a expiré');
+      throw new BadRequestException('Le code a expiré');
     }
 
     // 4. Hashage du nouveau mot de passe

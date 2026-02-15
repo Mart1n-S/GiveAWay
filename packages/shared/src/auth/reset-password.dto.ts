@@ -6,7 +6,13 @@ import { PASSWORD_REGEX } from "./auth.constants";
 // ----------------------------------------------------------------------
 export const ResetPasswordSchema = z
   .object({
-    token: z.string().min(1, "Le token est invalide ou manquant"),
+    code: z
+      .string()
+      .trim()
+      .length(6, { message: "Le code doit contenir exactement 6 chiffres" })
+      .regex(/^[0-9]{6}$/, {
+        message: "Le code ne doit contenir que des chiffres",
+      }),
     password: z
       .string()
       .min(1, { message: "Le mot de passe est obligatoire" })
@@ -16,7 +22,7 @@ export const ResetPasswordSchema = z
       })
       .regex(PASSWORD_REGEX, {
         message:
-          "Le mot de passe doit contenir au minimum 1 majuscule, 1 minuscule, 1 chiffre et 1 caractère spécial (@$!%*?&)",
+          "Le mot de passe doit contenir au minimum 1 majuscule, 1 minuscule, 1 chiffre et 1 caractère spécial",
       }),
 
     confirmPassword: z
