@@ -444,7 +444,6 @@ export default function RegisterBenevoleScreen() {
                     control={control}
                     name="firstName"
                     label="Prénom"
-                    placeholder="Jean"
                     required
                   />
                 </View>
@@ -453,7 +452,6 @@ export default function RegisterBenevoleScreen() {
                     control={control}
                     name="lastName"
                     label="Nom"
-                    placeholder="Dupont"
                     required
                   />
                 </View>
@@ -463,7 +461,7 @@ export default function RegisterBenevoleScreen() {
                 control={control}
                 name="email"
                 label="Email"
-                placeholder="jean.dupont@email.com"
+                helperText="Format : jean.dupont@email.com"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 leftIcon={
@@ -476,7 +474,6 @@ export default function RegisterBenevoleScreen() {
                 control={control}
                 name="age"
                 label="Âge"
-                placeholder="25"
                 keyboardType="numeric"
                 required
               />
