@@ -95,6 +95,8 @@ export default function RegisterBenevoleScreen() {
         type: "success",
         text1: "Code renvoyé",
         text2: "Un nouveau code a été envoyé à votre adresse email.",
+        visibilityTime: 10000,
+        onPress: () => Toast.hide(),
       });
     } catch (error: any) {
       const msg = error?.response?.data?.message || "Erreur lors du renvoi.";
@@ -102,6 +104,8 @@ export default function RegisterBenevoleScreen() {
         type: "error",
         text1: "Action impossible",
         text2: msg,
+        visibilityTime: 10000,
+        onPress: () => Toast.hide(),
       });
     } finally {
       setIsResending(false);
@@ -213,6 +217,8 @@ export default function RegisterBenevoleScreen() {
         type: "info",
         text1: "Inscription réussie",
         text2: `Un code a été envoyé à ${data.email}`,
+        visibilityTime: 10000,
+        onPress: () => Toast.hide(),
       });
       setStep("VERIFY");
       scrollToTop();
@@ -325,6 +331,7 @@ export default function RegisterBenevoleScreen() {
         text1: "Compte activé !",
         text2: "Votre compte a été activé avec succès !",
         visibilityTime: 10000,
+        onPress: () => Toast.hide(),
       });
       router.replace("/connexion");
     } catch (error: unknown) {
