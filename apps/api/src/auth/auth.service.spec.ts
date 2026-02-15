@@ -8,6 +8,7 @@ import {
   ConflictException,
   UnauthorizedException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { Prisma, UserStatus, TokenType } from '../generated/prisma/client';
 import * as argon2 from 'argon2';
@@ -175,11 +176,11 @@ describe('AuthService (Unit)', () => {
     it('❌ Doit lever Unauthorized si token inexistant', async () => {
       mockPrisma.token.findUnique.mockResolvedValue(null);
       await expect(service.verifyEmail('bad')).rejects.toThrow(
-        UnauthorizedException,
+        BadRequestException,
       );
     });
 
-    it("❌ Doit lever Unauthorized si c'est un token de Reset Password", async () => {
+    it("❌ Doit lever BadRequestException si c'est un token de Reset Password", async () => {
       const dbToken = {
         id: 10,
         userId: 1,
@@ -189,7 +190,7 @@ describe('AuthService (Unit)', () => {
       mockPrisma.token.findUnique.mockResolvedValue(dbToken);
 
       await expect(service.verifyEmail('raw-token')).rejects.toThrow(
-        UnauthorizedException, // "Lien de validation invalide"
+        BadRequestException, // "Lien de validation invalide"
       );
     });
 
@@ -263,21 +264,21 @@ describe('AuthService (Unit)', () => {
       expect(mockPrisma.refreshToken.create).toHaveBeenCalled();
     });
 
-    it('❌ Doit lever Unauthorized si mdp incorrect', async () => {
+    it('❌ Doit lever BadRequestException si mdp incorrect', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(mockUser);
       // On simule un mauvais mot de passe
       jest.spyOn(argon2, 'verify').mockResolvedValue(false);
 
       await expect(service.login(dto, 'agent', 'ip')).rejects.toThrow(
-        UnauthorizedException,
+        BadRequestException,
       );
     });
 
-    it('❌ Doit lever Unauthorized si user non trouvé', async () => {
+    it('❌ Doit lever BadRequestException si user non trouvé', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(null);
 
       await expect(service.login(dto, 'agent', 'ip')).rejects.toThrow(
-        UnauthorizedException,
+        BadRequestException,
       );
     });
   });
@@ -556,7 +557,7 @@ describe('AuthService (Unit)', () => {
       mockPrisma.token.findUnique.mockResolvedValue(null);
 
       await expect(service.resetPassword(dto)).rejects.toThrow(
-        UnauthorizedException,
+        BadRequestException,
       );
     });
 
@@ -570,7 +571,7 @@ describe('AuthService (Unit)', () => {
       mockPrisma.token.findUnique.mockResolvedValue(mockDbToken);
 
       await expect(service.resetPassword(dto)).rejects.toThrow(
-        UnauthorizedException,
+        BadRequestException,
       );
     });
 
@@ -583,7 +584,7 @@ describe('AuthService (Unit)', () => {
       mockPrisma.token.findUnique.mockResolvedValue(mockDbToken);
 
       await expect(service.resetPassword(dto)).rejects.toThrow(
-        UnauthorizedException,
+        BadRequestException,
       );
 
       // Vérification que le token périmé est bien supprimé automatiquement
@@ -654,15 +655,15 @@ describe('AuthService (Unit)', () => {
       expect(res.message).toContain('succès');
     });
 
-    it('❌ Doit lever UnauthorizedException si utilisateur introuvable', async () => {
+    it('❌ Doit lever BadRequestException si utilisateur introuvable', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(null);
 
       await expect(service.changePassword(userId, dto)).rejects.toThrow(
-        UnauthorizedException,
+        BadRequestException,
       );
     });
 
-    it('❌ Doit lever UnauthorizedException si ancien mot de passe incorrect', async () => {
+    it('❌ Doit lever BadRequestException si ancien mot de passe incorrect', async () => {
       const mockUser = { id: userId, password: 'hashed_old_password' };
       mockPrisma.user.findUnique.mockResolvedValue(mockUser);
 
@@ -670,7 +671,7 @@ describe('AuthService (Unit)', () => {
       (argon2.verify as jest.Mock).mockResolvedValue(false);
 
       await expect(service.changePassword(userId, dto)).rejects.toThrow(
-        UnauthorizedException, // "Ancien mot de passe incorrect"
+        BadRequestException, // "Ancien mot de passe incorrect"
       );
 
       // SÉCURITÉ : On vérifie que rien n'a été modifié ni hashé
@@ -743,7 +744,7 @@ describe('AuthService (Unit)', () => {
       await expect(service.getMe(999)).rejects.toThrow(UnauthorizedException);
     });
 
-    it('❌ Doit lever Unauthorized si user SUSPENDU', async () => {
+    it('❌ Doit lever BadRequestException si user SUSPENDU', async () => {
       // On reprend l'user mais on change son statut
       const suspendedUser = {
         ...mockUserComplete,
@@ -751,14 +752,14 @@ describe('AuthService (Unit)', () => {
       };
       mockPrisma.user.findUnique.mockResolvedValue(suspendedUser);
 
-      await expect(service.getMe(1)).rejects.toThrow(UnauthorizedException);
+      await expect(service.getMe(1)).rejects.toThrow(BadRequestException);
     });
 
-    it('❌ Doit lever Unauthorized si user SUPPRIMÉ', async () => {
+    it('❌ Doit lever BadRequestException si user SUPPRIMÉ', async () => {
       const deletedUser = { ...mockUserComplete, status: UserStatus.DELETED };
       mockPrisma.user.findUnique.mockResolvedValue(deletedUser);
 
-      await expect(service.getMe(1)).rejects.toThrow(UnauthorizedException);
+      await expect(service.getMe(1)).rejects.toThrow(BadRequestException);
     });
   });
 });

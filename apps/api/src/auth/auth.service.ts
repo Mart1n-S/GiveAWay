@@ -4,6 +4,7 @@ import {
   Injectable,
   Logger,
   UnauthorizedException,
+  BadRequestException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -108,13 +109,13 @@ export class AuthService {
 
     // 2. Vérifications
     if (!dbToken || dbToken.type !== TokenType.EMAIL_VERIFICATION) {
-      throw new UnauthorizedException('Code de validation invalide');
+      throw new BadRequestException('Code de validation invalide');
     }
 
     if (dbToken.expiresAt < new Date()) {
       // Nettoyage optionnel ici (ou via un cron job)
       await this.prisma.token.delete({ where: { id: dbToken.id } });
-      throw new UnauthorizedException('Le code a expiré');
+      throw new BadRequestException('Le code a expiré');
     }
 
     // 3. Validation de l'utilisateur
@@ -186,12 +187,12 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('Email ou mot de passe incorrect');
+      throw new BadRequestException('Email ou mot de passe incorrect');
     }
 
     // 2. Vérifier si l'email a été validé
     if (!user.emailVerifiedAt) {
-      throw new UnauthorizedException(
+      throw new ForbiddenException(
         'Veuillez valider votre email avant de vous connecter',
       );
     }
@@ -200,7 +201,7 @@ export class AuthService {
       user.status === UserStatus.DELETED ||
       user.status === UserStatus.SUSPENDED
     ) {
-      throw new UnauthorizedException(
+      throw new ForbiddenException(
         'Votre compte a été supprimé ou suspendu. Veuillez contacter le support.',
       );
     }
@@ -213,7 +214,7 @@ export class AuthService {
       this.logger.warn(
         `Tentative de connexion échouée pour l'email : ${dto.email}`,
       );
-      throw new UnauthorizedException('Email ou mot de passe incorrect');
+      throw new BadRequestException('Email ou mot de passe incorrect');
     }
 
     const tokens = await this.generateTokens(user.id, user.email);
@@ -316,7 +317,7 @@ export class AuthService {
 
     if (!dbToken || dbToken.type !== TokenType.PASSWORD_RESET) {
       this.logger.warn('Tentative de reset password avec token invalide');
-      throw new UnauthorizedException('Lien invalide ou déjà utilisé');
+      throw new BadRequestException('Lien invalide ou déjà utilisé');
     }
 
     // 3. Vérification expiration
@@ -325,7 +326,7 @@ export class AuthService {
         `Tentative de reset avec token expiré (userId: ${dbToken.userId})`,
       );
       await this.prisma.token.delete({ where: { id: dbToken.id } });
-      throw new UnauthorizedException('Le lien a expiré');
+      throw new BadRequestException('Le lien a expiré');
     }
 
     // 4. Hashage du nouveau mot de passe
@@ -369,12 +370,12 @@ export class AuthService {
       where: { id: userId },
     });
 
-    if (!user) throw new UnauthorizedException('Utilisateur introuvable');
+    if (!user) throw new BadRequestException('Utilisateur introuvable');
 
     // 2. Vérifier que l'ANCIEN mot de passe est correct
     const isPasswordValid = await verify(user.password, dto.oldPassword);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Ancien mot de passe incorrect');
+      throw new BadRequestException('Ancien mot de passe incorrect');
     }
 
     // 3. Hasher le NOUVEAU mot de passe
@@ -514,9 +515,7 @@ export class AuthService {
       user.status === UserStatus.DELETED ||
       user.status === UserStatus.SUSPENDED
     ) {
-      throw new UnauthorizedException(
-        'Votre compte a été supprimé ou suspendu.',
-      );
+      throw new BadRequestException('Votre compte a été supprimé ou suspendu.');
     }
 
     // 3. MAPPING : On reprend la logique EXACTE du login

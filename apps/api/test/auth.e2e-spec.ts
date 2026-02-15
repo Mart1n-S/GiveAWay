@@ -519,7 +519,7 @@ describe('Auth Module (E2E)', () => {
       return request(httpServer)
         .post('/auth/verify')
         .send({ code: '000000' }) // Mauvais code
-        .expect(401) // Ou 400 selon ta gestion d'erreur
+        .expect(400)
         .expect((res: request.Response) => {
           const body = res.body as ResponseBody;
           expect(body.message).toMatch(/invalide|incorrect/i);
@@ -802,7 +802,7 @@ describe('Auth Module (E2E)', () => {
       await request(httpServer)
         .post('/auth/login')
         .send({ email: userDto.email, password: userDto.password })
-        .expect(401); // Unauthorized
+        .expect(400);
     });
 
     it('❌ Devrait échouer si le token est invalide ou expiré', async () => {
@@ -813,7 +813,7 @@ describe('Auth Module (E2E)', () => {
           password: newPassword,
           confirmPassword: newPassword,
         })
-        .expect(401);
+        .expect(400);
     });
 
     it('❌ Devrait échouer si les mots de passe ne correspondent pas', async () => {
@@ -1065,7 +1065,7 @@ describe('Auth Module (E2E)', () => {
           newPassword: newPassword,
           confirmPassword: newPassword,
         })
-        .expect(401);
+        .expect(400);
     });
   });
 });
