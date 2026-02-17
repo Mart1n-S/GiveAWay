@@ -86,6 +86,7 @@ export default function RegisterChoiceScreen() {
 
             <Button
               variant="tertiary"
+              testID="btn-goto-activation"
               onPress={() =>
                 router.push("/inscription/demande-verification-email")
               }

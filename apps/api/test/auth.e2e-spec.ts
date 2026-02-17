@@ -693,12 +693,22 @@ describe('Auth Module (E2E)', () => {
       // 1. On crée un utilisateur
       await request(httpServer).post('/auth/register').send(userDto);
 
-      // On active le compte manuellement
-      // Sinon, la logique métier peut refuser de créer un token pour un compte "PENDING"
-      await prisma.user.update({
+      // On récupère l'user pour avoir son ID
+      const userBefore = await prisma.user.findUnique({
         where: { email: userDto.email },
-        data: { status: UserStatus.ACTIVE },
       });
+
+      // On active le compte manuellement ET on nettoie le token de vérification
+      // pour éviter la collision de hash avec le futur token de reset
+      await prisma.$transaction([
+        prisma.user.update({
+          where: { email: userDto.email },
+          data: { status: UserStatus.ACTIVE },
+        }),
+        prisma.token.deleteMany({
+          where: { userId: userBefore?.id },
+        }),
+      ]);
 
       // 2. On appelle la route
       await request(httpServer)

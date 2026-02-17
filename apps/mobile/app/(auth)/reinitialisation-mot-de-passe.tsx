@@ -114,7 +114,8 @@ export default function ResetPasswordScreen() {
                 Nouveau mot de passe
               </Text>
               <Text className="text-center text-grey-600">
-                Saisissez le code que vous avez reçu par email et choisissez un nouveau mot de passe.
+                Saisissez le code que vous avez reçu par email et choisissez un
+                nouveau mot de passe.
               </Text>
             </View>
 
@@ -124,6 +125,7 @@ export default function ResetPasswordScreen() {
                 control={control}
                 name="code"
                 label="Code de sécurité"
+                testID="input-reset-password-code"
                 placeholder="123456"
                 keyboardType="number-pad"
                 maxLength={6}
@@ -140,6 +142,7 @@ export default function ResetPasswordScreen() {
                   control={control}
                   name="password"
                   label="Nouveau mot de passe"
+                  testID="input-reset-password-new"
                   secureTextEntry={!showPassword}
                   rightIcon={
                     showPassword ? (
@@ -166,6 +169,7 @@ export default function ResetPasswordScreen() {
                   control={control}
                   name="confirmPassword"
                   label="Confirmer le mot de passe"
+                  testID="input-reset-password-confirm"
                   secureTextEntry={!showPassword}
                   rightIcon={
                     showPassword ? (
@@ -188,6 +192,7 @@ export default function ResetPasswordScreen() {
               </View>
 
               <Button
+                testID="btn-reset-password-submit"
                 onPress={handleSubmit(onSubmit)}
                 loading={isSubmitting}
                 className="w-full mt-6"

@@ -92,6 +92,7 @@ export default function ForgotPasswordScreen() {
                 control={control}
                 name="email"
                 label="Adresse email"
+                testID="input-forgot-password-email"
                 helperText="Format : jean.dupont@email.com"
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -101,6 +102,7 @@ export default function ForgotPasswordScreen() {
               />
 
               <Button
+                testID="btn-forgot-password-submit"
                 onPress={handleSubmit(onSubmit)}
                 loading={isSubmitting}
                 className="w-full"

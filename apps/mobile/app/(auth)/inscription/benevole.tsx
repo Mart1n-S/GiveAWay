@@ -645,6 +645,7 @@ export default function RegisterBenevoleScreen() {
                 control={controlVerify}
                 name="code"
                 label="Code à 6 chiffres"
+                testID="input-verify-code"
                 helperText="Format : 123456"
                 keyboardType="number-pad"
                 maxLength={6}
@@ -653,6 +654,7 @@ export default function RegisterBenevoleScreen() {
               />
 
               <Button
+                testID="btn-submit-verify-code"
                 onPress={handleSubmitVerify(onVerifySubmit)}
                 loading={isSubmitting}
                 className="w-full"

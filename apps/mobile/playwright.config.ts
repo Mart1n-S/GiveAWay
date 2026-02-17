@@ -14,27 +14,29 @@ dotenv.config({ path: path.resolve(__dirname, "../../.env.test") });
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
-  testDir: './tests',
+  testDir: "./tests",
+  timeout: 30000,
+  expect: { timeout: 8000 },
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
-  globalTeardown: require.resolve('./tests/global-teardown'),
+  retries: 2,
+  workers: 1,
+  reporter: "html",
+  globalTeardown: require.resolve("./tests/global-teardown"),
 
   use: {
-    baseURL: 'http://localhost:8081', 
-    trace: 'on-first-retry',
+    baseURL: "http://localhost:8081",
+    trace: "on-first-retry",
   },
 
   projects: [
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"] },
     },
     {
-      name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'] },
+      name: "Mobile Chrome",
+      use: { ...devices["Pixel 5"] },
     },
 
     /* Test against mobile viewports. */

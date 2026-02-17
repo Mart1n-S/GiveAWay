@@ -146,7 +146,10 @@ export default function LoginScreen() {
             <View className="gap-4">
               {/* Message d'erreur global */}
               {control._formState.errors.root?.message && (
-                <View className="p-3 mb-2 border rounded-md bg-error-30 border-error-100">
+                <View
+                  testID="error-banner-root"
+                  className="p-3 mb-2 border rounded-md bg-error-30 border-error-100"
+                >
                   <Text className="text-sm text-center text-error-100">
                     {control._formState.errors.root.message}
                   </Text>
@@ -158,6 +161,7 @@ export default function LoginScreen() {
                 control={control}
                 name="email"
                 label="Email"
+                testID="input-login-email"
                 placeholder="exemple@email.com"
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -171,6 +175,7 @@ export default function LoginScreen() {
                 control={control}
                 name="password"
                 label="Mot de passe"
+                testID="input-login-password"
                 placeholder="Votre mot de passe"
                 secureTextEntry={!showPassword}
                 rightIcon={
@@ -190,7 +195,7 @@ export default function LoginScreen() {
               {/* Mot de passe oublié */}
               <View className="items-end">
                 <Link href="/mot-de-passe-oublie" asChild>
-                  <TouchableOpacity>
+                  <TouchableOpacity testID="link-forgot-password">
                     <Text className="text-sm font-medium text-primary-600">
                       Mot de passe oublié ?
                     </Text>
@@ -200,6 +205,7 @@ export default function LoginScreen() {
 
               {/* Bouton Submit */}
               <Button
+                testID="btn-login-submit"
                 onPress={handleSubmit(onSubmit)}
                 loading={isSubmitting}
                 className="mt-4"

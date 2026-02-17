@@ -198,6 +198,7 @@ export default function DemandeVerificationEmailScreen() {
                 control={controlRequest}
                 name="email"
                 label="Votre adresse email"
+                testID="input-request-email"
                 helperText="Format : jean.dupont@email.com"
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -208,6 +209,7 @@ export default function DemandeVerificationEmailScreen() {
               />
 
               <Button
+                testID="btn-submit-request-email"
                 onPress={handleSubmitRequest(handleRequestOrResend)}
                 loading={isSubmitting}
                 className="w-full"
@@ -244,6 +246,7 @@ export default function DemandeVerificationEmailScreen() {
                 control={controlVerify}
                 name="code"
                 label="Code à 6 chiffres"
+                testID="input-verify-code"
                 helperText="Format : 123456"
                 keyboardType="number-pad"
                 maxLength={6}
@@ -252,6 +255,7 @@ export default function DemandeVerificationEmailScreen() {
               />
 
               <Button
+                testID="btn-submit-verify-code"
                 onPress={handleSubmitVerify(onVerifySubmit)}
                 loading={isSubmitting}
                 className="w-full"
@@ -262,6 +266,7 @@ export default function DemandeVerificationEmailScreen() {
               <View className="items-center mt-2">
                 <Button
                   variant="secondary"
+                  testID="btn-resend-code"
                   onPress={() =>
                     handleRequestOrResend({ email: registeredEmail })
                   }
@@ -280,6 +285,7 @@ export default function DemandeVerificationEmailScreen() {
 
                 <Button
                   variant="tertiary"
+                  testID="btn-change-email"
                   className="w-full mt-4"
                   onPress={handleBackToRequest}
                 >
