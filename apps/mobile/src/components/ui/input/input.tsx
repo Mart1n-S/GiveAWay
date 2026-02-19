@@ -118,7 +118,11 @@ export function Input({
             ],
 
           // Hover (WEB ONLY)
-          isWeb && !disabled && !isError && !isFocused && "hover:border-primary"
+          isWeb &&
+            !disabled &&
+            !isError &&
+            !isFocused &&
+            "hover:border-primary",
         )}
       >
         {/* ---------- LEFT ICON ---------- */}

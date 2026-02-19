@@ -178,7 +178,7 @@ api.interceptors.response.use(
                     "x-client-type": "mobile",
                   }
                 : undefined,
-          }
+          },
         );
 
         // --- GESTION DE LA RÉPONSE (Adaptative) ---
@@ -193,9 +193,7 @@ api.interceptors.response.use(
           }
 
           // Mise à jour du store manuel
-          useAuthStore
-            .getState()
-            .setTokens(accessToken, newRefreshToken);
+          useAuthStore.getState().setTokens(accessToken, newRefreshToken);
 
           if (originalRequest.headers) {
             originalRequest.headers.Authorization = `Bearer ${accessToken}`;
@@ -222,5 +220,5 @@ api.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );

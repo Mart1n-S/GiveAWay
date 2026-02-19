@@ -265,8 +265,9 @@ export function WebNavBar({
               }}
             >
               <SafeAreaView className="flex-1">
-                <View className="flex-row items-center justify-between h-16 px-4 border-b border-grey-100"
-                accessibilityRole="header"
+                <View
+                  className="flex-row items-center justify-between h-16 px-4 border-b border-grey-100"
+                  accessibilityRole="header"
                 >
                   {logoComponent}
                   <Button

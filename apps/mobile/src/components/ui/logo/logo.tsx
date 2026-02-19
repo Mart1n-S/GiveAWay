@@ -26,10 +26,7 @@ export function Logo({
       {...props}
       accessibilityRole="image"
       accessibilityLabel="Logo GiveAWay"
-      className={clsx(
-        "flex-row items-center gap-3",
-        className,
-      )}
+      className={clsx("flex-row items-center gap-3", className)}
     >
       {/* Conteneur de l'icône SVG */}
       {/* On force la taille du conteneur, l'icône SVG dedans devra être en width/height 100% */}

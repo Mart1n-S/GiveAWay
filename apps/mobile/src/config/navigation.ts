@@ -50,7 +50,7 @@ export const USER_LINKS: NavLink[] = [
   },
 ];
 
-// 3. LIENS D'AUTH 
+// 3. LIENS D'AUTH
 export const AUTH_ROUTES = {
   login: "/connexion",
   register: "/inscription",

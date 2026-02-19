@@ -23,9 +23,19 @@
         "$TURBO_DEFAULT$"
       ]
     },
+    "test:cov": {
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**"],
+      "inputs": [
+        "src/**/*.tsx",
+        "src/**/*.ts",
+        "test/**/*.ts",
+        "$TURBO_DEFAULT$"
+      ]
+    },
     "test:e2e": {
       "cache": false,
-      "interactive": true
+      "interactive": false
     },
     "dev": {
       "cache": false,

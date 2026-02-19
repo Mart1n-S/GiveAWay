@@ -36,7 +36,6 @@ config.resolver = {
 config.watchFolders = [workspaceRoot];
 
 // Aider Metro à trouver les node_modules (locaux + racine)
-// Note: On ajoute cela à l'objet 'resolver' que nous venons de modifier plus haut
 config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, "node_modules"),
   path.resolve(workspaceRoot, "node_modules"),
@@ -50,6 +49,7 @@ config.resolver.unstable_conditionNames = [
     'react-native',
     'default',
 ]
+
 // =================================================================
 // 5. EXPORT AVEC NATIVEWIND
 // =================================================================

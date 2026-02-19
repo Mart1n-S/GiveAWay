@@ -38,7 +38,7 @@ export function TextArea({
   const [contentHeight, setContentHeight] = useState(0);
 
   const [textLength, setTextLength] = useState(
-    (value || defaultValue || "").length
+    (value || defaultValue || "").length,
   );
 
   const inputRef = useRef<TextInput>(null);
@@ -108,7 +108,7 @@ export function TextArea({
               "text-sm font-semibold",
               isError ? "text-error-100" : "text-grey-800",
               isWeb && !disabled && "cursor-pointer",
-              isWeb && disabled && "cursor-not-allowed"
+              isWeb && disabled && "cursor-not-allowed",
             )}
           >
             {label}
@@ -123,7 +123,7 @@ export function TextArea({
             className={clsx(
               "text-xs",
               textLength >= maxLength ? "text-error-100" : "text-grey-600",
-              disabled && "text-grey-400"
+              disabled && "text-grey-400",
             )}
           >
             {textLength}/{maxLength}
@@ -163,7 +163,11 @@ export function TextArea({
             ],
 
           isWeb && disabled && "web:cursor-not-allowed",
-          isWeb && !disabled && !isError && !isFocused && "hover:border-primary"
+          isWeb &&
+            !disabled &&
+            !isError &&
+            !isFocused &&
+            "hover:border-primary",
         )}
       >
         <TextInput
@@ -173,7 +177,7 @@ export function TextArea({
           accessibilityLabelledBy={labelId}
           aria-describedby={clsx(
             helperText && helperTextId,
-            errorMessage && errorTextId
+            errorMessage && errorTextId,
           )}
           multiline
           textAlignVertical="top"
@@ -201,7 +205,7 @@ export function TextArea({
             "w-full bg-transparent p-0 border-0 text-base font-sans leading-5",
             isWeb && "outline-none resize-y",
             disabled ? "text-grey-disabledText" : "text-grey-800",
-            className
+            className,
           )}
         />
       </Pressable>

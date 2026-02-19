@@ -93,7 +93,9 @@ describe("VerifyEmail DTOs", () => {
 
       expect(res.success).toBe(false);
       if (!res.success) {
-        expect(res.error.issues[0].message).toContain("ne doit contenir que des chiffres");
+        expect(res.error.issues[0].message).toContain(
+          "ne doit contenir que des chiffres",
+        );
       }
     });
   });

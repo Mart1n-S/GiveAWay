@@ -93,7 +93,7 @@ export function Button({
         // S'applique uniquement si la prop disabled est true (pas juste loading)
         disabled && "bg-grey-100 border border-grey-100",
 
-        className
+        className,
       )}
     >
       {/* 1. LE CONTENU (Texte + Icone)
@@ -103,7 +103,7 @@ export function Button({
       <View
         className={clsx(
           "flex-row items-center justify-center gap-2",
-          loading && "opacity-0"
+          loading && "opacity-0",
         )}
       >
         {icon && <View>{icon}</View>}
@@ -119,7 +119,7 @@ export function Button({
                   isInteractive && "group-hover:text-primary-hover",
                   isInteractive && "group-active:text-primary-active",
                 ],
-              disabled && "text-grey-disabledText"
+              disabled && "text-grey-disabledText",
             )}
           >
             {children}

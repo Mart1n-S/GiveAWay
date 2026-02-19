@@ -220,7 +220,7 @@ describe("AddressSchema", () => {
       if (!result.success) {
         // Le message d'erreur par défaut de Zod pour un mauvais type
         expect(result.error.issues[0].message).toContain(
-          "expected string, received number"
+          "expected string, received number",
         );
       }
     });

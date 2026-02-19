@@ -57,7 +57,8 @@ export const AddressAutocomplete = ({
     (error as any)?.postalCode?.message ||
     (globalError ? "Le code postal est obligatoire" : undefined);
   const cityError =
-    (error as any)?.city?.message || (globalError ? "La ville est obligatoire" : undefined);
+    (error as any)?.city?.message ||
+    (globalError ? "La ville est obligatoire" : undefined);
 
   // Synchronisation avec la valeur externe
   useEffect(() => {
@@ -255,4 +256,4 @@ export const AddressAutocomplete = ({
       </View>
     </View>
   );
-};;
+};

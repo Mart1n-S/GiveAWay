@@ -177,9 +177,7 @@ export const AuthService = {
    * POST /auth/reset-password
    * Définit un nouveau mot de passe via le code reçu par mail
    */
-  resetPassword: async (
-    dto: ResetPasswordDto,
-  ) => {
+  resetPassword: async (dto: ResetPasswordDto) => {
     const response = await api.post<{ message: string }>(
       "/auth/reset-password",
       dto,

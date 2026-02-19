@@ -4,10 +4,6 @@ import { TextProps } from "./text.types";
 
 export function Text({ className, style, ...props }: TextProps) {
   return (
-    <RNText
-      {...props}
-      style={style}
-      className={clsx("font-sans", className)}
-    />
+    <RNText {...props} style={style} className={clsx("font-sans", className)} />
   );
 }

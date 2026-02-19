@@ -675,7 +675,7 @@ export class AuthService {
 
       // 2. Génération du code à 6 chiffres en mode test on force le code à "123456" pour faciliter les tests automatisés
       let code: string;
-      if (process.env.NODE_ENV === 'test') {
+      if (process.env.USE_DETERMINISTIC_OTP === 'true') {
         // On génère un code unique basé sur l'ID utilisateur (ex: ID 42 -> 000042)
         // Cela garantit que le hash en BDD sera UNIQUE pour chaque utilisateur
         code = userId.toString().padStart(6, '0');

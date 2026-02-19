@@ -1,4 +1,4 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices } from "@playwright/test";
 import dotenv from "dotenv";
 import path from "path";
 /**
@@ -10,12 +10,21 @@ import path from "path";
 // dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 dotenv.config({ path: path.resolve(__dirname, "../../.env.test") });
+
+if (process.env.CI) {
+  process.env.NODE_ENV = "development";
+}
+
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
-  testDir: "./tests",
-  timeout: 30000,
+  testDir: path.join(__dirname, "tests"),
+  /* On cible uniquement les fichiers de tests E2E front */
+  testMatch: "**/*.spec.ts",
+  /* Sécurité supplémentaire pour ignorer le reste du monorepo */
+  testIgnore: ["**/node_modules/**", "**/apps/api/**", "**/packages/shared/**"],
+  timeout: 50000,
   expect: { timeout: 8000 },
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
@@ -38,32 +47,28 @@ export default defineConfig({
       name: "Mobile Chrome",
       use: { ...devices["Pixel 5"] },
     },
-
-    /* Test against mobile viewports. */
-    // {
-    //   name: 'Mobile Chrome',
-    //   use: { ...devices['Pixel 5'] },
-    // },
-    // {
-    //   name: 'Mobile Safari',
-    //   use: { ...devices['iPhone 12'] },
-    // },
-
-    /* Test against branded browsers. */
-    // {
-    //   name: 'Microsoft Edge',
-    //   use: { ...devices['Desktop Edge'], channel: 'msedge' },
-    // },
-    // {
-    //   name: 'Google Chrome',
-    //   use: { ...devices['Desktop Chrome'], channel: 'chrome' },
-    // },
   ],
 
   /* Run your local dev server before starting the tests */
-  // webServer: {
-  //   command: 'npm run start',
-  //   url: 'http://localhost:3000',
-  //   reuseExistingServer: !process.env.CI,
-  // },
+  webServer: [
+    {
+      command: "npm run start --prefix ../../ --workspace=api",
+      port: 3000,
+      reuseExistingServer: !process.env.CI,
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+    {
+      command: "npx expo start --web",
+      port: 8081,
+      reuseExistingServer: !process.env.CI,
+      timeout: 300000,
+      stdout: "pipe",
+      stderr: "pipe",
+      env: {
+        EXPO_ROUTER_APP_ROOT: "app",
+        NODE_ENV: "development",
+      },
+    },
+  ],
 });

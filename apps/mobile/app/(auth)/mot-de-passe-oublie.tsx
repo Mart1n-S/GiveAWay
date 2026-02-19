@@ -43,7 +43,7 @@ export default function ForgotPasswordScreen() {
 
       // On redirige vers la page suivante en passant l'email
       router.push({
-        pathname: "/reinitialisation-mot-de-passe"
+        pathname: "/reinitialisation-mot-de-passe",
       });
     } catch (error) {
       // Le backend renvoie un message générique pour la sécurité (même si l'email n'existe pas)

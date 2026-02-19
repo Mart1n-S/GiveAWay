@@ -148,11 +148,11 @@ export function AppShell({ children, layoutType = "main" }: AppShellProps) {
               />
             }
             menuIcon={
-                  <MenuIcon className="w-6 h-6 text-grey-800 group-hover:text-primary-hover group-active:text-primary-active" />
-                }
-                closeIcon={
-                  <CloseIcon className="w-6 h-6 text-primary group-hover:text-primary-hover group-active:text-primary-active" />
-                }
+              <MenuIcon className="w-6 h-6 text-grey-800 group-hover:text-primary-hover group-active:text-primary-active" />
+            }
+            closeIcon={
+              <CloseIcon className="w-6 h-6 text-primary group-hover:text-primary-hover group-active:text-primary-active" />
+            }
             mainLinks={mainLinks}
             bottomLinks={bottomLinks}
             secondaryLinks={[]}

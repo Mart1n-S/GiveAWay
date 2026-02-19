@@ -15,7 +15,8 @@
     "build": "tsc",
     "check-types": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "jest"
+    "test": "jest",
+    "test:cov": "jest --coverage"
   },
   "dependencies": {
     "zod": "^4.2.1"

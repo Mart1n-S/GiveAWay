@@ -8,6 +8,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
     "prisma:generate": "npm run prisma:generate --workspace=apps/api",
+    "test:cov": "turbo run test:cov",
     "test": "turbo run test",
     "test:e2e": "turbo run test:e2e --filter=api",
     "test:e2e:mobile": "turbo run test:e2e --filter=mobile",

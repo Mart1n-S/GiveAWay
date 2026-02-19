@@ -54,7 +54,9 @@ export default function ResetPasswordScreen() {
       Toast.show({
         type: "success",
         text1: "Mot de passe modifié",
-        text2: response.message || "Votre mot de passe a été réinitialisé avec succès.",
+        text2:
+          response.message ||
+          "Votre mot de passe a été réinitialisé avec succès.",
         visibilityTime: 10000,
         onPress: () => Toast.hide(),
       });

@@ -14,7 +14,6 @@ export function MenuItem({
   disabled,
   ...props
 }: MenuItemProps) {
-
   const iconColorClass = clsx(
     disabled && "text-grey-disabledText",
 
@@ -89,12 +88,7 @@ export function MenuItem({
         )}
 
         {/* Label */}
-        <Text
-          className={clsx(
-            "text-base font-medium",
-            iconColorClass,
-          )}
-        >
+        <Text className={clsx("text-base font-medium", iconColorClass)}>
           {label}
         </Text>
       </View>

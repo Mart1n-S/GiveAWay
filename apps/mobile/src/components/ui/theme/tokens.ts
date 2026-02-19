@@ -81,20 +81,20 @@ export const colors = {
 };
 
 export const radius = {
-    md: 6,
+  md: 6,
 };
 
 export const sizing = {
-    controlHeight: 44, // px — buttons, inputs, selects
+  controlHeight: 44, // px — buttons, inputs, selects
 };
 
 export const typography = {
-    fontFamily: 'Open Sans',
-    baseFontSize: 16,
-    lineHeight: 1.5,
-    weight: {
-        regular: 400,
-        semibold: 600,
-        bold: 700,
-    },
+  fontFamily: "Open Sans",
+  baseFontSize: 16,
+  lineHeight: 1.5,
+  weight: {
+    regular: 400,
+    semibold: 600,
+    bold: 700,
+  },
 };

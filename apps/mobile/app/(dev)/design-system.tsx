@@ -129,11 +129,17 @@ const PaletteRow = ({
   name: string;
 }) => (
   <View className="mb-6">
-    <Text className="mb-3 text-sm font-bold uppercase text-grey-500">{name}</Text>
+    <Text className="mb-3 text-sm font-bold uppercase text-grey-500">
+      {name}
+    </Text>
     <View className="flex-row flex-wrap gap-2">
       {Object.entries(palette).map(([key, value]) => {
         // Calcul simple pour le contraste du texte (blanc sur foncé, noir sur clair)
-        const isDark = parseInt(key) >= 500 || key === "active" || key === "hover" || key === "strong";
+        const isDark =
+          parseInt(key) >= 500 ||
+          key === "active" ||
+          key === "hover" ||
+          key === "strong";
         return (
           <View
             key={key}

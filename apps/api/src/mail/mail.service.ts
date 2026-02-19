@@ -49,7 +49,9 @@ export class MailService {
 
   // Email de réinitialisation du mot de passe (Mot de passe oublié)
   async sendPasswordResetEmail(email: string, token: string) {
-    console.log(`\n📨 [MAIL SERVICE] Réinitialisation de mot de passe pour : ${email}`);
+    console.log(
+      `\n📨 [MAIL SERVICE] Réinitialisation de mot de passe pour : ${email}`,
+    );
     console.log(`🔢 Code de réinitialisation : ${token}`);
     console.log(`⏳ Expire dans : 15 minutes\n`);
 

@@ -166,7 +166,6 @@ describe("Register DTOs", () => {
       expect(res.success).toBe(true);
     });
 
-
     // --- Validation Croisée (Confirm Password) ---
     it("Doit rejeter si confirmation différente du mot de passe", () => {
       const res = RegisterSchema.safeParse({

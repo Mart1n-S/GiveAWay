@@ -108,7 +108,8 @@ export default function LoginScreen() {
         Toast.show({
           type: "error",
           text1: "Erreur réseau",
-          text2: "Impossible de contacter le serveur. Vérifiez votre connexion.",
+          text2:
+            "Impossible de contacter le serveur. Vérifiez votre connexion.",
           visibilityTime: 10000,
           onPress: () => Toast.hide(),
         });

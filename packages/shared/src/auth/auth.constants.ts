@@ -46,10 +46,8 @@ export const NAME_REGEX = /^[a-zA-ZÀ-ÿ\s\-\']+$/;
  */
 export const formatFirstName = (val: string) => {
   if (!val) return val;
-  
-  return val
-    .toLowerCase()
-    .replace(/(?:^|[\s\-\'])([a-zA-ZÀ-ÿ])/g, (match) => {
-      return match.toUpperCase();
-    });
+
+  return val.toLowerCase().replace(/(?:^|[\s\-\'])([a-zA-ZÀ-ÿ])/g, (match) => {
+    return match.toUpperCase();
+  });
 };
