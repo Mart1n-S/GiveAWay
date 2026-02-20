@@ -100,7 +100,6 @@
       "!main.ts",
       "!**/*.module.ts",
       "!**/*.interface.ts",
-      "!**/*.strategy.ts",
       "!generated/**/*"
     ],
     "coverageDirectory": "../coverage",
