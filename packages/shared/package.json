@@ -2,7 +2,6 @@
   "name": "@repo/shared",
   "version": "1.0.0",
   "private": true,
-  "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -15,12 +14,23 @@
     "dev": "tsc --watch",
     "build": "tsc",
     "check-types": "tsc --noEmit",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "jest",
+    "test:cov": "jest --coverage"
   },
-  "dependencies": {},
+  "dependencies": {
+    "zod": "^4.2.1"
+  },
   "devDependencies": {
-    "typescript": "^5.9.2",
+    "@repo/eslint-config": "*",
     "eslint": "^9.18.0",
-    "@repo/eslint-config": "*"
+    "typescript": "^5.9.2",
+    "@types/jest": "^30.0.0",
+    "jest": "^30.0.0",
+    "ts-jest": "^29.2.5"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node"
   }
 }
