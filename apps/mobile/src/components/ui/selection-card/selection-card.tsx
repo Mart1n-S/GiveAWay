@@ -44,7 +44,7 @@ export const SelectionCard = ({
       )}
     >
       {/* --- BADGE (Optionnel) --- */}
-      {badgeText && (
+      {!!badgeText && (
         <View className="absolute px-3 py-1 rounded-full top-4 right-4 bg-white-active">
           <Text className="text-xs font-bold text-primary">{badgeText}</Text>
         </View>

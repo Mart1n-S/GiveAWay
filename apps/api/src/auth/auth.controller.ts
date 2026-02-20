@@ -14,6 +14,7 @@ import {
   UseGuards,
   Ip,
   UnauthorizedException,
+  Inject,
 } from '@nestjs/common';
 import { GuestGuard } from './guards/guest.guard';
 import { Response } from 'express';
@@ -24,7 +25,6 @@ import {
   IFileService,
   FILE_SERVICE,
 } from '../common/files/interfaces/file-service.interface';
-import { Inject } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
   RegisterDto,
@@ -87,8 +87,6 @@ export class AuthController {
       return await this.authService.register(dtoWithImage);
     } catch (error) {
       // 4. Filet de sécurité (Rollback)
-      // Si la BDD plante au dernier moment, on nettoie l'image.
-      console.error("Erreur lors de l'inscription, nettoyage en cours", error);
       if (profilePictureUrl) {
         this.fileService
           .deleteFile(profilePictureUrl)

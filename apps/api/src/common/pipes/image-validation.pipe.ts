@@ -65,7 +65,6 @@ export class ImageValidationPipe implements PipeTransform {
       }
 
       // Erreur inattendue (buffer corrompu, etc.)
-      console.error('Erreur inattendue lors de la validation image:', error);
       throw new UnprocessableEntityException(
         'Impossible de valider le fichier.',
       );

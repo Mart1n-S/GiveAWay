@@ -10,7 +10,7 @@ import { UserStatus } from '../generated/prisma/client';
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(
     config: ConfigService,
-    private prisma: PrismaService,
+    private readonly prisma: PrismaService,
   ) {
     super({
       // Cookies (Web) OU Header (Mobile)
@@ -31,7 +31,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   }
 
   async validate(payload: { sub: string; email: string }) {
-    const userId = parseInt(payload.sub, 10);
+    const userId = Number.parseInt(payload.sub, 10);
 
     // 1. Vérification en BDD
     const user = await this.prisma.user.findUnique({

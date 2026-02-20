@@ -39,12 +39,12 @@ export const AddressSchema = z
         ),
 
       latitude: z.preprocess(
-        (val) => (typeof val === "string" ? parseFloat(val) : val),
+        (val) => (typeof val === "string" ? Number.parseFloat(val) : val),
         z.number().min(-90).max(90).optional(),
       ),
 
       longitude: z.preprocess(
-        (val) => (typeof val === "string" ? parseFloat(val) : val),
+        (val) => (typeof val === "string" ? Number.parseFloat(val) : val),
         z.number().min(-180).max(180).optional(),
       ),
     },

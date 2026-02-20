@@ -7,9 +7,9 @@ import {
   IFileService,
   FileUploadResult,
 } from '../interfaces/file-service.interface';
-import * as fs from 'fs';
-import * as path from 'path';
-import { randomUUID } from 'crypto';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { randomUUID } from 'node:crypto';
 
 @Injectable()
 export class LocalFileService implements IFileService {

@@ -110,7 +110,7 @@ export function NavigationMenu({
                 >
                   {user?.name}
                 </Text>
-                {user?.email && (
+                {!!user?.email && (
                   <Text className="text-sm text-grey-600" numberOfLines={1}>
                     {user?.email}
                   </Text>

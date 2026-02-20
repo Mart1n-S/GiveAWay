@@ -4,7 +4,7 @@ import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class MailService {
-  private transporter;
+  private readonly transporter;
 
   constructor(private readonly config: ConfigService) {
     // Configuration du transporteur (Mock pour le moment)

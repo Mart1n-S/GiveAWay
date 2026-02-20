@@ -212,7 +212,7 @@ export function TextArea({
 
       {/* ---------- HELPERS / ERREURS ---------- */}
       <View className="flex-col gap-0.5">
-        {helperText && (
+        {!!helperText && (
           <Text
             nativeID={helperTextId}
             className="text-xs text-grey-700 mt-0.5"
@@ -221,7 +221,7 @@ export function TextArea({
           </Text>
         )}
 
-        {errorMessage && (
+        {!!errorMessage && (
           <Text
             nativeID={errorTextId}
             className="text-xs text-error-100 font-medium mt-0.5"

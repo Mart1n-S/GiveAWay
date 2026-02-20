@@ -77,7 +77,7 @@ export const TermsCheckbox = ({
       </TouchableOpacity>
 
       {/* 2. Message d'erreur */}
-      {errorMessage && (
+      {!!errorMessage && (
         <Text className="mb-4 text-xs text-error-100">{errorMessage}</Text>
       )}
 

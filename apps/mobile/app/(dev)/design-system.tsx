@@ -60,7 +60,7 @@ const SectionTitle = ({
 }) => (
   <View className="pb-2 mb-4 border-b border-grey-100">
     <Text className="text-xl font-bold text-grey-800">{title}</Text>
-    {description && (
+    {!!description && (
       <Text className="mt-1 text-sm text-grey-600">{description}</Text>
     )}
   </View>
@@ -89,7 +89,7 @@ const ApiProp = ({
       <View className="bg-grey-200 px-1.5 py-0.5 rounded">
         <Text className="text-[10px] font-mono text-grey-700">{type}</Text>
       </View>
-      {defaultValue && (
+      {!!defaultValue && (
         <Text className="text-[10px] text-grey-500">
           Défaut: {defaultValue}
         </Text>
@@ -136,7 +136,7 @@ const PaletteRow = ({
       {Object.entries(palette).map(([key, value]) => {
         // Calcul simple pour le contraste du texte (blanc sur foncé, noir sur clair)
         const isDark =
-          parseInt(key) >= 500 ||
+          Number.parseInt(key) >= 500 ||
           key === "active" ||
           key === "hover" ||
           key === "strong";

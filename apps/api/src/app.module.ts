@@ -2,14 +2,12 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { AppController } from './app.controller';
 import { MulterModule } from '@nestjs/platform-express';
-import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { MailModule } from './mail/mail.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
-import { join } from 'path';
+import { join } from 'node:path';
 import { FilesModule } from './common/files/files.module';
 
 @Module({
@@ -62,10 +60,8 @@ import { FilesModule } from './common/files/files.module';
     AuthModule, // Authentification
     FilesModule, // Gestion des fichiers (upload, stockage, suppression)
   ],
-  controllers: [AppController],
+  controllers: [],
   providers: [
-    AppService,
-
     // Guard global Throttler - DÉSACTIVÉ en test
     ...(process.env.THROTTLER_DISABLED === 'true'
       ? [] // Pas de guard en test

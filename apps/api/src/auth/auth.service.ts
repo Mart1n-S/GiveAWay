@@ -10,8 +10,8 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import type { SignOptions } from 'jsonwebtoken';
 import { hash, verify } from 'argon2';
-import * as crypto from 'crypto';
-import { randomInt } from 'crypto';
+import * as crypto from 'node:crypto';
+import { randomInt } from 'node:crypto';
 
 import { PrismaService } from '../prisma/prisma.service';
 import {

@@ -38,7 +38,7 @@ export class JwtRefreshStrategy extends PassportStrategy(
 
     return {
       ...payload,
-      sub: parseInt(payload.sub, 10),
+      sub: Number.parseInt(payload.sub, 10),
       refreshToken,
     };
   }

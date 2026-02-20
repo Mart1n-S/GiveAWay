@@ -72,7 +72,7 @@ export function Input({
   return (
     <View className={clsx("flex-col gap-1.5 w-full", containerClassName)}>
       {/* ---------- LABEL ---------- */}
-      {label && (
+      {!!label && (
         <Text
           nativeID={labelId}
           onPress={handleLabelPress}
@@ -189,7 +189,7 @@ export function Input({
 
       {/* ---------- HELPERS ---------- */}
       <View className="flex-col gap-0.5">
-        {helperText && (
+        {!!helperText && (
           <Text
             nativeID={helperTextId}
             className="text-xs text-grey-700 mt-0.5"
@@ -198,7 +198,7 @@ export function Input({
           </Text>
         )}
 
-        {errorMessage && (
+        {!!errorMessage && (
           <Text
             nativeID={errorTextId}
             className="text-xs text-error-100 font-medium mt-0.5"

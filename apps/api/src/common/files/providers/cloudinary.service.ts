@@ -34,7 +34,7 @@ export class CloudinaryService implements IFileService {
           // Nettoyage du nom de fichier pour le public_id
           public_id: file.originalname
             .split('.')[0]
-            .replace(/[^a-zA-Z0-9]/g, '_')
+            .replaceAll(/[^a-zA-Z0-9]/g, '_')
             .toLowerCase(),
           unique_filename: true,
           overwrite: false,

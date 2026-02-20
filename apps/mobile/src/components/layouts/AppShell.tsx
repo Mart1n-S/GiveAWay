@@ -57,12 +57,12 @@ const getIcon = (name: string | undefined, className = "w-5 h-5") => {
 };
 
 interface AppShellProps {
-  children: ReactNode;
+  readonly children: React.ReactNode;
   /**
    * 'main' = Barre affichée partout (Web + Mobile avec Burger).
    * 'subpage' = Barre affichée sur Web uniquement. Mobile utilise le header natif (Stack).
    */
-  layoutType?: "main" | "subpage";
+  readonly layoutType?: "main" | "subpage";
 }
 
 export function AppShell({ children, layoutType = "main" }: AppShellProps) {
@@ -103,7 +103,7 @@ export function AppShell({ children, layoutType = "main" }: AppShellProps) {
       return true;
     })
     .map((link) => {
-      const cleanHref = link.href.replace(/\/\([^)]+\)/g, "");
+      const cleanHref = link.href.replaceAll(/\/\([^)]+\)/g, "");
       return {
         ...link,
         icon: getIcon(link.iconName),

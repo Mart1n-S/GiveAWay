@@ -268,7 +268,7 @@ describe('Auth Module (E2E)', () => {
               fieldname: 'profilePicture',
               originalname: 'test-avatar.jpg',
               mimetype: 'image/jpeg',
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
               buffer: expect.any(Buffer),
             }),
             'avatars',

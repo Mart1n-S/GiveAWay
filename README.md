@@ -157,11 +157,40 @@ npm run prisma:generate
 
 ---
 
-### 5️⃣ Démarrer le développement
+### 5️⃣ Build du projet
+
+Pour compiler l'ensemble du projet (packages + applications) :
+
+```bash
+npx turbo build --force
+```
+
+---
+
+### 6️⃣ Démarrer le développement
 
 ```bash
 npm run dev
 ```
+
+---
+
+## 🧹 Linting & Code Quality
+
+Avant de committer votre code, pensez à vérifier les erreurs de linting :
+
+```bash
+npm run lint
+```
+
+Pour corriger automatiquement les erreurs détectées :
+
+```bash
+npm run lint -- --fix
+```
+
+> [!NOTE]
+> Les erreurs de linting **doivent être corrigées**, mais les warnings peuvent être tolérés et n'empêchent pas le commit.
 
 ---
 
