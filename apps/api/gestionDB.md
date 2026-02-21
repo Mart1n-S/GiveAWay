@@ -1,7 +1,7 @@
 # 🗄️ Gestion de la Base de Données (Prisma & Docker)
 
 Ce projet utilise **Prisma** avec une base de données **PostgreSQL** hébergée via Docker.
-L'architecture est configurée pour charger automatiquement les variables d'environnement depuis la racine du monorepo (`.env`).
+L'architecture est configurée pour charger automatiquement les variables d'environnement depuis la racine du monorepo (`.env` ou `.env.test`).
 
 ## 🚀 1. Pré-requis
 
@@ -12,7 +12,9 @@ Avant toute manipulation, assurez-vous que le conteneur Docker est lancé et tou
 docker-compose up -d
 
 ```
-
+* **BDD de Dev :** Port `5434` (externe) / `5432` (interne Docker)
+* **BDD de Test :** Port `5433` (externe) / `5432` (interne Docker)
+* **PgAdmin :** Port `8080` (externe) / `80` (interne Docker)
 ---
 
 ## 📝 2. Modifier la structure (Schéma)
@@ -66,18 +68,6 @@ npm run db:studio
 
 L'interface s'ouvrira automatiquement.
 
----
-
-C'est très clair ! Tu as tout à fait raison : puisque tu utilises le **PgAdmin fourni par Docker** (accessible via le navigateur), tu es "à l'intérieur" du réseau Docker.
-
-Du coup :
-
-1. L'hôte devient **`db`** (le nom du service Docker) et plus `localhost`.
-2. Le port devient **`5432`** (le port interne) et plus `5434`.
-
-Voici la section **5 mise à jour** pour ta documentation, avec les emplacements prévus pour tes screenshots.
-
----
 
 ## 🔌 5. Connexion via PgAdmin (Interface Web)
 
@@ -91,7 +81,7 @@ Cette méthode utilise l'interface PgAdmin incluse dans Docker, accessible via v
 - **Email :** (Voir `PGADMIN_DEFAULT_EMAIL` dans le .env)
 - **Mot de passe :** (Voir `PGADMIN_DEFAULT_PASSWORD` dans le .env)
 
-### B. Configuration du Serveur
+### B. Configuration du Serveur de Développement 🖥️
 
 Une fois connecté, suivez ces étapes pour ajouter la base de données :
 
@@ -116,13 +106,25 @@ Cliquez sur l'onglet **Connexion** et remplissez les champs **exactement** comme
 
 - **Host name / address :** `db`
 - **Port :** `5432`
-- **Maintenance database :** `giveaway`
+- **Maintenance database :** `postgres`
 - **Username :** (Voir `POSTGRES_USER` dans le .env, ex: `giveaway_admin`)
 - **Password :** (Voir `POSTGRES_PASSWORD` dans le .env)
 
 <img src="../../.github/pgadmin4.png" alt="Etape 4" width="400" />
 
 Cliquez sur **Save**. La connexion est établie ! 🚀
+
+### C. Configuration du Serveur de Test 🧪⚗️
+
+> Tout en restant connecté à PgAdmin, avec les identifiants de l'étape `A - Accès à l'interface`.
+
+Répétez les mêmes étapes que pour le serveur de développement, mais avec ces paramètres :
+- **Name :** `Giveaway_test`
+- **Host name / address :** `db_test`
+- **Port :** `5432`
+- **Maintenance database :** `postgres`
+- **Username :** (Voir `POSTGRES_USER` dans le compose.yml, ex: `postgres`)
+- **Password :** (Voir `POSTGRES_PASSWORD` dans le compose.yml, ex: `password`)
 
 ## 🆘 Résolution de problèmes courants
 

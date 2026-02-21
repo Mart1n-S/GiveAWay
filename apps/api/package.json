@@ -26,7 +26,8 @@
     "check-types": "tsc --noEmit",
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",
     "start:test": "dotenv -e ../../.env.test -- nest start --watch",
-    "db:test:migrate": "dotenv -e ../../.env.test -- prisma migrate dev"
+    "db:test:migrate": "dotenv -e ../../.env.test -- prisma migrate dev",
+    "seed": "prisma db seed"
   },
   "dependencies": {
     "@repo/shared": "*",
@@ -108,5 +109,8 @@
       "^src/(.*)$": "<rootDir>/$1",
       "^@repo/shared(|/.*)$": "<rootDir>/../../../packages/shared/src$1"
     }
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
   }
 }
