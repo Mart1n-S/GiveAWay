@@ -144,6 +144,25 @@ CLOUDINARY_API_SECRET=votre_api_secret
 
 _Si vous utilisez le mode local, vous pouvez laisser les variables Cloudinary vides._
 
+
+### 📧 Service d'e-mails (Brevo)
+
+Le projet utilise **Brevo** pour l'envoi des e-mails transactionnels (validation de compte, récupération de mot de passe).
+
+1. Créez un compte gratuit sur [Brevo](https://onboarding.brevo.com/account/register).
+2. Accédez à la section **SMTP & API** dans votre panel d'administration.
+3. Récupérez votre **Clé API** et configurez les variables suivantes :
+
+```bash
+BREVO_API_KEY=votre_cle_api_xkeysib
+MAIL_FROM_EMAIL=l_email_de_votre_compte_brevo
+MAIL_FROM_NAME=GiveAway
+
+```
+
+*Note : L'adresse e-mail utilisée dans `MAIL_FROM_EMAIL` doit être celle configurée comme expéditeur validé sur votre compte Brevo.*
+
+
 ---
 
 ### 3️⃣ Installation et Build
