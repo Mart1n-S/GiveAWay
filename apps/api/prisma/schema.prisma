@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -35,9 +32,56 @@ enum AssociationRole {
   EDITOR
 }
 
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+}
+
 enum TokenType {
   EMAIL_VERIFICATION
   PASSWORD_RESET
+}
+
+enum AvailabilityFrequency {
+  HOURS_WEEK // Quelques heures par semaine
+  HOURS_MONTH // Quelques heures par mois
+  DAYS_WEEK // Quelques jours par semaine
+  DAYS_MONTH // Quelques jours par mois
+  ONE_DAY // Une journée
+  PUNCTUAL // Quelques heures (ponctuel)
+}
+
+enum AvailabilityTime {
+  WEEKDAY // En semaine
+  WEEKEND // Le weekend
+  EVENING // En soirée
+  ALL_TIME // Peu importe
+}
+
+enum AvailabilityType {
+  REMOTE
+  ON_SITE
+  HYBRID
+}
+
+enum MissionStatus {
+  ACTIVE
+  ARCHIVED
+  DELETED
+}
+
+enum ActivityType {
+  MISSION     // Besoin de bénévoles (Bouton "Je participe")
+  EVENT       // Événement (Sans bouton d'inscription par défaut)
+  COLLECT     // Collecte de dons matériels
+  INFO        // Simple information / News
+}
+
+enum MissionFrequency {
+  ONCE
+  DAILY
+  WEEKLY
+  MONTHLY
 }
 
 // --- MODELS ---
@@ -53,7 +97,8 @@ model Address {
   // Relations inverses (Prisma en a besoin pour naviguer)
   users        User[]
   associations Association[]
-  
+  missions     Mission[] // Une adresse peut héberger plusieurs missions
+
   @@map("addresses") // Nom de la table en base
 }
 
@@ -76,17 +121,182 @@ model User {
 
   createdAt     DateTime    @default(now()) @map("created_at")
   updatedAt     DateTime    @updatedAt @map("updated_at")
+  deletedAt       DateTime?  @map("deleted_at")
 
   // Relations
-  addressId     Int?        @map("address_id")
-  address       Address?    @relation(fields: [addressId], references: [id])
+  addressId     Int?              @map("address_id")
+  address       Address?          @relation(fields: [addressId], references: [id])
+  associations  AssociationUser[]
+  refreshTokens RefreshToken[]
+  tokens        Token[]
 
-  associations AssociationUser[] // Un user peut être membre de plusieurs assos
-  refreshTokens RefreshToken[] 
-  tokens    Token[]
+  // Matching & Participation
+  skills        UserSkill[]
+  causes        UserCause[]
+  availability  UserAvailability?
+  participations MissionParticipant[]
 
   @@map("users")
 }
+
+// --- MODULE MISSIONS & ÉVÉNEMENTS ---
+
+model Mission {
+  id               Int           @id @default(autoincrement())
+  type             ActivityType  @default(MISSION)
+  title            String
+  description      String        @db.Text
+  hasRegistration  Boolean       @default(true) @map("has_registration")
+  status           MissionStatus @default(ACTIVE)
+  volunteersNeeded Int?          @map("volunteers_needed")
+  durationInt      Int?              @map("duration_minutes") // ex: 60, 120...
+  frequency        MissionFrequency? @default(ONCE)
+
+  startDate DateTime? @map("start_date")
+  endDate   DateTime? @map("end_date")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  associationId Int         @map("association_id")
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  // Passé en nullable pour les missions à distance
+  addressId Int?     @map("address_id")
+  address   Address? @relation(fields: [addressId], references: [id])
+
+  // Publics visés, Compétences et Valeurs et type de bénévoles
+  publicTypes    MissionPublicType[]
+  skills         MissionSkill[]
+  causes         MissionCause[]
+  volunteerTypes MissionVolunteerType[]
+  
+  // Participants (Uniquement si hasRegistration est true)
+  participants   MissionParticipant[]
+
+  @@map("missions")
+}
+
+model PublicType {
+  id       Int                 @id @default(autoincrement())
+  label    String              @unique // ex: Enfants, Seniors, Personnes handicapées
+  missions MissionPublicType[]
+
+  @@map("public_types")
+}
+
+model MissionPublicType {
+  missionId    Int        @map("mission_id")
+  publicTypeId Int        @map("public_type_id")
+  mission      Mission    @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  publicType   PublicType @relation(fields: [publicTypeId], references: [id], onDelete: Cascade)
+
+  @@id([missionId, publicTypeId])
+  @@map("mission_public_types")
+}
+
+model VolunteerType {
+  id       Int                    @id @default(autoincrement())
+  label    String                 @unique // ex: Ouvert à tous, Condition physique, Majeurs uniquement
+  missions MissionVolunteerType[]
+
+  @@map("volunteer_types")
+}
+
+model MissionVolunteerType {
+  missionId       Int           @map("mission_id")
+  volunteerTypeId Int           @map("volunteer_type_id")
+  mission         Mission       @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  volunteerType   VolunteerType @relation(fields: [volunteerTypeId], references: [id], onDelete: Cascade)
+
+  @@id([missionId, volunteerTypeId])
+  @@map("mission_volunteer_types")
+}
+
+model MissionParticipant {
+  missionId Int      @map("mission_id")
+  userId    Int      @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  mission   Mission  @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([missionId, userId])
+  @@map("mission_participants")
+}
+
+// --- MODULE MATCHING ---
+
+model Skill {
+  id       Int            @id @default(autoincrement())
+  label    String         @unique
+  users    UserSkill[]
+  missions MissionSkill[]
+
+  @@map("skills")
+}
+
+model UserSkill {
+  userId  Int   @map("user_id")
+  skillId Int   @map("skill_id")
+  user    User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill   Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([userId, skillId])
+  @@map("user_skills")
+}
+
+model Cause {
+  id       Int            @id @default(autoincrement())
+  label    String         @unique
+  users    UserCause[]
+  missions MissionCause[]
+
+  @@map("causes")
+}
+
+model UserCause {
+  userId  Int   @map("user_id")
+  causeId Int   @map("cause_id")
+  user    User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cause   Cause @relation(fields: [causeId], references: [id], onDelete: Cascade)
+
+  @@id([userId, causeId])
+  @@map("user_causes")
+}
+
+model MissionSkill {
+  missionId Int     @map("mission_id")
+  skillId   Int     @map("skill_id")
+  mission   Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  skill     Skill   @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([missionId, skillId])
+  @@map("mission_skills")
+}
+
+model MissionCause {
+  missionId Int     @map("mission_id")
+  causeId   Int     @map("cause_id")
+  mission   Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  cause     Cause   @relation(fields: [causeId], references: [id], onDelete: Cascade)
+
+  @@id([missionId, causeId])
+  @@map("mission_causes")
+}
+
+model UserAvailability {
+  id        Int                   @id @default(autoincrement())
+  userId    Int                   @unique @map("user_id")
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  frequency AvailabilityFrequency @default(HOURS_WEEK)
+  timeSlot  AvailabilityTime      @default(ALL_TIME)
+  type      AvailabilityType      @default(HYBRID)
+  createdAt DateTime              @default(now()) @map("created_at")
+  updatedAt DateTime              @updatedAt @map("updated_at")
+
+  @@map("user_availabilities")
+}
+
+// --- AUTH & ASSOCIATION MODELS ---
 
 model Token {
   id        Int       @id @default(autoincrement())
@@ -122,50 +332,84 @@ model RefreshToken {
 }
 
 model AssociationCategory {
-  id   Int    @id @default(autoincrement())
-  name String
-
+  id           Int           @id @default(autoincrement())
+  name         String
   associations Association[]
 
   @@map("association_categories")
 }
 
 model Association {
-  id        Int               @id @default(autoincrement())
-  name      String
-  email     String            @unique
-  siret     String?
-  rna       String?
-  logoUrl   String?           @map("logo_url")
-  status    AssociationStatus @default(PENDING)
-
-  createdAt DateTime          @default(now()) @map("created_at")
-  updatedAt DateTime          @updatedAt @map("updated_at")
-
-  // Relations
-  addressId  Int?             @map("address_id")
-  address    Address?         @relation(fields: [addressId], references: [id])
-
-  categoryId Int?             @map("category_id")
+  id         Int               @id @default(autoincrement())
+  name       String
+  email      String            @unique
+  siret      String?
+  rna        String?
+  logoUrl    String?           @map("logo_url")
+  status     AssociationStatus @default(PENDING)
+  createdAt  DateTime          @default(now()) @map("created_at")
+  updatedAt  DateTime          @updatedAt @map("updated_at")
+  addressId  Int?              @map("address_id")
+  address    Address?          @relation(fields: [addressId], references: [id])
+  categoryId Int?              @map("category_id")
   category   AssociationCategory? @relation(fields: [categoryId], references: [id])
-
-  members    AssociationUser[] // Liste des membres
-
+  members    AssociationUser[]
+  missions   Mission[]
+  documents  AssociationDocument[]
   @@map("associations")
 }
 
 // Table de liaison (Pivot) entre User et Association
+model AssociationDocument {
+  id            Int      @id @default(autoincrement())
+  fileUrl       String   @map("file_url")
+  type          String   // ex: "STATUTS", "JOAFE"
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  associationId Int      @map("association_id")
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  @@map("association_documents")
+}
+
 model AssociationUser {
   id            Int             @id @default(autoincrement())
   role          AssociationRole @default(ADMIN)
   createdAt     DateTime        @default(now()) @map("created_at")
-
-  // Liens
   userId        Int             @map("user_id")
-  user          User            @relation(fields: [userId], references: [id])
-
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade) // Ajout cascade
   associationId Int             @map("association_id")
-  association   Association     @relation(fields: [associationId], references: [id])
-
+  association   Association     @relation(fields: [associationId], references: [id], onDelete: Cascade) // Ajout cascade
   @@map("association_users")
+}
+
+// --- ADMINISTRATION ---
+
+model Admin {
+  id        Int       @id @default(autoincrement())
+  email     String    @unique
+  password  String    @map("password_hash")
+  firstName String    @map("firstname")
+  lastName  String    @map("lastname")
+  role      AdminRole @default(ADMIN)
+  
+  logs      AdminLog[]
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@map("admins")
+}
+
+model AdminLog {
+  id         Int      @id @default(autoincrement())
+  action     String   // ex: "VALIDATE_ASSOCIATION", "DELETE_USER"
+  entityType String   // ex: "USER", "ASSOCIATION", "MISSION"
+  entityId   Int      
+  details    Json?    // Stockage des changements (old/new values)
+
+  adminId    Int      @map("admin_id")
+  admin      Admin    @relation(fields: [adminId], references: [id])
+
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("admin_logs")
 }

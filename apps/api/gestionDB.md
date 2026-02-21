@@ -45,14 +45,17 @@ cd apps/api
 2. Lancez la commande de migration personnalisée :
 
 ```bash
-npm run db:migrate -- --name nom_de_votre_modification
+npm run db:migrate
 
 ```
+3. Donnez un nom à votre migration (ex: `add_user_profile`), puis validez.
 
-_Remplacez `nom_de_votre_modification` par un nom clair (ex: `add_user_profile`, `init_missions`)._
+>[!IMPORTANT]
+Après chaque modification du schéma Prisma, **n'oubliez pas de régénérer les clients Prisma** depuis la racine du projet :
 
-> **Pourquoi les tirets `--` ?**
-> Ils sont obligatoires pour passer des arguments (comme le nom `--name`) à travers notre script NPM qui charge les variables d'environnement.
+```bash
+npm run prisma:generate
+```
 
 ---
 
