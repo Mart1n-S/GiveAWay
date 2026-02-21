@@ -120,6 +120,17 @@ export class MailService {
   }
 
   async sendVerificationEmail(email: string, code: string) {
+    if (
+      this.config.get('NODE_ENV') === 'test' ||
+      this.config.get('USE_DETERMINISTIC_OTP') === 'true'
+    ) {
+      console.log(`\n📨 [MAIL SERVICE] Vérification d'email pour : ${email}`);
+      console.log(`🔢 Code de validation : ${code}`);
+      console.log(`⏳ Expire dans : 15 minutes\n`);
+      // Simulation d'attente (IO)
+      return await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+
     const expiresAt = new Date(Date.now() + 15 * 60000).toLocaleTimeString(
       'fr-FR',
       { hour: '2-digit', minute: '2-digit' },
@@ -129,6 +140,18 @@ export class MailService {
   }
 
   async sendPasswordResetEmail(email: string, token: string) {
+    if (
+      this.config.get('NODE_ENV') === 'test' ||
+      this.config.get('USE_DETERMINISTIC_OTP') === 'true'
+    ) {
+      console.log(
+        `\n📨 [MAIL SERVICE] Réinitialisation de mot de passe pour : ${email}`,
+      );
+      console.log(`🔢 Code de réinitialisation : ${token}`);
+      console.log(`⏳ Expire dans : 15 minutes\n`);
+      return await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+
     const expiresAt = new Date(Date.now() + 15 * 60000).toLocaleTimeString(
       'fr-FR',
       { hour: '2-digit', minute: '2-digit' },
