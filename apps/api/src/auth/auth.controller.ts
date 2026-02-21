@@ -57,7 +57,7 @@ export class AuthController {
 
   // Route: POST /auth/register
   @UseGuards(GuestGuard)
-  @Throttle({ default: { limit: 5, ttl: 5 * 60 * 1000 } })
+  @Throttle({ default: { limit: 10, ttl: 60 * 60 * 1000 } }) // 10 inscriptions par heure max
   @Post('register')
   @UseInterceptors(FileInterceptor('profilePicture'))
   async register(
@@ -108,7 +108,7 @@ export class AuthController {
 
   // Route: POST /auth/login
   @UseGuards(GuestGuard)
-  @Throttle({ default: { limit: 5, ttl: 60 * 60 * 1000 } }) // 5 requêtes par heure
+  @Throttle({ default: { limit: 5, ttl: 60 * 60 * 1000 } }) // 5 tentatives de connexion par heure max
   @HttpCode(HttpStatus.OK)
   @Post('login')
   @UsePipes(new ZodValidationPipe(LoginSchema))
@@ -218,7 +218,7 @@ export class AuthController {
   }
 
   // Route: POST /auth/logout
-  @Throttle({ default: { limit: 5, ttl: 5 * 60 * 1000 } })
+  @Throttle({ default: { limit: 5, ttl: 5 * 60 * 1000 } }) // 5 déconnexions par 5 min max (pour éviter les abus)
   @UseGuards(AuthGuard('jwt'))
   @Post('logout')
   @HttpCode(HttpStatus.OK)

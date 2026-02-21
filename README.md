@@ -60,6 +60,7 @@ Giveaway/
 │   └── shared/       # DTOs, Types et Interfaces partagés (Back & Front)
 └── docker-compose.yml # Infrastructure locale (Postgres, Adminer)
 
+
 ```
 
 ---
@@ -103,7 +104,9 @@ cd GiveAWay
 
 ---
 
-### 2️⃣ Copier le fichier .env.example en .env et remplir les valeurs appropriées.
+### 2️⃣ Configuration des variables d'environnement
+
+Copier le fichier .env.example en .env et remplir les valeurs appropriées.
 
 ```bash
 cp .env.example .env
@@ -114,6 +117,8 @@ Pour le `JWT_ACCESS_SECRET` et `JWT_REFRESH_SECRET`, générer des clés secrèt
 ```bash
 openssl rand -base64 62
 ```
+
+Le .env.test est utilisé pour les tests d'intégration et ne nécessite pas de modification.
 
 ### 💾 Stockage des fichiers (Images)
 
@@ -139,31 +144,81 @@ CLOUDINARY_API_SECRET=votre_api_secret
 
 _Si vous utilisez le mode local, vous pouvez laisser les variables Cloudinary vides._
 
+
+### 📧 Service d'e-mails (Brevo)
+
+Le projet utilise **Brevo** pour l'envoi des e-mails transactionnels (validation de compte, récupération de mot de passe).
+
+1. Créez un compte gratuit sur [Brevo](https://onboarding.brevo.com/account/register).
+2. Accédez à la section **SMTP & API** dans votre panel d'administration.
+3. Récupérez votre **Clé API** et configurez les variables suivantes :
+
+```bash
+BREVO_API_KEY=votre_cle_api_xkeysib
+MAIL_FROM_EMAIL=l_email_de_votre_compte_brevo
+MAIL_FROM_NAME=GiveAway
+
+```
+
+*Note : L'adresse e-mail utilisée dans `MAIL_FROM_EMAIL` doit être celle configurée comme expéditeur validé sur votre compte Brevo.*
+
+
 ---
 
-### 3️⃣ Installer les dépendances
+### 3️⃣ Installation et Build
 
+Installez les dépendances :
 ```bash
 npm install
 ```
 
----
-
-### 4️⃣ Prisma – Génération du client
-
+Générez les clients Prisma :
 ```bash
 npm run prisma:generate
 ```
 
----
-
-### 5️⃣ Build du projet
-
-Pour compiler l'ensemble du projet (packages + applications) :
-
+Build de tous les packages :
 ```bash
 npx turbo build --force
 ```
+
+---
+
+### 4️⃣ Lancement de l'Infrastructure (Bases de données)
+
+Avant de démarrer l'application, vous devez lancer les conteneurs Docker pour PostgreSQL (BDD de développement et BDD de test) :
+
+```bash
+docker-compose up -d
+```
+
+> [!NOTE]
+> Vous pouvez administrer les bases de données via **pgAdmin** à l'adresse suivante :
+> [http://localhost:8080/browser/](http://localhost:8080/browser/)
+>
+> 📘 Consultez la documentation complète :
+> [Gestion de la base de données](https://github.com/Mart1n-S/GiveAWay/blob/develop/apps/api/gestionDB.md)
+
+---
+
+### 5️⃣ Peupler la base de données (Seeds)
+
+Pour commencer à travailler avec des données de test (utilisateurs, adresses, etc.), lancez la commande suivante depuis la racine du projet :
+
+```bash
+npm run db:seed
+```
+
+> [!WARNING]
+> **Attention :** Cette commande effectue un **nettoyage complet (TRUNCATE)** de toutes les tables de votre base de données locale avant d'injecter les nouvelles données. Les IDs sont réinitialisés à 1. Utilisez-la uniquement en développement pour repartir sur une base propre.
+
+Après cette étape, vous pouvez utiliser les **données de test**, notamment le compte utilisateur suivant :
+
+> **Email :** `admin@gmail.com`
+> 
+> **Mot de passe :** `password`
+
+Pour le reste il suffit de regarder le fichier `apps/api/prisma/seed.ts` pour voir les autres données pré-remplies (associations, missions, etc.).
 
 ---
 
@@ -189,7 +244,7 @@ Pour corriger automatiquement les erreurs détectées :
 npm run lint -- --fix
 ```
 
-> [!NOTE]
+> [!IMPORTANT]
 > Les erreurs de linting **doivent être corrigées**, mais les warnings peuvent être tolérés et n'empêchent pas le commit.
 
 ---
@@ -232,9 +287,8 @@ Une fois les services démarrés, lancez les tests depuis la racine :
 
 | Commande                        | Description                                                   |
 | ------------------------------- | ------------------------------------------------------------- |
-| `npm run test:e2e:mobile:ui`    | **Recommandé** : Ouvre l'interface interactive de Playwright. |
 | `npm run test:e2e:mobile`       | Lance tous les tests en mode "headless" (console).            |
-| `npm run test:e2e:mobile:debug` | Lance les tests pas à pas pour le débogage.                   |
+| `npm run test:e2e:mobile:ui`    | Ouvre l'interface interactive de Playwright. |
 
 > [!IMPORTANT]
 > Ne lancez pas les tests e2e sur le serveur de développement standard (`npm run dev`).

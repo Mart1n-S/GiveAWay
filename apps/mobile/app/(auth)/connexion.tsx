@@ -51,22 +51,16 @@ export default function LoginScreen() {
 
       // --- GESTION DES ERREURS ---
 
-      // CAS 429 : Rate Limit
-      if (status === 429) {
+      // Cas 429, 401 ou 403 : On affiche le message du back directement dans le formulaire
+      if (status === 429 || status === 401 || status === 403) {
         setError("root", {
           message:
-            apiError?.message || "Trop de tentatives. Veuillez patienter.",
+            apiError?.message ||
+            "Une erreur est survenue lors de l'authentification.",
         });
       }
 
-      // CAS 401 : Unauthorized
-      else if (status === 401) {
-        const serverMessage =
-          apiError?.message || "Email ou mot de passe incorrect.";
-        setError("root", { message: serverMessage });
-      }
-
-      // CAS 400 : Bad Request
+      // Cas 400 : Bad Request (Validation)
       else if (status === 400) {
         let hasMappedError = false;
 
@@ -103,13 +97,17 @@ export default function LoginScreen() {
         }
       }
 
-      // CAS AUTRES
+      // Autres cas
       else {
+        // Si on n'a pas de réponse (error.response est undefined), c'est le réseau
+        const isNetworkError = !error.response;
+
         Toast.show({
           type: "error",
-          text1: "Erreur réseau",
-          text2:
-            "Impossible de contacter le serveur. Vérifiez votre connexion.",
+          text1: isNetworkError ? "Erreur réseau" : "Erreur serveur",
+          text2: isNetworkError
+            ? "Impossible de contacter le serveur. Vérifiez votre connexion."
+            : "Une erreur inattendue est survenue. Veuillez réessayer.",
           visibilityTime: 10000,
           onPress: () => Toast.hide(),
         });
