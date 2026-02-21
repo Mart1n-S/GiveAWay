@@ -101,7 +101,8 @@
       "!main.ts",
       "!**/*.module.ts",
       "!**/*.interface.ts",
-      "!generated/**/*"
+      "!generated/**/*",
+      "!**/prisma/**"
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node",
