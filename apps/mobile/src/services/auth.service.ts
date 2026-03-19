@@ -1,4 +1,5 @@
 import { Platform } from "react-native";
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { api } from "../lib/axios";
 import { useAuthStore } from "../stores/auth.store";
 import {
@@ -10,12 +11,13 @@ import {
   ResendVerificationDto,
   ForgotPasswordDto,
   ResetPasswordDto,
+  GoogleLoginDto,
 } from "@repo/shared";
 import { ReactNativeFile } from "../types/files.type";
 
 export const AuthService = {
   // =================================================================
-  // 1. AUTHENTIFICATION (Login / Register / Logout)
+  // 1. AUTHENTIFICATION (Login / Register / Logout / Google)
   // =================================================================
 
   /**
@@ -25,7 +27,42 @@ export const AuthService = {
     const response = await api.post<AuthResponse>("/auth/login", credentials);
     const { user, backendTokens } = response.data;
 
-    // On appelle toujours login, peu importe la plateforme
+    useAuthStore
+      .getState()
+      .login(
+        user,
+        backendTokens?.accessToken ?? null,
+        backendTokens?.refreshToken ?? null,
+      );
+
+    return user;
+  },
+
+  /**
+   * POST /auth/google
+   *
+   * Authentifie un utilisateur via Google OAuth.
+   * Gère deux cas selon la plateforme :
+   * - `isAccessToken: true`  → web, Google a renvoyé un access_token
+   * - `isAccessToken: false` → mobile, Google a renvoyé un id_token JWT
+   *
+   * @param data - DTO Google contenant le token et le flag isAccessToken
+   * @returns L'utilisateur authentifié
+   */
+  googleLogin: async (data: GoogleLoginDto) => {
+    const dto: GoogleLoginDto = {
+      idToken: data.idToken,
+      isAccessToken: data.isAccessToken,
+    };
+
+    const response = await api.post<AuthResponse>("/auth/google", dto, {
+      headers: {
+        "x-client-type": Platform.OS === "web" ? "web" : "mobile",
+      },
+    });
+
+    const { user, backendTokens } = response.data;
+
     useAuthStore
       .getState()
       .login(
@@ -91,11 +128,36 @@ export const AuthService = {
 
   /**
    * POST /auth/logout
+   *
+   * Déconnecte l'utilisateur de l'application et de Google (sur mobile).
+   * Sur mobile : envoie le refresh token dans le body (pas de cookies).
+   * Sur web : le navigateur envoie le cookie refresh_token automatiquement.
+   *
+   * Non bloquant : si l'API échoue, le store local est nettoyé quand même
+   * pour ne pas bloquer l'utilisateur sur l'écran de connexion.
    */
   logout: async () => {
     try {
       // 1. On récupère le refresh token actuel du store
       const refreshToken = useAuthStore.getState().refreshToken;
+
+      // Déconnexion Google native sur mobile
+      if (Platform.OS !== "web") {
+        try {
+          // GoogleSignin doit être reconfiguré avant signOut()
+          // car la configuration faite dans useGoogleAuth n'est pas persistante
+          GoogleSignin.configure({
+            webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+            iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+            offlineAccess: true,
+          });
+          await GoogleSignin.signOut();
+        } catch (googleError) {
+          // Non bloquant — une erreur Google Sign-Out ne doit pas
+          // empêcher la déconnexion de l'app
+          console.warn("[AuthService] Google Sign-Out warning:", googleError);
+        }
+      }
 
       // 2. Logique conditionnelle pour le Body
       // Sur Mobile : Pas de cookies, donc on DOIT envoyer le token dans le body
@@ -108,8 +170,8 @@ export const AuthService = {
       }
     } catch (error) {
       // Si l'API échoue (ex: token déjà expiré ou serveur down),
-      // on ne bloque pas l'utilisateur, on log juste l'erreur.
-      console.log("Logout API warning:", error);
+      // on ne bloque pas l'utilisateur
+      console.warn("[AuthService] Logout API warning:", error);
     } finally {
       // 3. Quoi qu'il arrive (succès ou erreur), on nettoie le store local (UI)
       // C'est ça qui redirige l'utilisateur vers l'écran de Login.

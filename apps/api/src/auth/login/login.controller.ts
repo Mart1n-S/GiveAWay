@@ -13,7 +13,12 @@ import {
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
-import { LoginDto, LoginSchema, AuthResponse } from '@repo/shared';
+import {
+  LoginDto,
+  GoogleLoginDto,
+  LoginSchema,
+  AuthResponse,
+} from '@repo/shared';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { GuestGuard } from '../guards/guest.guard';
 import { AuthenticatedRequest } from '../../common/interfaces/authenticated-request.interface';
@@ -38,5 +43,20 @@ export class LoginController {
   ): Promise<AuthResponse> {
     const userAgent = `${req.headers['user-agent'] || 'Unknown'}`;
     return this.loginService.login(dto, res, userAgent, ip, clientType);
+  }
+
+  // Route: POST /auth/google
+  @UseGuards(GuestGuard)
+  @HttpCode(HttpStatus.OK)
+  @Post('google')
+  async googleLogin(
+    @Body() dto: GoogleLoginDto,
+    @Res({ passthrough: true }) res: Response,
+    @Req() req: AuthenticatedRequest,
+    @Ip() ip: string,
+    @Headers('x-client-type') clientType?: string,
+  ): Promise<AuthResponse> {
+    const userAgent = `${req.headers['user-agent'] || 'Unknown'}`;
+    return this.loginService.googleLogin(dto, res, userAgent, ip, clientType);
   }
 }

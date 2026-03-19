@@ -25,3 +25,4 @@ export * from "./form-tools/address-autocomplete";
 export * from "./form-tools/password-criteria";
 export * from "./form-tools/useAddress";
 export * from "./toast/toast.config";
+export * from "./googleLoginButton/googleLoginButton";

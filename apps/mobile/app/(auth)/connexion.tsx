@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   TouchableOpacity,
@@ -12,12 +12,13 @@ import { useRouter, Link } from "expo-router";
 import Toast from "react-native-toast-message";
 
 // --- Imports Monorepo ---
-import { LoginSchema, LoginDto } from "@repo/shared";
-import { Button, Text, colors } from "@/components/ui";
+import { LoginSchema, LoginDto, GoogleLoginDto } from "@repo/shared";
+import { Button, Text, colors, GoogleLoginButton } from "@/components/ui";
 import { FormInput } from "@/components/form/form-input";
 
 // --- Services ---
 import { AuthService } from "@/services/auth.service";
+import { useGoogleAuth } from "@/hooks/useGoogleAuth";
 
 import EmailIcon from "@assets/icons/ic_email.svg";
 import LockIcon from "@assets/icons/ic_lock.svg";
@@ -38,6 +39,38 @@ export default function LoginScreen() {
     defaultValues: { email: "", password: "" },
   });
 
+  // --- LOGIQUE GOOGLE ---
+  // useCallback est indispensable ici : sans lui, handleGoogleSuccess est recréée
+  // à chaque render, ce qui rend la dépendance dans useGoogleAuth instable
+  // et peut provoquer des appels multiples au backend
+  const handleGoogleSuccess = useCallback(
+    async (dto: GoogleLoginDto) => {
+      try {
+        const user = await AuthService.googleLogin(dto);
+
+        if (!user.age || !user.address) {
+          router.replace("/(auth)/complete-profile");
+        } else {
+          router.replace("/");
+        }
+      } catch {
+        // L'erreur est loguée dans AuthService.googleLogin
+        // On affiche juste un message générique à l'utilisateur
+        setError("root", {
+          message: "L'authentification Google a échoué. Veuillez réessayer.",
+        });
+      }
+    },
+    [router, setError],
+  );
+
+  const {
+    signInWithGoogle,
+    isLoading: googleLoading,
+    isReady,
+  } = useGoogleAuth(handleGoogleSuccess);
+
+  // --- LOGIQUE LOGIN EMAIL/PASSWORD ---
   const onSubmit = async (data: LoginDto) => {
     try {
       // On nettoie proprement l'erreur root avant la tentative
@@ -213,7 +246,22 @@ export default function LoginScreen() {
               </Button>
             </View>
 
-            {/* Footer Inscription */}
+            {/* Séparateur OR */}
+            <View className="flex-row items-center my-6">
+              <View className="flex-1 h-[1px] bg-gray-200" />
+              <Text className="mx-4 text-xs font-medium uppercase text-grey-400">
+                ou
+              </Text>
+              <View className="flex-1 h-[1px] bg-gray-200" />
+            </View>
+
+            {/* BOUTON GOOGLE */}
+            <GoogleLoginButton
+              onPress={signInWithGoogle}
+              loading={googleLoading}
+              disabled={!isReady}
+            />
+
             <View className="flex-row justify-center gap-1 pt-4 mt-8 border-t border-gray-100">
               <Text className="text-grey-700">Pas encore de compte ?</Text>
               <Link href="/inscription" asChild>

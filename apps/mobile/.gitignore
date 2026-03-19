@@ -46,3 +46,5 @@ yarn-error.*
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+google-services.json

@@ -107,43 +107,46 @@ cd GiveAWay
 ### 2️⃣ Configuration des variables d'environnement
 
 Copier le fichier .env.example en .env et remplir les valeurs appropriées.
-
 ```bash
 cp .env.example .env
 ```
 
 Pour le `JWT_ACCESS_SECRET` et `JWT_REFRESH_SECRET`, générer des clés secrètes sécurisées différentes en utilisant la commande suivante 2 fois :
-
 ```bash
 openssl rand -base64 62
 ```
 
 Le .env.test est utilisé pour les tests d'intégration et ne nécessite pas de modification.
 
+### 🔐 Configuration Google OAuth
+
+Pour configurer l'authentification Google (Web, Android, iOS), suivre la documentation dédiée :
+
+📄 **[OAuthGoogle.md](./OAuthGoogle.md)** - à la racine du projet
+
+Elle explique comment créer les clients OAuth dans Google Cloud Console,
+générer l'empreinte SHA-1 Android, récupérer le `google-services.json`
+depuis Firebase et configurer les variables d'environnement associées.
+
 ### 💾 Stockage des fichiers (Images)
 
 Le projet supporte deux modes de stockage pour les avatars et images :
 
 - **Mode Local** (Recommandé pour le Dev) : Les images sont stockées dans le dossier `apps/api/uploads` et servies directement par l'API.
-
 ```bash
 STORAGE_TYPE=local
-
 ```
 
 - **Mode Cloudinary** (Recommandé pour la Prod) : Les images sont hébergées sur les serveurs de Cloudinary (CDN).
-
 ```bash
 STORAGE_TYPE=cloudinary
 
 CLOUDINARY_CLOUD_NAME=votre_cloud_name
 CLOUDINARY_API_KEY=votre_api_key
 CLOUDINARY_API_SECRET=votre_api_secret
-
 ```
 
 _Si vous utilisez le mode local, vous pouvez laisser les variables Cloudinary vides._
-
 
 ### 📧 Service d'e-mails (Brevo)
 
@@ -152,17 +155,13 @@ Le projet utilise **Brevo** pour l'envoi des e-mails transactionnels (validation
 1. Créez un compte gratuit sur [Brevo](https://onboarding.brevo.com/account/register).
 2. Accédez à la section **SMTP & API** dans votre panel d'administration.
 3. Récupérez votre **Clé API** et configurez les variables suivantes :
-
 ```bash
 BREVO_API_KEY=votre_cle_api_xkeysib
 MAIL_FROM_EMAIL=l_email_de_votre_compte_brevo
 MAIL_FROM_NAME=GiveAway
-
 ```
 
 *Note : L'adresse e-mail utilisée dans `MAIL_FROM_EMAIL` doit être celle configurée comme expéditeur validé sur votre compte Brevo.*
-
-
 ---
 
 ### 3️⃣ Installation et Build
@@ -197,7 +196,7 @@ docker-compose up -d
 > [http://localhost:8080/browser/](http://localhost:8080/browser/)
 >
 > 📘 Consultez la documentation complète :
-> [Gestion de la base de données](https://github.com/Mart1n-S/GiveAWay/blob/develop/apps/api/gestionDB.md)
+> [Gestion de la base de données](./apps/api/gestionDB.md)
 
 ---
 

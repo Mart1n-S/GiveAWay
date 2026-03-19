@@ -96,8 +96,13 @@ export class MailService {
       this.config.get<string>('BREVE_API_KEY') ||
       this.config.get<string>('BREVO_API_KEY');
     const senderEmail = this.config.get<string>('MAIL_FROM_EMAIL');
+    const brevoUrl = this.config.get<string>('BREVO_URL');
 
-    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    if (!brevoUrl) {
+      throw new InternalServerErrorException('BREVO_URL non configurée');
+    }
+
+    const response = await fetch(brevoUrl, {
       method: 'POST',
       headers: {
         accept: 'application/json',
