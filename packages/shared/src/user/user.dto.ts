@@ -1,6 +1,10 @@
 import { UserStatus } from "./user.enums";
 import { Address } from "../address/address.dto";
 import { UserAssociation } from "./user-association.dto";
+import { Skill } from "../skill/skill.dto";
+import { Cause } from "../cause/cause.dto";
+import { UserAvailability } from "./user-availability.dto";
+import { MissionParticipation } from "./mission-participation.dto";
 
 // Output (Réponse API)
 export interface User {
@@ -8,7 +12,7 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
-  age: number;
+  age: number | null;
   biography: string | null;
   profilePicture: string | null;
   status: UserStatus;
@@ -16,8 +20,11 @@ export interface User {
   createdAt: Date | string;
   updatedAt: Date | string;
 
-  // On réutilise l'interface définie dans le module address
   address?: Address | null;
-
   associations?: UserAssociation[];
+
+  skills?: Skill[];
+  causes?: Cause[];
+  availability?: UserAvailability | null;
+  participations?: MissionParticipation[];
 }

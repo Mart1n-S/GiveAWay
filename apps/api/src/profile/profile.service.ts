@@ -1,0 +1,294 @@
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { UserStatus, UserAvailability } from '../generated/prisma/client';
+import { User, UpdateProfileDto, DeleteAccountDto } from '@repo/shared';
+import { Response } from 'express';
+import { verify } from 'argon2';
+import { AuthService } from '../auth/auth.service';
+import { CookieService } from '../auth/shared/cookie.service';
+import {
+  IFileService,
+  FILE_SERVICE,
+} from '../common/files/interfaces/file-service.interface';
+
+@Injectable()
+export class ProfileService {
+  constructor(
+    private readonly authService: AuthService,
+    private readonly cookieService: CookieService,
+    @Inject(FILE_SERVICE) private readonly fileService: IFileService,
+  ) {}
+
+  /**
+   * Récupère le profil complet de l'utilisateur connecté.
+   *
+   * Inclut les relations : adresse, associations, compétences, causes,
+   * disponibilités et les 5 dernières participations aux missions.
+   *
+   * @param userId - Identifiant de l'utilisateur connecté
+   * @returns Le profil complet mappé en DTO partagé
+   * @throws UnauthorizedException si l'utilisateur est introuvable
+   * @throws BadRequestException si le compte est suspendu ou supprimé
+   */
+  async getProfile(userId: number): Promise<User> {
+    const { prisma } = this.authService;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        address: true,
+        associations: { include: { association: true } },
+        skills: { include: { skill: true } },
+        causes: { include: { cause: true } },
+        availability: true,
+        participations: {
+          include: {
+            mission: {
+              include: { association: true },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+        },
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Utilisateur introuvable');
+    }
+
+    if (
+      user.status === UserStatus.DELETED ||
+      user.status === UserStatus.SUSPENDED
+    ) {
+      throw new BadRequestException('Votre compte a été supprimé ou suspendu.');
+    }
+
+    return this.authService.mapUserToResponse(user);
+  }
+
+  /**
+   * Met à jour le profil de l'utilisateur connecté.
+   *
+   * Gère en une seule opération :
+   * - Les infos de base (nom, prénom, âge, biographie)
+   * - La photo de profil (upload vers le storage avec rollback en cas d'erreur)
+   * - L'adresse (upsert — crée ou met à jour)
+   * - Les compétences (remplacement complet de la liste)
+   * - Les causes (remplacement complet de la liste)
+   * - Les disponibilités (upsert — crée ou met à jour)
+   *
+   * Seuls les champs présents dans le DTO sont mis à jour.
+   *
+   * @param userId - Identifiant de l'utilisateur connecté
+   * @param dto - Données partielles à mettre à jour
+   * @param file - Nouvelle photo de profil (optionnel)
+   * @returns Le profil mis à jour mappé en DTO partagé
+   * @throws UnauthorizedException si l'utilisateur est introuvable
+   * @throws BadRequestException si le compte est suspendu ou supprimé
+   */
+  async updateProfile(
+    userId: number,
+    dto: UpdateProfileDto,
+    file?: Express.Multer.File,
+  ): Promise<User> {
+    const { prisma, logger } = this.authService;
+
+    // 1. Vérifier que l'utilisateur existe et est actif
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!existingUser) {
+      throw new UnauthorizedException('Utilisateur introuvable');
+    }
+
+    if (
+      existingUser.status === UserStatus.DELETED ||
+      existingUser.status === UserStatus.SUSPENDED
+    ) {
+      throw new BadRequestException('Votre compte a été supprimé ou suspendu.');
+    }
+
+    // 2. Upload de la nouvelle photo si fournie
+    let profilePictureUrl: string | undefined;
+    if (file) {
+      const uploadResult = await this.fileService.uploadFile(file, 'avatars');
+      profilePictureUrl = uploadResult.publicId;
+    }
+
+    try {
+      // 3. Mise à jour des infos de base
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          ...(dto.firstName && { firstName: dto.firstName }),
+          ...(dto.lastName && { lastName: dto.lastName }),
+          ...(dto.age !== undefined && { age: dto.age }),
+          ...(dto.biography !== undefined && { biography: dto.biography }),
+          ...(profilePictureUrl && { profilePicture: profilePictureUrl }),
+
+          // 4. Mise à jour de l'adresse (upsert — crée ou met à jour)
+          ...(dto.address && {
+            address: {
+              upsert: {
+                create: {
+                  street: dto.address.street,
+                  postalCode: dto.address.postalCode,
+                  city: dto.address.city,
+                  latitude: dto.address.latitude,
+                  longitude: dto.address.longitude,
+                },
+                update: {
+                  street: dto.address.street,
+                  postalCode: dto.address.postalCode,
+                  city: dto.address.city,
+                  latitude: dto.address.latitude,
+                  longitude: dto.address.longitude,
+                },
+              },
+            },
+          }),
+        },
+      });
+
+      // 5. Mise à jour des compétences (remplace toute la liste)
+      if (dto.skillIds !== undefined) {
+        await prisma.userSkill.deleteMany({ where: { userId } });
+
+        if (dto.skillIds.length > 0) {
+          await prisma.userSkill.createMany({
+            data: dto.skillIds.map((skillId) => ({ userId, skillId })),
+          });
+        }
+      }
+
+      // 6. Mise à jour des causes (remplace toute la liste)
+      if (dto.causeIds !== undefined) {
+        await prisma.userCause.deleteMany({ where: { userId } });
+
+        if (dto.causeIds.length > 0) {
+          await prisma.userCause.createMany({
+            data: dto.causeIds.map((causeId) => ({ userId, causeId })),
+          });
+        }
+      }
+
+      // 7. Mise à jour des disponibilités (upsert)
+      if (dto.availability) {
+        await prisma.userAvailability.upsert({
+          where: { userId },
+          create: {
+            userId,
+            frequency: dto.availability
+              .frequency as UserAvailability['frequency'],
+            timeSlot: dto.availability.timeSlot as UserAvailability['timeSlot'],
+            type: dto.availability.type as UserAvailability['type'],
+          },
+          update: {
+            frequency: dto.availability
+              .frequency as UserAvailability['frequency'],
+            timeSlot: dto.availability.timeSlot as UserAvailability['timeSlot'],
+            type: dto.availability.type as UserAvailability['type'],
+          },
+        });
+      }
+    } catch (error) {
+      // Rollback image si une erreur survient après l'upload
+      if (profilePictureUrl) {
+        this.fileService
+          .deleteFile(profilePictureUrl)
+          .catch((e) => logger.error('Erreur rollback image profil', e));
+      }
+      throw error;
+    }
+
+    // 8. Retourner le profil mis à jour
+    return this.getProfile(userId);
+  }
+
+  /**
+   * Supprime définitivement le compte de l'utilisateur connecté (hard delete).
+   *
+   * La confirmation diffère selon le type de compte :
+   * - **Compte email/password** : vérification du mot de passe actuel
+   * - **Compte Google** : saisie du texte exact "SUPPRIMER"
+   *
+   * Actions effectuées dans l'ordre :
+   * 1. Vérification de l'existence et du statut du compte
+   * 2. Vérification de la confirmation (mot de passe ou texte)
+   * 3. Suppression de la photo de profil du storage (non bloquant)
+   * 4. Invalidation des cookies de session
+   * 5. Suppression en base (les relations en cascade sont gérées par Prisma)
+   *
+   * @param userId - Identifiant de l'utilisateur connecté
+   * @param dto - DTO de confirmation (password ou confirmation texte)
+   * @param res - Réponse Express pour invalider les cookies
+   * @throws UnauthorizedException si l'utilisateur est introuvable
+   * @throws BadRequestException si la confirmation est incorrecte ou le compte suspendu
+   */
+  async deleteProfile(
+    userId: number,
+    dto: DeleteAccountDto,
+    res: Response,
+  ): Promise<void> {
+    const { prisma, logger } = this.authService;
+
+    // 1. Vérifier que l'utilisateur existe
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Utilisateur introuvable');
+    }
+
+    if (
+      user.status === UserStatus.DELETED ||
+      user.status === UserStatus.SUSPENDED
+    ) {
+      throw new BadRequestException('Votre compte a été supprimé ou suspendu.');
+    }
+
+    // 2. Vérification selon le type de compte
+    if (user.password) {
+      // Compte email/password — vérification du mot de passe
+      if (!dto.password) {
+        throw new BadRequestException(
+          'Le mot de passe est requis pour supprimer votre compte',
+        );
+      }
+
+      const isMatch = await verify(user.password, dto.password);
+      if (!isMatch) {
+        throw new BadRequestException('Mot de passe incorrect');
+      }
+    } else {
+      // Compte Google — vérification du texte de confirmation
+      if (dto.confirmation !== 'SUPPRIMER') {
+        throw new BadRequestException(
+          'Veuillez saisir exactement "SUPPRIMER" pour confirmer',
+        );
+      }
+    }
+
+    // 3. Supprimer la photo de profil du storage si elle existe
+    // Non bloquant — une erreur de suppression ne doit pas empêcher
+    // la suppression du compte
+    if (user.profilePicture) {
+      await this.fileService
+        .deleteFile(user.profilePicture)
+        .catch((e) => logger.error('Erreur suppression photo profil', e));
+    }
+
+    // 4. Invalider les cookies de session
+    this.cookieService.clearAuthCookies(res);
+
+    // 5. Hard delete — les relations en cascade sont gérées par Prisma
+    await prisma.user.delete({ where: { id: userId } });
+  }
+}
