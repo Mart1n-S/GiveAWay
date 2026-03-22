@@ -85,7 +85,7 @@ export function AppShell({ children, layoutType = "main" }: AppShellProps) {
           initials: user.firstName
             ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
             : "??",
-          avatarUrl: null,
+          avatarUrl: user.profilePicture || null,
         }
       : null;
 

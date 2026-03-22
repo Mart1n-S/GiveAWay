@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import {
   VerifyEmailSchema,
   VerifyEmailDto,
   ResendVerificationDto,
+  GoogleLoginDto,
 } from "@repo/shared";
 import { z } from "zod";
 import { FormInput, FormTextarea } from "@/components/form/";
@@ -28,8 +29,10 @@ import {
   PasswordCriteria,
   TermsCheckbox,
   colors,
+  GoogleLoginButton,
 } from "@/components/ui";
 import { AuthService } from "@/services/auth.service";
+import { useGoogleAuth } from "@/hooks/useGoogleAuth";
 import { cssInterop } from "nativewind";
 import AddIconSource from "@assets/icons/ic_add.svg";
 import TrashIconSource from "@assets/icons/ic_trash.svg";
@@ -60,6 +63,57 @@ type Step = "REGISTER" | "VERIFY";
 export default function RegisterBenevoleScreen() {
   const router = useRouter();
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // --- LOGIQUE GOOGLE ---
+  const handleGoogleSuccess = useCallback(
+    async (dto: GoogleLoginDto) => {
+      try {
+        const user = await AuthService.googleLogin(dto);
+
+        if (!user.age || !user.address) {
+          router.replace("/(auth)/complete-profile");
+        } else {
+          router.replace("/");
+        }
+      } catch (error: unknown) {
+        if (isAxiosError(error)) {
+          const status = error.response?.status;
+          const message = error.response?.data?.message;
+
+          // Cas 403 : compte suspendu ou supprimé
+          // Cas 401 : token invalide
+          if (status === 403 || status === 401) {
+            Toast.show({
+              type: "error",
+              text1: "Authentification Google échouée",
+              text2:
+                message ||
+                "Votre compte est suspendu ou supprimé. Contactez le support.",
+              visibilityTime: 10000,
+              onPress: () => Toast.hide(),
+            });
+            return;
+          }
+        }
+
+        // Autres erreurs (réseau, serveur, etc.)
+        Toast.show({
+          type: "error",
+          text1: "Authentification Google échouée",
+          text2: "Une erreur inattendue est survenue. Veuillez réessayer.",
+          visibilityTime: 5000,
+          onPress: () => Toast.hide(),
+        });
+      }
+    },
+    [router],
+  );
+
+  const {
+    signInWithGoogle,
+    isLoading: googleLoading,
+    isReady,
+  } = useGoogleAuth(handleGoogleSuccess);
 
   // --- ÉTATS ---
   const [step, setStep] = useState<Step>("REGISTER");
@@ -623,6 +677,34 @@ export default function RegisterBenevoleScreen() {
                   </Text>
                 )}
               </TouchableOpacity>
+
+              {/* Séparateur OR */}
+              <View className="flex-row items-center my-6">
+                <View className="flex-1 h-[1px] bg-gray-200" />
+                <Text className="mx-4 text-xs font-medium uppercase text-grey-400">
+                  ou
+                </Text>
+                <View className="flex-1 h-[1px] bg-gray-200" />
+              </View>
+
+              <Text className="mb-4 text-center text-grey-800">
+                En continuant avec Google, vous acceptez nos{" "}
+                <Text className="font-bold text-primary">
+                  Conditions Générales d'Utilisation
+                </Text>
+                et notre{" "}
+                <Text className="font-bold text-primary">
+                  Politique de Confidentialité
+                </Text>
+                .
+              </Text>
+
+              {/* BOUTON GOOGLE */}
+              <GoogleLoginButton
+                onPress={signInWithGoogle}
+                loading={googleLoading}
+                disabled={!isReady}
+              />
             </>
           )}
 

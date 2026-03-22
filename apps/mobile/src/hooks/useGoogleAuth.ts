@@ -23,7 +23,9 @@ WebBrowser.maybeCompleteAuthSession();
  * @param onSuccess - Callback appelé avec le DTO Google une fois l'auth réussie
  * @returns `signInWithGoogle` pour déclencher le flow, `isLoading` et `isReady`
  */
-export const useGoogleAuth = (onSuccess: (dto: GoogleLoginDto) => void) => {
+export const useGoogleAuth = (
+  onSuccess: (dto: GoogleLoginDto) => Promise<void>,
+) => {
   const [isLoading, setIsLoading] = useState(false);
 
   // Ref pour stabiliser le callback et éviter les appels multiples
@@ -33,7 +35,7 @@ export const useGoogleAuth = (onSuccess: (dto: GoogleLoginDto) => void) => {
     onSuccessRef.current = onSuccess;
   }, [onSuccess]);
 
-  // WEB : expo-auth-session 
+  // WEB : expo-auth-session
   // Sur mobile, on passe quand même les IDs pour satisfaire la validation
   // interne d'expo-auth-session, mais le flow natif prend le dessus via
   // le check Platform.OS dans signInWithGoogle()
@@ -62,8 +64,9 @@ export const useGoogleAuth = (onSuccess: (dto: GoogleLoginDto) => void) => {
 
       if (id_token) {
         // Cas nominal web : id_token JWT présent
-        onSuccessRef.current({ idToken: id_token, isAccessToken: false });
-        setIsLoading(false);
+        onSuccessRef
+          .current({ idToken: id_token, isAccessToken: false })
+          .finally(() => setIsLoading(false));
         return;
       }
 
@@ -104,7 +107,7 @@ export const useGoogleAuth = (onSuccess: (dto: GoogleLoginDto) => void) => {
 
       if (!idToken) throw new Error("Pas d'idToken reçu");
 
-      onSuccessRef.current({ idToken, isAccessToken: false });
+      await onSuccessRef.current({ idToken, isAccessToken: false });
     } catch (error: unknown) {
       const err = error as { code?: string; message?: string };
 
@@ -113,7 +116,8 @@ export const useGoogleAuth = (onSuccess: (dto: GoogleLoginDto) => void) => {
       } else if (err.code === statusCodes.IN_PROGRESS) {
         // Un sign-in est déjà en cours — on ignore
       } else {
-        console.error("[useGoogleAuth] Erreur Google Sign-In:", err.message);
+        // On relance pour que handleGoogleSuccess puisse afficher l'erreur
+        throw error;
       }
     } finally {
       setIsLoading(false);
@@ -142,10 +146,8 @@ export const useGoogleAuth = (onSuccess: (dto: GoogleLoginDto) => void) => {
 
       await res.json();
 
-      // On envoie l'access_token au backend qui appellera lui-même UserInfo
-      onSuccessRef.current({ idToken: accessToken, isAccessToken: true });
-    } catch (error) {
-      console.error("[useGoogleAuth] Erreur UserInfo:", error);
+      // On attend que onSuccessRef se termine pour propager les erreurs
+      await onSuccessRef.current({ idToken: accessToken, isAccessToken: true });
     } finally {
       setIsLoading(false);
     }

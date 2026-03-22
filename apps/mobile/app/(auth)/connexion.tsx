@@ -10,6 +10,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter, Link } from "expo-router";
 import Toast from "react-native-toast-message";
+import { isAxiosError } from "axios";
 
 // --- Imports Monorepo ---
 import { LoginSchema, LoginDto, GoogleLoginDto } from "@repo/shared";
@@ -53,12 +54,33 @@ export default function LoginScreen() {
         } else {
           router.replace("/");
         }
-      } catch {
-        // L'erreur est loguée dans AuthService.googleLogin
-        // On affiche juste un message générique à l'utilisateur
-        setError("root", {
-          message: "L'authentification Google a échoué. Veuillez réessayer.",
-        });
+      } catch (error: unknown) {
+        if (isAxiosError(error)) {
+          const status = error.response?.status;
+          const message = error.response?.data?.message;
+
+          // Cas 403 : compte suspendu ou supprimé
+          // Cas 401 : token invalide
+          if (status === 403 || status === 401) {
+            setError("root", {
+              message:
+                message ||
+                "L'authentification Google a échoué. Veuillez réessayer.",
+            });
+            return;
+          }
+
+          // Autres erreurs Axios (réseau, 500, etc.)
+          Toast.show({
+            type: "error",
+            text1: "Authentification Google échouée",
+            text2:
+              message ||
+              "Une erreur inattendue est survenue. Veuillez réessayer.",
+            visibilityTime: 10000,
+            onPress: () => Toast.hide(),
+          });
+        }
       }
     },
     [router, setError],

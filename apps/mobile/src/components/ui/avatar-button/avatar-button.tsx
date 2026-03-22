@@ -30,6 +30,8 @@ export function AvatarButton({
   // L'élément est interactif SEULEMENT SI : il n'est pas readonly ET pas disabled
   const isInteractive = !readonly && !props.disabled;
 
+  const avatarBaseUrl = process.env.EXPO_PUBLIC_API_URL_AVATAR ?? "";
+
   // 1. Calcul du label Accessibilité
   const defaultA11yLabel = isGuest
     ? "Menu profil, non connecté"
@@ -40,9 +42,16 @@ export function AvatarButton({
   const renderContent = () => {
     // Cas 1 : Image
     if (!isGuest && imageUrl) {
+      // Si l'URL est déjà absolue (Google, Cloudinary, etc.)
+      // on l'utilise directement sans préfixer avec avatarBaseUrl
+      const isAbsoluteUrl =
+        imageUrl.startsWith("http://") || imageUrl.startsWith("https://");
+
+      const uri = isAbsoluteUrl ? imageUrl : `${avatarBaseUrl}${imageUrl}`;
+
       return (
         <Image
-          source={{ uri: imageUrl }}
+          source={{ uri }}
           className="w-full h-full"
           resizeMode="cover"
           accessibilityLabel=""

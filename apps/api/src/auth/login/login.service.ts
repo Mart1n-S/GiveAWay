@@ -150,7 +150,9 @@ export class LoginService {
       if (dto.isAccessToken) {
         // Cas Web : Google ne renvoie pas d'id_token via expo-auth-session
         // On échange l'access_token contre les infos utilisateur via UserInfo
-        const userInfoUrl = this.config.get<string>('PUBLIC_GOOGLE_USERINFO_URL');
+        const userInfoUrl = this.config.get<string>(
+          'PUBLIC_GOOGLE_USERINFO_URL',
+        );
 
         if (!userInfoUrl) {
           throw new UnauthorizedException(

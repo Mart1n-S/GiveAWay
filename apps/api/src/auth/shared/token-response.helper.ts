@@ -1,8 +1,9 @@
-import { AuthResponse } from '@repo/shared';
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { AuthResponse, User } from '@repo/shared';
 
 export function buildAuthResponse(
   clientType: string | undefined,
-  user: any,
+  user: User,
   accessToken: string,
   refreshToken: string,
   message: string,
