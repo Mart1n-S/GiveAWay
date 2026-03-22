@@ -35,6 +35,10 @@ export default function ProfileScreen() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const loadProfile = useCallback(async (isRefresh = false) => {
+    // Ne pas charger si l'utilisateur n'est plus connecté
+    const isAuthenticated = useAuthStore.getState().isAuthenticated;
+    if (!isAuthenticated) return;
+
     if (isRefresh) {
       setIsRefreshing(true);
     } else {
@@ -45,6 +49,9 @@ export default function ProfileScreen() {
       const data = await ProfileService.getProfile();
       setUser(data);
     } catch {
+      // Ne pas afficher le toast si l'utilisateur s'est déconnecté entre temps
+      if (!useAuthStore.getState().isAuthenticated) return;
+
       Toast.show({
         type: "error",
         text1: "Erreur",
@@ -72,7 +79,7 @@ export default function ProfileScreen() {
     setIsLoggingOut(true);
     try {
       await AuthService.logout();
-      // Le store gérera la redirection vers /connexion
+      router.replace("/");
     } finally {
       setIsLoggingOut(false);
     }
@@ -100,7 +107,7 @@ export default function ProfileScreen() {
     <>
       <Stack.Screen
         options={{
-          title: user ? `${user.firstName} ${user.lastName}` : "Mon Profil",
+          headerShown: false,
         }}
       />
 
