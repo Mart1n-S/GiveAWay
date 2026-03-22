@@ -101,7 +101,7 @@ export function MissionHistoryItem({
       className={clsx(
         "flex-row items-center gap-4 p-4 rounded-lg bg-white",
         "border border-grey-100",
-        // ── Interactions colorées selon le type ───────────────────
+        // Interactions colorées selon le type
         onPress && [
           hoverClass,
           activeClass,

@@ -209,6 +209,7 @@ export class AuthService {
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
+      hasPassword: !!user.password,
       age: user.age,
       biography: user.biography,
       profilePicture: user.profilePicture,

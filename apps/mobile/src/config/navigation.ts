@@ -41,6 +41,7 @@ export const USER_LINKS: NavLink[] = [
     label: "Mon Profil",
     href: "/profil",
     iconName: "user",
+    hideInMobileDrawer: true,
   },
   {
     id: "settings",

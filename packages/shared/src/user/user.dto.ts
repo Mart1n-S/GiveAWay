@@ -12,6 +12,7 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
+  hasPassword: boolean;
   age: number | null;
   biography: string | null;
   profilePicture: string | null;

@@ -71,7 +71,7 @@ export default function RegisterBenevoleScreen() {
         const user = await AuthService.googleLogin(dto);
 
         if (!user.age || !user.address) {
-          router.replace("/(auth)/complete-profile");
+          router.replace("/profil/modifier");
         } else {
           router.replace("/");
         }
