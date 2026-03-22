@@ -10,6 +10,7 @@ import { MailModule } from './mail/mail.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'node:path';
 import { FilesModule } from './common/files/files.module';
+import { ReferenceModule } from './reference/reference.module';
 
 @Module({
   imports: [
@@ -61,6 +62,7 @@ import { FilesModule } from './common/files/files.module';
     AuthModule, // Authentification
     FilesModule, // Gestion des fichiers (upload, stockage, suppression)
     ProfileModule, // Gestion du profil utilisateur
+    ReferenceModule, // Endpoints de référence (compétences, causes, etc.)
   ],
   controllers: [],
   providers: [
