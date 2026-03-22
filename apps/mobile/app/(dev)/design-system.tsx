@@ -13,6 +13,10 @@ import {
   colors,
   NavigationMenu,
   WebNavBar,
+  TagBadge,
+  AvailabilitySlot,
+  AvailabilityTypeDot,
+  MissionHistoryItem,
 } from "@/components/ui";
 
 // --- CONFIGURATION DES ICÔNES ---
@@ -28,6 +32,9 @@ import LogoutIconSource from "../../assets/icons/ic_logout.svg";
 import SettingsIconSource from "../../assets/icons/ic_settings.svg";
 import MenuIconSource from "../../assets/icons/ic_menu.svg";
 import CloseIconSource from "../../assets/icons/ic_close.svg";
+import CalendarIconSource from "../../assets/icons/ic_calendar.svg";
+import MoonIconSource from "../../assets/icons/ic_moon.svg";
+import TrashIconSource from "../../assets/icons/ic_trash.svg";
 
 // Helper pour éviter de répéter la config
 const iconConfig = {
@@ -49,6 +56,9 @@ const LogoutIcon = cssInterop(LogoutIconSource, iconConfig);
 const SettingsIcon = cssInterop(SettingsIconSource, iconConfig);
 const MenuIcon = cssInterop(MenuIconSource, iconConfig);
 const CloseIcon = cssInterop(CloseIconSource, iconConfig);
+const CalendarIcon = cssInterop(CalendarIconSource, iconConfig);
+const MoonIcon = cssInterop(MoonIconSource, iconConfig);
+const TrashIcon = cssInterop(TrashIconSource, iconConfig);
 
 // --- HELPERS ---
 const SectionTitle = ({
@@ -1782,6 +1792,398 @@ export default function DesignSystemScreen() {
             </View>
           </View>
           {/* FIN CHAPITRE 9 */}
+
+          {/* ============================================================
+            CHAPITRE 10 : TAG BADGE 🏷️
+            ============================================================ */}
+          <View>
+            <SectionTitle
+              title="10. Tag Badge"
+              description="Badge pill pour afficher les causes, compétences et étiquettes colorées."
+            />
+
+            {/* --- 📚 DOC API --- */}
+            <View className="p-4 mb-8 border border-blue-200 rounded-lg bg-blue-50/50">
+              <Text className="mb-4 text-sm font-bold text-blue-800 uppercase">
+                📚 API Reference
+              </Text>
+              <ApiProp
+                name="label"
+                type="string"
+                desc="Texte affiché dans le badge."
+              />
+              <ApiProp
+                name="variant"
+                type="'orange' | 'green' | 'blue' | 'red' | 'surface'"
+                defaultValue="'surface'"
+                desc="Variante de couleur. orange: causes/bénévolat — green: environnement — blue: tech/info — red: urgent — surface: neutre/compétences."
+              />
+              <ApiProp
+                name="size"
+                type="'sm' | 'md' | 'lg'"
+                defaultValue="'md'"
+                desc="Taille du badge — contrôle le padding et la taille du texte."
+              />
+              <ApiProp
+                name="className"
+                type="string"
+                desc="Classes Tailwind additionnelles pour le positionnement."
+              />
+            </View>
+
+            {/* --- VARIANTES DE COULEUR --- */}
+            <View className="p-4 mb-6 bg-white border rounded-lg border-grey-200">
+              <Text className="mb-2 text-lg font-bold text-primary">
+                Variantes de couleur
+              </Text>
+
+              <VariantLabel title="Toutes les variantes" />
+              <View className="flex-row flex-wrap gap-2">
+                <TagBadge label="Solidarité" variant="orange" />
+                <TagBadge label="Écologie" variant="green" />
+                <TagBadge label="Informatique" variant="blue" />
+                <TagBadge label="Urgent" variant="red" />
+                <TagBadge label="Logistique" variant="surface" />
+              </View>
+            </View>
+
+            {/* --- TAILLES --- */}
+            <View className="p-4 mb-6 bg-white border rounded-lg border-grey-200">
+              <Text className="mb-2 text-lg font-bold text-grey-800">
+                Tailles
+              </Text>
+
+              <VariantLabel title="Small" />
+              <View className="flex-row flex-wrap gap-2">
+                <TagBadge label="Solidarité" variant="orange" size="sm" />
+                <TagBadge label="Écologie" variant="green" size="sm" />
+                <TagBadge label="Logistique" variant="surface" size="sm" />
+              </View>
+
+              <VariantLabel title="Medium (défaut)" />
+              <View className="flex-row flex-wrap gap-2">
+                <TagBadge label="Solidarité" variant="orange" size="md" />
+                <TagBadge label="Écologie" variant="green" size="md" />
+                <TagBadge label="Logistique" variant="surface" size="md" />
+              </View>
+
+              <VariantLabel title="Large" />
+              <View className="flex-row flex-wrap gap-2">
+                <TagBadge label="Solidarité" variant="orange" size="lg" />
+                <TagBadge label="Écologie" variant="green" size="lg" />
+                <TagBadge label="Logistique" variant="surface" size="lg" />
+              </View>
+            </View>
+
+            {/* --- CAS D'USAGE RÉEL --- */}
+            <View className="p-4 bg-white border rounded-lg border-grey-200">
+              <Text className="mb-2 text-lg font-bold text-grey-800">
+                💡 Cas d'usage — Profil bénévole
+              </Text>
+              <Text className="mb-4 text-xs text-grey-500">
+                Causes et compétences telles qu'elles apparaissent sur la page
+                profil.
+              </Text>
+
+              <Text className="mb-2 text-xs font-bold uppercase text-grey-500">
+                Causes
+              </Text>
+              <View className="flex-row flex-wrap gap-2 mb-4">
+                <TagBadge label="Écologie" variant="green" />
+                <TagBadge label="Solidarité" variant="orange" />
+                <TagBadge label="Éducation" variant="blue" />
+                <TagBadge label="Santé" variant="red" />
+              </View>
+
+              <Text className="mb-2 text-xs font-bold uppercase text-grey-500">
+                Compétences
+              </Text>
+              <View className="flex-row flex-wrap gap-2">
+                <TagBadge label="Informatique" variant="surface" />
+                <TagBadge label="Jardinage" variant="surface" />
+                <TagBadge label="Logistique" variant="surface" />
+                <TagBadge label="Communication" variant="surface" />
+              </View>
+            </View>
+          </View>
+          {/* FIN CHAPITRE 10 */}
+          {/* ============================================================
+              CHAPITRE 11 : AVAILABILITY SLOT 📅
+              ============================================================ */}
+          <View>
+            <SectionTitle
+              title="11. Availability Slot"
+              description="Carte créneau de disponibilité avec état actif/inactif."
+            />
+
+            {/* --- 📚 DOC API --- */}
+            <View className="p-4 mb-8 border border-blue-200 rounded-lg bg-blue-50/50">
+              <Text className="mb-4 text-sm font-bold text-blue-800 uppercase">
+                📚 API Reference
+              </Text>
+              <ApiProp
+                name="icon"
+                type="ReactNode"
+                desc="Icône SVG à afficher dans la carte."
+              />
+              <ApiProp
+                name="label"
+                type="string"
+                desc="Label affiché sous l'icône (ex: Semaine, Weekend, Soirée)."
+              />
+              <ApiProp
+                name="active"
+                type="boolean"
+                defaultValue="false"
+                desc="Si true : icône et texte colorés en primary, bordure orange. Si false : grisé et opacité réduite."
+              />
+              <ApiProp
+                name="className"
+                type="string"
+                desc="Classes Tailwind additionnelles."
+              />
+            </View>
+
+            {/* --- ÉTATS --- */}
+            <View className="p-4 mb-6 bg-white border rounded-lg border-grey-200">
+              <Text className="mb-2 text-lg font-bold text-primary">États</Text>
+
+              <VariantLabel title="Actif vs Inactif" />
+              <View className="flex-row gap-3">
+                <AvailabilitySlot
+                  icon={<CalendarIcon className="w-6 h-6 text-primary" />}
+                  label="Semaine"
+                  active
+                  className="flex-1"
+                />
+                <AvailabilitySlot
+                  icon={<CalendarIcon className="w-6 h-6 text-grey-700" />}
+                  label="Weekend"
+                  className="flex-1"
+                />
+                <AvailabilitySlot
+                  icon={<MoonIcon className="w-6 h-6 text-primary" />}
+                  label="Soirée"
+                  active
+                  className="flex-1"
+                />
+              </View>
+
+              {/* --- CAS D'USAGE RÉEL --- */}
+              <View className="pt-4 mt-6 border-t border-grey-200">
+                <VariantLabel title="💡 Cas d'usage — Profil bénévole" />
+                <Text className="mb-3 text-xs text-grey-500">
+                  Grille de disponibilités telle qu'elle apparaît sur la page
+                  profil.
+                </Text>
+                <View className="flex-row gap-3">
+                  <AvailabilitySlot
+                    icon={<CalendarIcon className="w-6 h-6 text-primary" />}
+                    label="Semaine"
+                    active
+                    className="flex-1"
+                  />
+                  <AvailabilitySlot
+                    icon={<CalendarIcon className="w-6 h-6 text-grey-700" />}
+                    label="Weekend"
+                    className="flex-1"
+                  />
+                  <AvailabilitySlot
+                    icon={<MoonIcon className="w-6 h-6 text-primary" />}
+                    label="Soirée"
+                    active
+                    className="flex-1"
+                  />
+                </View>
+              </View>
+            </View>
+          </View>
+          {/* FIN CHAPITRE 11 */}
+
+          {/* ============================================================
+          CHAPITRE 12 : AVAILABILITY TYPE DOT 🟢
+          ============================================================ */}
+          <View>
+            <SectionTitle
+              title="12. Availability Type Dot"
+              description="Indicateur du type de disponibilité avec point coloré."
+            />
+
+            {/* --- 📚 DOC API --- */}
+            <View className="p-4 mb-8 border border-blue-200 rounded-lg bg-blue-50/50">
+              <Text className="mb-4 text-sm font-bold text-blue-800 uppercase">
+                📚 API Reference
+              </Text>
+              <ApiProp
+                name="type"
+                type="'REMOTE' | 'ON_SITE' | 'HYBRID'"
+                desc="Type de disponibilité. HYBRID affiche automatiquement les deux badges Sur site et À distance."
+              />
+              <ApiProp
+                name="className"
+                type="string"
+                desc="Classes Tailwind additionnelles."
+              />
+            </View>
+
+            {/* --- VARIANTES --- */}
+            <View className="p-4 mb-6 bg-white border rounded-lg border-grey-200">
+              <Text className="mb-2 text-lg font-bold text-primary">
+                Variantes
+              </Text>
+
+              <VariantLabel title="À distance (REMOTE)" />
+              <AvailabilityTypeDot type="REMOTE" />
+
+              <VariantLabel title="Sur site (ON_SITE)" />
+              <AvailabilityTypeDot type="ON_SITE" />
+
+              <VariantLabel title="Hybride (HYBRID) — affiche les deux" />
+              <AvailabilityTypeDot type="HYBRID" />
+
+              {/* --- CAS D'USAGE RÉEL --- */}
+              <View className="pt-4 mt-6 border-t border-grey-200">
+                <VariantLabel title="💡 Cas d'usage — Profil bénévole" />
+                <Text className="mb-3 text-xs text-grey-500">
+                  Tel qu'affiché dans la section disponibilités du profil.
+                </Text>
+                <AvailabilityTypeDot type="HYBRID" />
+              </View>
+            </View>
+          </View>
+          {/* FIN CHAPITRE 12 */}
+
+          {/* ============================================================
+              CHAPITRE 13 : MISSION HISTORY ITEM 📋
+              ============================================================ */}
+          <View>
+            <SectionTitle
+              title="13. Mission History Item"
+              description="Item d'historique pour les participations aux missions."
+            />
+
+            {/* --- 📚 DOC API --- */}
+            <View className="p-4 mb-8 border border-blue-200 rounded-lg bg-blue-50/50">
+              <Text className="mb-4 text-sm font-bold text-blue-800 uppercase">
+                📚 API Reference
+              </Text>
+              <ApiProp name="title" type="string" desc="Titre de la mission." />
+              <ApiProp
+                name="associationName"
+                type="string"
+                desc="Nom de l'association organisatrice."
+              />
+              <ApiProp
+                name="date"
+                type="Date | string"
+                desc="Date de participation — formatée automatiquement en français."
+              />
+              <ApiProp
+                name="type"
+                type="'MISSION' | 'EVENT' | 'COLLECT' | 'INFO'"
+                desc="Type de mission — détermine la couleur et l'icône de l'item."
+              />
+              <ApiProp
+                name="onPress"
+                type="() => void"
+                desc="Callback au clic. Si absent, le chevron est masqué et l'item est non cliquable."
+              />
+              <ApiProp
+                name="className"
+                type="string"
+                desc="Classes Tailwind additionnelles."
+              />
+            </View>
+
+            {/* --- VARIANTES PAR TYPE --- */}
+            <View className="p-4 mb-6 bg-white border rounded-lg border-grey-200">
+              <Text className="mb-2 text-lg font-bold text-primary">
+                Types de mission
+              </Text>
+
+              <VariantLabel title="Tous les types" />
+              <View className="gap-3">
+                <MissionHistoryItem
+                  title="Nettoyage des berges"
+                  associationName="Green Rhône"
+                  date="2024-10-12"
+                  type="MISSION"
+                  onPress={() => {}}
+                />
+                <MissionHistoryItem
+                  title="Soirée de sensibilisation"
+                  associationName="Solidarité Lyon"
+                  date="2024-09-28"
+                  type="EVENT"
+                  onPress={() => {}}
+                />
+                <MissionHistoryItem
+                  title="Collecte de vêtements"
+                  associationName="Entraide 69"
+                  date="2024-09-15"
+                  type="COLLECT"
+                  onPress={() => {}}
+                />
+                <MissionHistoryItem
+                  title="Newsletter mensuelle"
+                  associationName="Asso Info"
+                  date="2024-08-01"
+                  type="INFO"
+                  onPress={() => {}}
+                />
+              </View>
+            </View>
+
+            {/* --- ÉTATS --- */}
+            <View className="p-4 bg-white border rounded-lg border-grey-200">
+              <Text className="mb-2 text-lg font-bold text-grey-800">
+                États
+              </Text>
+
+              <VariantLabel title="Cliquable (avec chevron)" />
+              <MissionHistoryItem
+                title="Aide aux devoirs"
+                associationName="Savoir Partagé"
+                date="2024-09-28"
+                type="MISSION"
+                onPress={() => {}}
+              />
+
+              <VariantLabel title="Non cliquable (sans chevron)" />
+              <MissionHistoryItem
+                title="Aide aux devoirs"
+                associationName="Savoir Partagé"
+                date="2024-09-28"
+                type="MISSION"
+              />
+
+              {/* CAS D'USAGE RÉEL */}
+              <View className="pt-4 mt-6 border-t border-grey-200">
+                <VariantLabel title="💡 Cas d'usage — Historique profil" />
+                <Text className="mb-3 text-xs text-grey-500">
+                  Les 5 dernières participations telles qu'elles apparaissent
+                  sur la page profil.
+                </Text>
+                <View className="gap-3">
+                  <MissionHistoryItem
+                    title="Nettoyage des berges"
+                    associationName="Green Rhône"
+                    date="2024-10-12"
+                    type="MISSION"
+                    onPress={() => {}}
+                  />
+                  <MissionHistoryItem
+                    title="Aide aux devoirs"
+                    associationName="Savoir Partagé"
+                    date="2024-09-28"
+                    type="EVENT"
+                    onPress={() => {}}
+                  />
+                </View>
+              </View>
+            </View>
+          </View>
+          {/* FIN CHAPITRE 13 */}
         </View>
       </ScrollView>
     </>

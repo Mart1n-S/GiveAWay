@@ -5,7 +5,6 @@ import { useAuthStore } from "../stores/auth.store";
 import {
   LoginDto,
   RegisterDto,
-  User,
   AuthResponse,
   VerifyEmailDto,
   ResendVerificationDto,
@@ -180,22 +179,8 @@ export const AuthService = {
   },
 
   // =================================================================
-  // 2. GESTION DE COMPTE (Me / Verify)
+  // 2. GESTION DE COMPTE (Verify)
   // =================================================================
-
-  /**
-   * GET /auth/me
-   * Récupère le profil à jour grâce au Token (envoyé auto par axios)
-   */
-  getProfile: async () => {
-    // Axios injecte automatiquement le token Bearer via l'intercepteur
-    const response = await api.get<User>("/auth/me");
-
-    // On met à jour le store global pour que toute l'UI en profite
-    useAuthStore.getState().setUser(response.data);
-
-    return response.data;
-  },
 
   /**
    * POST /auth/verify

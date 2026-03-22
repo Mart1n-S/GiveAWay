@@ -88,34 +88,74 @@ export const UpdateProfileSchema = z.object({
     .optional(),
 
   availability: z
-    .object({
-      frequency: z.nativeEnum(AvailabilityFrequency, {
-        message: "Fréquence de disponibilité invalide",
-      }),
-      timeSlot: z.nativeEnum(AvailabilityTime, {
-        message: "Créneau horaire invalide",
-      }),
-      type: z.nativeEnum(AvailabilityType, {
-        message: "Type de disponibilité invalide",
-      }),
-    })
+    .preprocess(
+      (val) => {
+        if (typeof val === "string") {
+          try {
+            return JSON.parse(val);
+          } catch {
+            return val;
+          }
+        }
+        return val;
+      },
+      z
+        .object({
+          frequency: z.enum(AvailabilityFrequency, {
+            message: "Fréquence de disponibilité invalide",
+          }),
+          timeSlot: z.enum(AvailabilityTime, {
+            message: "Créneau horaire invalide",
+          }),
+          type: z.enum(AvailabilityType, {
+            message: "Type de disponibilité invalide",
+          }),
+        })
+        .optional(),
+    )
     .optional(),
 
   skillIds: z
-    .array(
+    .preprocess(
+      (val) => {
+        if (typeof val === "string") {
+          try {
+            return JSON.parse(val);
+          } catch {
+            return val;
+          }
+        }
+        return val;
+      },
       z
-        .number()
-        .int()
-        .positive({ message: "L'identifiant de compétence est invalide" }),
+        .array(
+          z.number().int().positive({
+            message: "L'identifiant de compétence est invalide",
+          }),
+        )
+        .optional(),
     )
     .optional(),
 
   causeIds: z
-    .array(
+    .preprocess(
+      (val) => {
+        if (typeof val === "string") {
+          try {
+            return JSON.parse(val);
+          } catch {
+            return val;
+          }
+        }
+        return val;
+      },
       z
-        .number()
-        .int()
-        .positive({ message: "L'identifiant de cause est invalide" }),
+        .array(
+          z.number().int().positive({
+            message: "L'identifiant de cause est invalide",
+          }),
+        )
+        .optional(),
     )
     .optional(),
 });
