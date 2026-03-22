@@ -5,7 +5,7 @@ import { Button } from "../button/button";
 import { Text } from "../text/text";
 import { ProfileActionRow } from "../profile-action-row/profile-action-row";
 import { ProfileActionsProps } from "./profile-actions.types";
-
+import { colors } from "@/components/ui";
 import EditIconSource from "@assets/icons/ic_edit.svg";
 import LogoutIconSource from "@assets/icons/ic_logout.svg";
 import TrashIconSource from "@assets/icons/ic_trash.svg";
@@ -60,7 +60,7 @@ export function ProfileActions({
 
       <View className="overflow-hidden bg-white border rounded-md shadow-sm border-grey-200">
         <ProfileActionRow
-          icon={<SettingsIcon className="w-5 h-5" />}
+          icon={<SettingsIcon />}
           label="Paramètres de confidentialité"
           onPress={() => {}}
         />
@@ -69,7 +69,7 @@ export function ProfileActions({
         <View className="h-[1px] ml-12 bg-grey-100" />
 
         <ProfileActionRow
-          icon={<LogoutIcon className="w-5 h-5" />}
+          icon={<LogoutIcon />}
           label="Déconnexion"
           variant="danger"
           onPress={onLogoutPress}
@@ -81,26 +81,27 @@ export function ProfileActions({
         onPress={onDeletePress}
         accessibilityRole="button"
         className={clsx(
-          "group h-control w-full rounded-md flex-row items-center justify-center gap-2 transition-all mt-8",
+          "h-control w-full rounded-md flex-row items-center justify-center gap-2 transition-all mt-8",
           "border border-transparent",
-          "hover:bg-red-50 active:bg-red-100",
+          "hover:bg-red-50 active:bg-red-200",
           "web:outline-none web:focus-visible:ring-2 web:focus-visible:ring-red-500 web:focus-visible:ring-offset-2",
         )}
       >
-        <TrashIcon
-          className={clsx(
-            "w-4 h-4 transition-colors",
-            "text-red-600 group-active:text-red-900",
-          )}
-        />
-        <Text
-          className={clsx(
-            "text-sm font-bold tracking-tight transition-colors",
-            "text-red-600 group-active:text-red-900",
-          )}
-        >
-          Supprimer le compte
-        </Text>
+        {({ pressed }) => (
+          <>
+            <TrashIcon
+              width={16}
+              height={16}
+              color={pressed ? colors.red[900] : colors.red[600]}
+            />
+            <Text
+              className="text-sm font-bold tracking-tight"
+              style={{ color: pressed ? colors.red[900] : colors.red[600] }}
+            >
+              Supprimer le compte
+            </Text>
+          </>
+        )}
       </Pressable>
     </View>
   );
