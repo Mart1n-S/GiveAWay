@@ -59,7 +59,7 @@ export default defineConfig({
       stderr: "pipe",
     },
     {
-      command: "npx expo start --web",
+      command: "npx expo start --web --host localhost",
       port: 8081,
       reuseExistingServer: !process.env.CI,
       timeout: 300000,
@@ -68,6 +68,10 @@ export default defineConfig({
       env: {
         EXPO_ROUTER_APP_ROOT: "app",
         NODE_ENV: "development",
+        EXPO_PUBLIC_API_URL: "http://localhost:3000",
+        EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID:
+          process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ??
+          "fake-client-id-for-ci",
       },
     },
   ],
