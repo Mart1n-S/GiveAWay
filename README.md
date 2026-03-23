@@ -226,48 +226,28 @@ Pour le reste il suffit de regarder le fichier `apps/api/prisma/seed.ts` pour vo
 ```bash
 npm run dev
 ```
----
-
-### 7️⃣ Développement Web vs Mobile - URL de l'API
-
-L'URL de l'API à configurer dans `apps/mobile/.env` dépend du contexte :
-
-| Contexte              | `EXPO_PUBLIC_API_URL`     | Pourquoi                                                                                                                               |
-| --------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| **Web (navigateur)**  | `http://localhost:3000`   | Les cookies `SameSite=Lax` fonctionnent uniquement sur le même hostname. Utiliser une IP brise l'envoi des cookies d'authentification. |
-| **Android physique**  | `http://192.168.1.x:3000` | Le téléphone ne peut pas résoudre `localhost` - il faut l'IP locale de la machine.                                                     |
-| **Android Émulateur** | `http://10.0.2.2:3000`    | Alias interne de l'émulateur Android qui pointe vers `localhost` de la machine hôte.                                                   |
-
-> [!IMPORTANT]
-> **Ne jamais utiliser `http://192.168.1.x:3000` pour tester sur navigateur.**
-> Les cookies d'authentification (`access_token`, `refresh_token`) sont définis avec
-> `SameSite=Lax` - ils ne sont pas envoyés dans les requêtes cross-origin (ports différents
-> sur une IP différente de `localhost`), ce qui provoque des erreurs `401 Unauthorized`.
-
-#### Exemple de configuration recommandée
-```dotenv
-# apps/mobile/.env
-
-# ✅ Pour le développement WEB (navigateur)
-EXPO_PUBLIC_API_URL=http://localhost:3000
-
-# ✅ Pour tester sur téléphone Android physique (Google OAuth, etc.)
-# EXPO_PUBLIC_API_URL=http://192.168.1.x:3000
-# → Remplace x par l'IP locale de ta machine (ipconfig / ifconfig)
-# → Ton téléphone et ton PC doivent être sur le même réseau WiFi
-
-# ✅ Pour l'émulateur Android
-# EXPO_PUBLIC_API_URL=http://10.0.2.2:3000
-```
 
 > [!NOTE]
-> Pour tester **Google OAuth sur mobile physique**, tu dois utiliser l'IP locale.
-> Dans ce cas, le web ne fonctionnera pas correctement (cookies bloqués).
-> Lance Metro avec `--host lan` pour exposer le serveur sur le réseau local :
-> ```bash
-> cd apps/mobile
-> npx expo start --dev-client --host lan
-> ```
+> Cette commande lance le backend ET le frontend simultanément.
+> Sur mobile, scannez le QR code avec **Expo Go** (Android/iOS).
+> Si une page intermédiaire s'ouvre, cliquez sur **"Expo Go"** en bas de page.
+---
+
+### 7️⃣ Développement Web vs Mobile — URL de l'API
+
+En développement standard, **laisser `EXPO_PUBLIC_API_URL` vide** dans `apps/mobile/.env`.
+`axios.ts` détecte automatiquement la bonne URL selon la plateforme :
+
+| Contexte                     | URL détectée              | Comment                                                  |
+| ---------------------------- | ------------------------- | -------------------------------------------------------- |
+| **Web (navigateur)**         | `http://localhost:3000`   | Détection automatique via `Platform.OS`                  |
+| **Mobile Expo Go**           | `http://192.168.x.x:3000` | Détection automatique via `Constants.expoConfig.hostUri` |
+| **Google Auth mobile (APK)** | `http://192.168.x.x:3000` | À définir manuellement dans `.env`                       |
+
+> [!NOTE]
+> Pour tester **Google Auth sur mobile physique** (APK Development Build uniquement),
+> consulter la documentation dédiée : 📄 **[OAuthGoogle.md](./OAuthGoogle.md)**
+
 ---
 
 ## 🧹 Linting & Code Quality
@@ -324,7 +304,7 @@ npm run start:test --workspace=apps/api
 ```
 - **Terminal B (Web) :** 
 ```bash
-npm run web --workspace=apps/mobile`
+npm run web --workspace=apps/mobile
 ```
 
 #### 3. Exécution des tests Playwright
@@ -357,9 +337,14 @@ npm run test:e2e:mobile -- inscription-benevole.spec.ts
 
 [http://localhost:3000](http://localhost:3000)
 
-### 📱 Mobile (Expo)
+### 📱 Mobile (Expo Go)
 
-Scannez le **QR Code affiché dans le terminal** avec **Expo Go** (iOS/Android)
+Scannez le **QR Code affiché dans le terminal** avec **Expo Go** (Android/iOS).
+Si une page intermédiaire s'ouvre à `/_expo/loading`, cliquez sur **"Expo Go"** en bas.
+
+> [!NOTE]
+> Pour tester **Google Auth sur mobile**, un APK Development Build est nécessaire.
+> Consulter 📄 **[OAuthGoogle.md](./OAuthGoogle.md)** pour les instructions.
 
 ### 🖥️ Web (Expo)
 

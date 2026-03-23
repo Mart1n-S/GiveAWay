@@ -1,13 +1,9 @@
 import * as WebBrowser from "expo-web-browser";
 import * as Google from "expo-auth-session/providers/google";
-import {
-  GoogleSignin,
-  statusCodes,
-} from "@react-native-google-signin/google-signin";
 import { useEffect, useRef, useState } from "react";
 import { Platform } from "react-native";
 import { GoogleLoginDto } from "@repo/shared";
-
+import { googleSignIn, statusCodes } from "../lib/google-signin";
 // Indispensable pour fermer correctement la popup OAuth sur web
 WebBrowser.maybeCompleteAuthSession();
 
@@ -19,6 +15,7 @@ WebBrowser.maybeCompleteAuthSession();
  *   (implicit flow) → on appelle l'endpoint UserInfo pour récupérer les infos utilisateur.
  * - **Mobile** (iOS/Android) : `@react-native-google-signin` qui utilise le SDK natif Google.
  *   Google renvoie directement un `id_token` JWT vérifié côté backend.
+ *   Import dynamique pour ne pas crasher sur Expo Go.
  *
  * @param onSuccess - Callback appelé avec le DTO Google une fois l'auth réussie
  * @returns `signInWithGoogle` pour déclencher le flow, `isLoading` et `isReady`
@@ -88,35 +85,22 @@ export const useGoogleAuth = (
    * Déclenche le flow Google natif sur iOS/Android.
    * Utilise le SDK Google Play Services (Android) ou GoogleSignIn (iOS).
    * Renvoie toujours un id_token JWT signé par Google.
+   *
+   * Import dynamique pour ne pas crasher sur Expo Go
+   * (module natif absent dans le sandbox Expo Go).
    */
   const signInWithGoogleNative = async () => {
     try {
       setIsLoading(true);
-
-      // Configuration du SDK natif Google
-      // webClientId est requis pour obtenir un id_token côté backend
-      GoogleSignin.configure({
-        webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-        iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-        offlineAccess: true,
-      });
-
-      await GoogleSignin.hasPlayServices();
-      await GoogleSignin.signIn();
-      const { idToken } = await GoogleSignin.getTokens();
-
-      if (!idToken) throw new Error("Pas d'idToken reçu");
-
+      const idToken = await googleSignIn();
       await onSuccessRef.current({ idToken, isAccessToken: false });
     } catch (error: unknown) {
       const err = error as { code?: string; message?: string };
-
       if (err.code === statusCodes.SIGN_IN_CANCELLED) {
-        // L'utilisateur a fermé la popup — pas une vraie erreur
+        // L'utilisateur a fermé la popup
       } else if (err.code === statusCodes.IN_PROGRESS) {
-        // Un sign-in est déjà en cours — on ignore
+        // Sign-in déjà en cours
       } else {
-        // On relance pour que handleGoogleSuccess puisse afficher l'erreur
         throw error;
       }
     } finally {
