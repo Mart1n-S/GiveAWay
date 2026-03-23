@@ -1,11 +1,11 @@
 import { View, Pressable } from "react-native";
 import clsx from "clsx";
 import { cssInterop } from "nativewind";
-import { Button } from "../button/button";
-import { Text } from "../text/text";
-import { ProfileActionRow } from "../profile-action-row/profile-action-row";
-import { ProfileActionsProps } from "./profile-actions.types";
-import { colors } from "@/components/ui";
+import { Button } from "@/components/ui/button/button";
+import { Text } from "@/components/ui/text/text";
+import { ProfileActionRow } from "@/components/ui/profile-action-row/profile-action-row";
+import { colors } from "@/components/ui/theme/tokens";
+import type { ProfileActionsProps } from "./profile-actions.types";
 import EditIconSource from "@assets/icons/ic_edit.svg";
 import LogoutIconSource from "@assets/icons/ic_logout.svg";
 import TrashIconSource from "@assets/icons/ic_trash.svg";

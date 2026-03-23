@@ -1,5 +1,4 @@
 import { Platform } from "react-native";
-import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { api } from "../lib/axios";
 import { useAuthStore } from "../stores/auth.store";
 import {
@@ -13,6 +12,7 @@ import {
   GoogleLoginDto,
 } from "@repo/shared";
 import { ReactNativeFile } from "../types/files.type";
+import { googleSignOut } from "../lib/google-signin";
 
 export const AuthService = {
   // =================================================================
@@ -141,19 +141,11 @@ export const AuthService = {
       const refreshToken = useAuthStore.getState().refreshToken;
 
       // Déconnexion Google native sur mobile
+      // Import dynamique pour ne pas crasher sur Expo Go
       if (Platform.OS !== "web") {
         try {
-          // GoogleSignin doit être reconfiguré avant signOut()
-          // car la configuration faite dans useGoogleAuth n'est pas persistante
-          GoogleSignin.configure({
-            webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-            iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-            offlineAccess: true,
-          });
-          await GoogleSignin.signOut();
+          await googleSignOut();
         } catch (googleError) {
-          // Non bloquant — une erreur Google Sign-Out ne doit pas
-          // empêcher la déconnexion de l'app
           console.warn("[AuthService] Google Sign-Out warning:", googleError);
         }
       }

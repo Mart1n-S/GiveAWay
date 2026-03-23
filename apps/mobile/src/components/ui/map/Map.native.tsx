@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, Platform } from "react-native";
 import { SetStateAction, useState } from "react";
 import MapView, { Marker, Region } from "react-native-maps";
+import Constants, { ExecutionEnvironment } from "expo-constants";
 
 const MOCK_LISTINGS = [
   {
@@ -51,8 +52,13 @@ export default function Map() {
     longitudeDelta: 0.02,
   });
 
-  // Placeholder Android tant que la clé Maps n'est pas configurée
-  if (Platform.OS === "android") {
+  // Placeholder si on est dans un Development Build ou APK
+  // (clé Google Maps non configurée)
+  // Sur Expo Go : la carte fonctionne sans clé
+  const isNativeBuild =
+    Constants.executionEnvironment !== ExecutionEnvironment.StoreClient;
+
+  if (Platform.OS === "android" && isNativeBuild) {
     return (
       <View style={styles.placeholder}>
         <Text style={styles.placeholderText}>🗺️ Carte non disponible</Text>

@@ -113,45 +113,45 @@ GOOGLE_ANDROID_CLIENT_ID=<android_client_id>
 
 ### Frontend (`/apps/mobile/.env`)
 ```dotenv
+# ---------------------------------------------------------------
 # URL de l'API backend
-# - Développement web          : http://localhost:3000
-# - Développement mobile (LAN) : http://192.168.x.x:3000
-#   → Remplace x.x par l'IP locale de ta machine (ipconfig sur Windows, ifconfig sur Mac/Linux)
-#   → Ton téléphone et ton PC doivent être sur le même réseau WiFi
-# - Production                 : https://api.ton-domaine.com
+# ---------------------------------------------------------------
+# Laisser vide en développement standard (Expo Go + Web) :
+#   - Web (navigateur) → http://localhost:3000 (auto)
+#   - Mobile Expo Go   → IP locale via Constants.expoConfig.hostUri (auto)
+#
+# Pour tester Google Auth mobile (APK Development Build) :
+#   → Décommenter la ligne avec l'IP locale de ta machine
+#   → Lancer : npm run dev:native (depuis apps/mobile)
+#
+# EXPO_PUBLIC_API_URL=http://192.168.x.x:3000
+#
+# En production :
+# EXPO_PUBLIC_API_URL=https://api.ton-domaine.com
+# ---------------------------------------------------------------
 EXPO_PUBLIC_API_URL=
 
 EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=<web_client_id>
 EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=<android_client_id>
 EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=<ios_client_id>
+EXPO_PUBLIC_GOOGLE_USERINFO_URL=https://www.googleapis.com/oauth2/v3/userinfo
 ```
 
 ---
 
-## Étape 5 - Configuration `app.json`
+## Étape 5 - Configuration `app.config.js`
 
-Le fichier `app.json` est déjà configuré pour l'organisation **giveaway-team**.
-**Ne pas modifier ces valeurs.**
-```json
-{
-  "expo": {
-    "owner": "giveaway-team",
-    "extra": {
-      "eas": {
-        "projectId": "8ec15cbb-f3af-4dbe-ae4b-48c7bea59faf"
-      }
-    },
-    "plugins": [
-      [
-        "@react-native-google-signin/google-signin",
-        {
-          "iosUrlScheme": "com.googleusercontent.apps.<ios_client_id_sans_suffix>"
-        }
-      ]
-    ]
-  }
-}
-```
+Le projet utilise `app.config.js` à la place de `app.json` pour gérer
+dynamiquement les plugins natifs selon l'environnement.
+
+La variable `EXPO_NATIVE_BUILD=true` active les plugins natifs
+(`expo-dev-client`, `@react-native-google-signin/google-signin`).
+Elle est injectée automatiquement par les scripts npm - **ne pas modifier**.
+
+**Ne pas modifier ces valeurs dans `app.config.js` :**
+- `owner` : `giveaway-team`
+- `projectId` : `8ec15cbb-f3af-4dbe-ae4b-48c7bea59faf`
+- `iosUrlScheme` : `com.googleusercontent.apps.533720849177-xxx`
 
 L'`iosUrlScheme` est le Client ID iOS **inversé** :
 - Client ID iOS : `533720849177-xxx.apps.googleusercontent.com`
@@ -202,18 +202,20 @@ eas build --profile development --platform android
 - Installe l'APK sur ton téléphone Android
 
 ### 6.4 Lancer le serveur de développement
-```bash
-# Dans un terminal - Backend
-npm run dev --workspace=apps/api
 
-# Dans un autre terminal - Frontend
-cd apps/mobile
-npx expo start --dev-client --host lan
+Dans un terminal - Backend :
+```bash
+npm run dev --workspace=apps/api
 ```
 
-Ouvre l'app installée sur ton téléphone, connecte-toi au compte Expo puis scanne
-le QR code affiché dans le terminal ou entre manuellement l'URL
-`http://192.168.x.x:8081` dans le champ de l'app.
+Dans un autre terminal - Frontend (depuis `apps/mobile`) :
+```bash
+npm run dev:native
+```
+
+> [!NOTE]
+> `npm run dev:native` est équivalent à `cross-env EXPO_NATIVE_BUILD=true expo start --dev-client --host lan`
+> Il active automatiquement les plugins natifs Google Auth.
 
 ---
 
@@ -224,36 +226,46 @@ le QR code affiché dans le terminal ou entre manuellement l'URL
 | `google-services.json` | ❌ Non     | Firebase Console                 |
 | `/.env`                | ❌ Non     | Google Cloud Console + collègues |
 | `/apps/mobile/.env`    | ❌ Non     | Google Cloud Console + collègues |
-| `app.json`             | ✅ Oui     | Dans le repo                     |
+| `app.config.js`        | ✅ Oui     | Dans le repo                     |
 | `eas.json`             | ✅ Oui     | Dans le repo                     |
 
 ---
 
 ## En résumé pour un nouveau développeur
+
+### Dev quotidien (sans Google Auth mobile)
 ```bash
-# 1. Cloner le repo
-git clone <repo>
+# Depuis la racine
+npm run dev
+# → Backend sur localhost:3000
+# → Frontend Expo Go sur http://192.168.x.x:8081
+# → Scanne le QR code avec Expo Go
+```
 
-# 2. Installer les dépendances
-npm install
+> [!NOTE]
+> En mode dev quotidien, Google Auth fonctionne sur **web** mais pas sur mobile
+> (Expo Go ne supporte pas les modules natifs). Pour le développement standard,
+> utilisez l'authentification email/password sur mobile.
 
-# 3. Copier et remplir les .env
-cp .env.example .env
-cp apps/mobile/.env.example apps/mobile/.env
-# → Remplir les valeurs avec les IDs Google et l'URL API
+### Tester Google Auth mobile (APK Development Build)
 
-# 4. Récupérer google-services.json depuis Firebase Console
-# → Placer dans apps/mobile/google-services.json
+> [!WARNING]
+> Ce mode est uniquement nécessaire pour tester **Google Auth sur téléphone**.
+> Il a un effet de bord : l'authentification Google **ne fonctionne plus sur web**
+> tant que `EXPO_PUBLIC_API_URL` pointe vers l'IP locale au lieu de `localhost`.
+> Pensez à remettre `EXPO_PUBLIC_API_URL=` (vide) après vos tests.
 
-# 5. Se connecter à Expo (accepter l'invitation giveaway-team au préalable)
-eas login
-cd apps/mobile && eas build --profile development --platform android
+```bash
+# 1. Dans apps/mobile/.env, décommenter et adapter l'IP :
+# EXPO_PUBLIC_API_URL=http://192.168.x.x:3000
+#    → Remplace x.x par l'IP locale de ta machine
+#    → ipconfig (Windows) ou ifconfig (Mac/Linux)
 
-# 6. Lancer le projet
-# Dans un terminal - Backend
+# 2. Terminal 1 — Backend
 npm run dev --workspace=apps/api
 
-# Dans un autre terminal - Frontend
-cd apps/mobile
-npx expo start --dev-client --host lan
+# 3. Terminal 2 — Frontend (depuis apps/mobile)
+npm run dev:native
+# → Ouvre l'APK installé sur ton téléphone et scanne le QR code
+# → L'APK est disponible sur expo.dev (organisation giveaway-team)
 ```
