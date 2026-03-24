@@ -5,6 +5,7 @@ import { Text } from "../text/text";
 import { ProfileBioCardProps } from "./profile-bio-card.types";
 
 import EmailIconSource from "@assets/icons/ic_email.svg";
+import CakeIconSource from "@assets/icons/ic_cake.svg";
 
 const iconConfig = {
   className: {
@@ -14,7 +15,7 @@ const iconConfig = {
 } as const;
 
 const EmailIcon = cssInterop(EmailIconSource, iconConfig);
-
+const CakeIcon = cssInterop(CakeIconSource, iconConfig);
 /**
  * Carte affichant la biographie et l'email de l'utilisateur.
  *
@@ -52,6 +53,19 @@ export function ProfileBioCard({ user, className }: ProfileBioCardProps) {
           <EmailIcon className="w-4 h-4 text-grey-500" />
           <Text className="text-sm font-medium text-grey-700">
             {user.email || "Non renseigné"}
+          </Text>
+        </View>
+      </View>
+
+      {/* Age */}
+      <View className="gap-1">
+        <Text className="text-[10px] font-bold uppercase tracking-widest text-grey-900">
+          Age
+        </Text>
+        <View className="flex-row items-center gap-2 p-3 mt-1 border rounded-lg bg-grey-50 border-grey-100">
+          <CakeIcon className="w-4 h-4 text-grey-500" />
+          <Text className="text-sm font-medium text-grey-700">
+            {user.age || "Non renseigné"}
           </Text>
         </View>
       </View>
