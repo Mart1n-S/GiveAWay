@@ -17,6 +17,8 @@ import {
   AvailabilitySlot,
   AvailabilityTypeDot,
   MissionHistoryItem,
+  ProfileActionRow,
+  MultiSelectList
 } from "@/components/ui";
 
 // --- CONFIGURATION DES ICÔNES ---
@@ -176,6 +178,38 @@ const PaletteRow = ({
     </View>
   </View>
 );
+
+// Mock data pour MultiSelectList
+const MOCK_CAUSES = [
+  { id: 1, label: "Écologie" },
+  { id: 2, label: "Solidarité" },
+  { id: 3, label: "Éducation" },
+  { id: 4, label: "Santé" },
+  { id: 5, label: "Culture" },
+];
+
+const MOCK_SKILLS = [
+  { id: 1, label: "Informatique" },
+  { id: 2, label: "Jardinage" },
+  { id: 3, label: "Logistique" },
+  { id: 4, label: "Communication" },
+  { id: 5, label: "Cuisine" },
+];
+
+// Composant de démo interactif (state local pour la démo)
+function MultiSelectListDemo({ variant }: { variant: "orange" | "blue" }) {
+  const [selectedIds, setSelectedIds] = useState<number[]>([1, 3]);
+  const items = variant === "orange" ? MOCK_CAUSES : MOCK_SKILLS;
+
+  return (
+    <MultiSelectList
+      items={items}
+      selectedIds={selectedIds}
+      onChange={setSelectedIds}
+      variant={variant}
+    />
+  );
+}
 
 export default function DesignSystemScreen() {
   // --- ÉTATS ---
@@ -2184,6 +2218,246 @@ export default function DesignSystemScreen() {
             </View>
           </View>
           {/* FIN CHAPITRE 13 */}
+
+          {/* ============================================================
+              CHAPITRE 14 : PROFILE ACTION ROW ⚙️
+              ============================================================ */}
+          <View>
+            <SectionTitle
+              title="14. Profile Action Row"
+              description="Ligne d'action style iOS Settings pour la page profil."
+            />
+
+            {/* --- 📚 DOC API --- */}
+            <View className="p-4 mb-8 border border-blue-200 rounded-lg bg-blue-50/50">
+              <Text className="mb-4 text-sm font-bold text-blue-800 uppercase">
+                📚 API Reference
+              </Text>
+              <ApiProp
+                name="icon"
+                type="ReactNode"
+                desc="Icône SVG à afficher à gauche du label. La couleur s'adapte automatiquement au variant et à l'état pressed."
+              />
+              <ApiProp
+                name="label"
+                type="string"
+                desc="Texte de l'action."
+              />
+              <ApiProp
+                name="variant"
+                type="'default' | 'danger'"
+                defaultValue="'default'"
+                desc="default : texte gris foncé + chevron gris. danger : texte rouge + chevron rouge."
+              />
+              <ApiProp
+                name="onPress"
+                type="() => void"
+                desc="Callback au clic."
+              />
+              <ApiProp
+                name="loading"
+                type="boolean"
+                defaultValue="false"
+                desc="Affiche un spinner et désactive les interactions."
+              />
+              <ApiProp
+                name="className"
+                type="string"
+                desc="Classes Tailwind additionnelles."
+              />
+            </View>
+
+            {/* --- VARIANTES --- */}
+            <View className="mb-6 overflow-hidden bg-white border rounded-lg border-grey-200">
+              <Text className="px-4 pt-4 mb-2 text-lg font-bold text-primary">
+                Variantes
+              </Text>
+
+              <VariantLabel title="Default" />
+              <ProfileActionRow
+                icon={<SettingsIcon />}
+                label="Paramètres de confidentialité"
+                onPress={() => {}}
+              />
+
+              <View className="h-px bg-grey-100" />
+
+              <VariantLabel title="Danger" />
+              <ProfileActionRow
+                icon={<LogoutIcon />}
+                label="Déconnexion"
+                variant="danger"
+                onPress={() => {}}
+              />
+            </View>
+
+            {/* --- ÉTATS --- */}
+            <View className="mb-6 overflow-hidden bg-white border rounded-lg border-grey-200">
+              <Text className="px-4 pt-4 mb-2 text-lg font-bold text-grey-800">
+                États
+              </Text>
+
+              <VariantLabel title="Loading (default)" />
+              <ProfileActionRow
+                icon={<SettingsIcon />}
+                label="Chargement en cours..."
+                onPress={() => {}}
+                loading
+              />
+
+              <View className="h-px bg-grey-100" />
+
+              <VariantLabel title="Loading (danger)" />
+              <ProfileActionRow
+                icon={<TrashIcon />}
+                label="Suppression en cours..."
+                variant="danger"
+                onPress={() => {}}
+                loading
+              />
+            </View>
+
+            {/* --- CAS D'USAGE RÉEL --- */}
+            <View className="overflow-hidden bg-white border rounded-lg border-grey-200">
+              <Text className="px-4 pt-4 mb-2 text-lg font-bold text-grey-800">
+                💡 Cas d'usage — Actions profil
+              </Text>
+              <Text className="px-4 mb-3 text-xs text-grey-500">
+                Tel qu'affiché dans la section actions de la page profil.
+              </Text>
+
+              <ProfileActionRow
+                icon={<SettingsIcon />}
+                label="Paramètres de confidentialité"
+                onPress={() => {}}
+              />
+              <View className="h-px bg-grey-100" />
+              <ProfileActionRow
+                icon={<LogoutIcon />}
+                label="Déconnexion"
+                variant="danger"
+                onPress={() => {}}
+              />
+              <View className="h-px bg-grey-100" />
+              <ProfileActionRow
+                icon={<TrashIcon />}
+                label="Supprimer le compte"
+                variant="danger"
+                onPress={() => {}}
+              />
+            </View>
+          </View>
+          {/* FIN CHAPITRE 14 */}
+
+          {/* ============================================================
+          CHAPITRE 15 : MULTI SELECT LIST ✅
+          ============================================================ */}
+          <View>
+            <SectionTitle
+              title="15. Multi Select List"
+              description="Liste de tags multi-sélectionnables pour causes et compétences."
+            />
+
+            {/* --- 📚 DOC API --- */}
+            <View className="p-4 mb-8 border border-blue-200 rounded-lg bg-blue-50/50">
+              <Text className="mb-4 text-sm font-bold text-blue-800 uppercase">
+                📚 API Reference
+              </Text>
+              <ApiProp
+                name="items"
+                type="SelectableItem[]"
+                desc="Liste des items disponibles. Chaque item a un id (number) et un label (string)."
+              />
+              <ApiProp
+                name="selectedIds"
+                type="number[]"
+                desc="IDs des items actuellement sélectionnés."
+              />
+              <ApiProp
+                name="onChange"
+                type="(selectedIds: number[]) => void"
+                desc="Callback appelé à chaque changement de sélection avec la nouvelle liste d'IDs."
+              />
+              <ApiProp
+                name="variant"
+                type="'orange' | 'blue'"
+                defaultValue="'orange'"
+                desc="orange : thème causes (fond orange). blue : thème compétences (fond bleu)."
+              />
+              <ApiProp
+                name="className"
+                type="string"
+                desc="Classes Tailwind additionnelles."
+              />
+            </View>
+
+            {/* --- VARIANTES --- */}
+            <View className="p-4 mb-6 bg-white border rounded-lg border-grey-200">
+              <Text className="mb-2 text-lg font-bold text-primary">
+                Variantes
+              </Text>
+
+              <VariantLabel title="Orange (Causes)" />
+              <MultiSelectListDemo variant="orange" />
+
+              <VariantLabel title="Blue (Compétences)" />
+              <MultiSelectListDemo variant="blue" />
+            </View>
+
+            {/* --- ÉTATS --- */}
+            <View className="p-4 mb-6 bg-white border rounded-lg border-grey-200">
+              <Text className="mb-2 text-lg font-bold text-grey-800">
+                États
+              </Text>
+
+              <VariantLabel title="Aucun sélectionné" />
+              <MultiSelectList
+                items={MOCK_CAUSES}
+                selectedIds={[]}
+                onChange={() => {}}
+                variant="orange"
+              />
+
+              <VariantLabel title="Partiellement sélectionné" />
+              <MultiSelectList
+                items={MOCK_CAUSES}
+                selectedIds={[1, 3]}
+                onChange={() => {}}
+                variant="orange"
+              />
+
+              <VariantLabel title="Tout sélectionné" />
+              <MultiSelectList
+                items={MOCK_CAUSES}
+                selectedIds={MOCK_CAUSES.map((c) => c.id)}
+                onChange={() => {}}
+                variant="orange"
+              />
+            </View>
+
+            {/* --- CAS D'USAGE RÉEL --- */}
+            <View className="p-4 bg-white border rounded-lg border-grey-200">
+              <Text className="mb-2 text-lg font-bold text-grey-800">
+                💡 Cas d'usage — Édition du profil
+              </Text>
+              <Text className="mb-4 text-xs text-grey-500">
+                Tel qu'utilisé dans le formulaire de modification du profil.
+              </Text>
+
+              <Text className="mb-2 text-xs font-bold uppercase text-grey-500">
+                Causes
+              </Text>
+              <MultiSelectListDemo variant="orange" />
+
+              <View className="h-px my-4 bg-grey-100" />
+
+              <Text className="mb-2 text-xs font-bold uppercase text-grey-500">
+                Compétences
+              </Text>
+              <MultiSelectListDemo variant="blue" />
+            </View>
+          </View>
+          {/* FIN CHAPITRE 15 */}
         </View>
       </ScrollView>
     </>

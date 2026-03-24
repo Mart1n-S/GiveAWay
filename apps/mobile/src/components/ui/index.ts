@@ -50,3 +50,5 @@ export * from "./profile-history/profile-history";
 export * from "./profile-history/profile-history.types";
 export * from "./profile-actions/profile-actions";
 export * from "./profile-actions/profile-actions.types";
+export * from "./multi-select-list/multi-select-list";
+export * from "./multi-select-list/multi-select-list.types";

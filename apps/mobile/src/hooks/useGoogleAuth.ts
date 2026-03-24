@@ -41,15 +41,22 @@ export const useGoogleAuth = (
   const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
   const isGoogleAuthAvailable = !!webClientId;
 
+  const webConfig = {
+    webClientId: webClientId ?? "",
+    scopes: ["openid", "profile", "email"],
+  };
+
+  const mobileConfig = {
+    webClientId: webClientId ?? "",
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    scopes: ["openid", "profile", "email"],
+  };
+
   const googleAuthConfig = isGoogleAuthAvailable
     ? Platform.OS === "web"
-      ? { webClientId, scopes: ["openid", "profile", "email"] }
-      : {
-          webClientId,
-          androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-          iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-          scopes: ["openid", "profile", "email"],
-        }
+      ? webConfig
+      : mobileConfig
     : undefined;
 
   const [request, response, promptAsync] =
