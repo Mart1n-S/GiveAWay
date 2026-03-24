@@ -27,6 +27,10 @@ export default function ProfileLayout() {
           title: "Modifier mon Profil",
         }}
       />
+      <Stack.Screen
+        name="supprimer"
+        options={{ headerTitle: "Supprimer le compte" }}
+      />
       {/* TODO: Futures pages comme name="modifier" 
          hériteront automatiquement de ce style.
       */}

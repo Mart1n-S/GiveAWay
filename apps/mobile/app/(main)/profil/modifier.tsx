@@ -91,7 +91,7 @@ export default function EditProfileScreen() {
       age: user?.age ? String(user.age) : "",
       biography: user?.biography ?? "",
       profilePicture: user?.profilePicture ?? undefined,
-      removeProfilePicture: false, // ← ajoute la valeur par défaut
+      removeProfilePicture: false,
       skillIds: user?.skills?.map((s) => s.id) ?? [],
       causeIds: user?.causes?.map((c) => c.id) ?? [],
       availability: user?.availability ?? undefined,
@@ -134,7 +134,6 @@ export default function EditProfileScreen() {
   }, [watch, errors.root, clearErrors]);
 
   // Gestion image
-
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],

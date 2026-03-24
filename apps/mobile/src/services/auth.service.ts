@@ -11,8 +11,8 @@ import {
   ResetPasswordDto,
   GoogleLoginDto,
 } from "@repo/shared";
-import { ReactNativeFile } from "../types/files.type";
 import { googleSignOut } from "../lib/google-signin";
+import { useProfileStore } from "@/stores/profile.store";
 
 export const AuthService = {
   // =================================================================
@@ -69,6 +69,9 @@ export const AuthService = {
         backendTokens?.accessToken ?? null,
         backendTokens?.refreshToken ?? null,
       );
+
+    useProfileStore.getState().setProfile(user);
+
 
     return user;
   },

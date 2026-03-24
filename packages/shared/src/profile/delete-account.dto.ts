@@ -9,7 +9,7 @@ export const DeleteAccountSchema = z
     confirmation: z.string().optional(),
   })
   .superRefine((data, ctx) => {
-    // Au moins un des deux doit être fourni
+    // Au moins un des deux doit être fourni (non vide)
     if (!data.password && !data.confirmation) {
       ctx.addIssue({
         code: "custom",
@@ -19,8 +19,8 @@ export const DeleteAccountSchema = z
       return;
     }
 
-    // Si confirmation texte fournie, elle doit être exactement "SUPPRIMER"
-    if (data.confirmation !== undefined && data.confirmation !== "SUPPRIMER") {
+    // Si confirmation fournie ET non vide → doit être exactement "SUPPRIMER"
+    if (data.confirmation && data.confirmation !== "SUPPRIMER") {
       ctx.addIssue({
         code: "custom",
         path: ["confirmation"],
