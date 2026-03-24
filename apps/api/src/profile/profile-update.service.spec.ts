@@ -17,6 +17,14 @@ describe('ProfileService — updateProfile', () => {
   let mockAuthService: ReturnType<typeof createMockAuthService>;
   let mockFileService: ReturnType<typeof createMockFileService>;
 
+  const mockAddress = {
+    street: '1 Rue de la Paix',
+    postalCode: '75001',
+    city: 'Paris',
+    latitude: 48.8566,
+    longitude: 2.3522,
+  };
+
   beforeEach(async () => {
     mockAuthService = createMockAuthService();
     mockFileService = createMockFileService();
@@ -45,6 +53,7 @@ describe('ProfileService — updateProfile', () => {
     const result = await service.updateProfile(1, {
       firstName: 'Jean',
       biography: 'Nouvelle bio',
+      address: mockAddress,
     });
 
     expect(mockAuthService.prisma.user.update).toHaveBeenCalledWith(
@@ -62,7 +71,7 @@ describe('ProfileService — updateProfile', () => {
   it('✅ Doit uploader la photo et mettre à jour profilePicture', async () => {
     const mockFile = { buffer: Buffer.from('img') } as Express.Multer.File;
 
-    await service.updateProfile(1, {}, mockFile);
+    await service.updateProfile(1, { address: mockAddress }, mockFile);
 
     expect(mockFileService.uploadFile).toHaveBeenCalledWith(
       mockFile,
@@ -78,7 +87,7 @@ describe('ProfileService — updateProfile', () => {
   });
 
   it('✅ Doit remplacer les skills si skillIds fournis', async () => {
-    await service.updateProfile(1, { skillIds: [1, 2, 3] });
+    await service.updateProfile(1, { skillIds: [1, 2, 3], address: mockAddress });
 
     expect(mockAuthService.prisma.userSkill.deleteMany).toHaveBeenCalledWith({
       where: { userId: 1 },
@@ -93,7 +102,7 @@ describe('ProfileService — updateProfile', () => {
   });
 
   it('✅ Doit vider les skills si skillIds est un tableau vide', async () => {
-    await service.updateProfile(1, { skillIds: [] });
+    await service.updateProfile(1, { skillIds: [], address: mockAddress });
 
     expect(mockAuthService.prisma.userSkill.deleteMany).toHaveBeenCalledWith({
       where: { userId: 1 },
@@ -102,7 +111,7 @@ describe('ProfileService — updateProfile', () => {
   });
 
   it('✅ Doit remplacer les causes si causeIds fournis', async () => {
-    await service.updateProfile(1, { causeIds: [1, 2] });
+    await service.updateProfile(1, { causeIds: [1, 2], address: mockAddress });
 
     expect(mockAuthService.prisma.userCause.deleteMany).toHaveBeenCalledWith({
       where: { userId: 1 },
@@ -117,6 +126,7 @@ describe('ProfileService — updateProfile', () => {
 
   it('✅ Doit upsert la disponibilité si availability fournie', async () => {
     await service.updateProfile(1, {
+      address: mockAddress,
       availability: {
         frequency: 'HOURS_WEEK',
         timeSlot: 'WEEKDAY',
@@ -156,7 +166,7 @@ describe('ProfileService — updateProfile', () => {
   });
 
   it('✅ Ne doit pas appeler userSkill si skillIds absent', async () => {
-    await service.updateProfile(1, { firstName: 'Jean' });
+    await service.updateProfile(1, { firstName: 'Jean', address: mockAddress });
 
     expect(
       mockAuthService.prisma.userSkill.deleteMany,
@@ -167,7 +177,7 @@ describe('ProfileService — updateProfile', () => {
   });
 
   it('✅ Ne doit pas appeler userAvailability si availability absent', async () => {
-    await service.updateProfile(1, { firstName: 'Jean' });
+    await service.updateProfile(1, { firstName: 'Jean', address: mockAddress });
 
     expect(
       mockAuthService.prisma.userAvailability.upsert,
@@ -178,7 +188,7 @@ describe('ProfileService — updateProfile', () => {
     const mockFile = { buffer: Buffer.from('img') } as Express.Multer.File;
     mockAuthService.prisma.user.update.mockRejectedValue(new Error('DB error'));
 
-    await expect(service.updateProfile(1, {}, mockFile)).rejects.toThrow(
+    await expect(service.updateProfile(1, { address: mockAddress }, mockFile)).rejects.toThrow(
       'DB error',
     );
 
@@ -188,7 +198,7 @@ describe('ProfileService — updateProfile', () => {
   it('❌ Doit lever UnauthorizedException si user non trouvé', async () => {
     mockAuthService.prisma.user.findUnique.mockResolvedValue(null);
 
-    await expect(service.updateProfile(999, {})).rejects.toThrow(
+    await expect(service.updateProfile(999, { address: mockAddress })).rejects.toThrow(
       UnauthorizedException,
     );
   });
