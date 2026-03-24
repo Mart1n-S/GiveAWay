@@ -52,3 +52,5 @@ export * from "./profile-actions/profile-actions";
 export * from "./profile-actions/profile-actions.types";
 export * from "./multi-select-list/multi-select-list";
 export * from "./multi-select-list/multi-select-list.types";
+export * from "./availability-picker/availability-picker";
+export * from "./availability-picker/availability-picker.types";

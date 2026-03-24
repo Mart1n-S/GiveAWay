@@ -4,7 +4,11 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { UserStatus, UserAvailability } from '../generated/prisma/client';
+import {
+  UserStatus,
+  UserAvailability,
+  AvailabilityTime,
+} from '../generated/prisma/client';
 import { User, UpdateProfileDto, DeleteAccountDto } from '@repo/shared';
 import { Response } from 'express';
 import { verify } from 'argon2';
@@ -180,19 +184,30 @@ export class ProfileService {
 
       // 7. Mise à jour des disponibilités (upsert)
       if (dto.availability) {
+        // Si tous les créneaux sont sélectionnés → stocker ALL_TIME
+        const allTimeSlots = Object.values(AvailabilityTime).filter(
+          (t) => t !== AvailabilityTime.ALL_TIME,
+        );
+        const selectedTimeSlots = dto.availability.timeSlots ?? [];
+        const isAllTime =
+          allTimeSlots.every((slot) => selectedTimeSlots.includes(slot)) ||
+          selectedTimeSlots.includes(AvailabilityTime.ALL_TIME);
+
+        const timeSlots = isAllTime
+          ? [AvailabilityTime.ALL_TIME]
+          : selectedTimeSlots;
+
         await prisma.userAvailability.upsert({
           where: { userId },
           create: {
             userId,
-            frequency: dto.availability
-              .frequency as UserAvailability['frequency'],
-            timeSlot: dto.availability.timeSlot as UserAvailability['timeSlot'],
+            frequency: dto.availability.frequency as any,
+            timeSlot: timeSlots as any,
             type: dto.availability.type as UserAvailability['type'],
           },
           update: {
-            frequency: dto.availability
-              .frequency as UserAvailability['frequency'],
-            timeSlot: dto.availability.timeSlot as UserAvailability['timeSlot'],
+            frequency: dto.availability.frequency as any,
+            timeSlot: timeSlots as any,
             type: dto.availability.type as UserAvailability['type'],
           },
         });

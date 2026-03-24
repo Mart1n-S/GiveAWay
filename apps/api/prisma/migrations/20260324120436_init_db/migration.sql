@@ -1,5 +1,17 @@
 -- CreateEnum
+CREATE TYPE "UserStatus" AS ENUM ('PENDING', 'ACTIVE', 'SUSPENDED', 'DELETED');
+
+-- CreateEnum
+CREATE TYPE "AssociationStatus" AS ENUM ('PENDING', 'VALIDATED', 'REJECTED', 'SUSPENDED');
+
+-- CreateEnum
+CREATE TYPE "AssociationRole" AS ENUM ('OWNER', 'ADMIN', 'EDITOR');
+
+-- CreateEnum
 CREATE TYPE "AdminRole" AS ENUM ('SUPER_ADMIN', 'ADMIN');
+
+-- CreateEnum
+CREATE TYPE "TokenType" AS ENUM ('EMAIL_VERIFICATION', 'PASSWORD_RESET');
 
 -- CreateEnum
 CREATE TYPE "AvailabilityFrequency" AS ENUM ('HOURS_WEEK', 'HOURS_MONTH', 'DAYS_WEEK', 'DAYS_MONTH', 'ONE_DAY', 'PUNCTUAL');
@@ -19,14 +31,39 @@ CREATE TYPE "ActivityType" AS ENUM ('MISSION', 'EVENT', 'COLLECT', 'INFO');
 -- CreateEnum
 CREATE TYPE "MissionFrequency" AS ENUM ('ONCE', 'DAILY', 'WEEKLY', 'MONTHLY');
 
--- DropForeignKey
-ALTER TABLE "association_users" DROP CONSTRAINT "association_users_association_id_fkey";
+-- CreateTable
+CREATE TABLE "addresses" (
+    "id" SERIAL NOT NULL,
+    "street" TEXT NOT NULL,
+    "postal_code" TEXT NOT NULL,
+    "city" TEXT NOT NULL,
+    "latitude" DECIMAL(10,7),
+    "longitude" DECIMAL(10,7),
 
--- DropForeignKey
-ALTER TABLE "association_users" DROP CONSTRAINT "association_users_user_id_fkey";
+    CONSTRAINT "addresses_pkey" PRIMARY KEY ("id")
+);
 
--- AlterTable
-ALTER TABLE "users" ADD COLUMN     "deleted_at" TIMESTAMP(3);
+-- CreateTable
+CREATE TABLE "users" (
+    "id" SERIAL NOT NULL,
+    "email" TEXT NOT NULL,
+    "password_hash" TEXT,
+    "google_id" TEXT,
+    "firstname" TEXT NOT NULL,
+    "lastname" TEXT NOT NULL,
+    "age" INTEGER,
+    "biography" TEXT,
+    "profile_picture_url" TEXT,
+    "email_verified_at" TIMESTAMP(3),
+    "status" "UserStatus" NOT NULL DEFAULT 'PENDING',
+    "terms_accepted_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+    "deleted_at" TIMESTAMP(3),
+    "address_id" INTEGER,
+
+    CONSTRAINT "users_pkey" PRIMARY KEY ("id")
+);
 
 -- CreateTable
 CREATE TABLE "missions" (
@@ -142,13 +179,63 @@ CREATE TABLE "mission_causes" (
 CREATE TABLE "user_availabilities" (
     "id" SERIAL NOT NULL,
     "user_id" INTEGER NOT NULL,
-    "frequency" "AvailabilityFrequency" NOT NULL DEFAULT 'HOURS_WEEK',
-    "timeSlot" "AvailabilityTime" NOT NULL DEFAULT 'ALL_TIME',
+    "frequency" "AvailabilityFrequency"[] DEFAULT ARRAY['HOURS_WEEK']::"AvailabilityFrequency"[],
+    "timeSlot" "AvailabilityTime"[] DEFAULT ARRAY['ALL_TIME']::"AvailabilityTime"[],
     "type" "AvailabilityType" NOT NULL DEFAULT 'HYBRID',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "user_availabilities_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "token" (
+    "id" SERIAL NOT NULL,
+    "token" TEXT NOT NULL,
+    "type" "TokenType" NOT NULL,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "userId" INTEGER NOT NULL,
+
+    CONSTRAINT "token_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "refresh_tokens" (
+    "id" TEXT NOT NULL,
+    "hashed_token" TEXT NOT NULL,
+    "user_id" INTEGER NOT NULL,
+    "expires_at" TIMESTAMP(3) NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "user_agent" TEXT,
+    "ip" TEXT,
+
+    CONSTRAINT "refresh_tokens_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "association_categories" (
+    "id" SERIAL NOT NULL,
+    "name" TEXT NOT NULL,
+
+    CONSTRAINT "association_categories_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "associations" (
+    "id" SERIAL NOT NULL,
+    "name" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "siret" TEXT,
+    "rna" TEXT,
+    "logo_url" TEXT,
+    "status" "AssociationStatus" NOT NULL DEFAULT 'PENDING',
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+    "address_id" INTEGER,
+    "category_id" INTEGER,
+
+    CONSTRAINT "associations_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -160,6 +247,17 @@ CREATE TABLE "association_documents" (
     "association_id" INTEGER NOT NULL,
 
     CONSTRAINT "association_documents_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "association_users" (
+    "id" SERIAL NOT NULL,
+    "role" "AssociationRole" NOT NULL DEFAULT 'ADMIN',
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "user_id" INTEGER NOT NULL,
+    "association_id" INTEGER NOT NULL,
+
+    CONSTRAINT "association_users_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -189,6 +287,9 @@ CREATE TABLE "admin_logs" (
 );
 
 -- CreateIndex
+CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "public_types_label_key" ON "public_types"("label");
 
 -- CreateIndex
@@ -204,7 +305,19 @@ CREATE UNIQUE INDEX "causes_label_key" ON "causes"("label");
 CREATE UNIQUE INDEX "user_availabilities_user_id_key" ON "user_availabilities"("user_id");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "token_token_key" ON "token"("token");
+
+-- CreateIndex
+CREATE INDEX "token_userId_idx" ON "token"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "associations_email_key" ON "associations"("email");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "admins_email_key" ON "admins"("email");
+
+-- AddForeignKey
+ALTER TABLE "users" ADD CONSTRAINT "users_address_id_fkey" FOREIGN KEY ("address_id") REFERENCES "addresses"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "missions" ADD CONSTRAINT "missions_association_id_fkey" FOREIGN KEY ("association_id") REFERENCES "associations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -256,6 +369,18 @@ ALTER TABLE "mission_causes" ADD CONSTRAINT "mission_causes_cause_id_fkey" FOREI
 
 -- AddForeignKey
 ALTER TABLE "user_availabilities" ADD CONSTRAINT "user_availabilities_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "token" ADD CONSTRAINT "token_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "refresh_tokens" ADD CONSTRAINT "refresh_tokens_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "associations" ADD CONSTRAINT "associations_address_id_fkey" FOREIGN KEY ("address_id") REFERENCES "addresses"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "associations" ADD CONSTRAINT "associations_category_id_fkey" FOREIGN KEY ("category_id") REFERENCES "association_categories"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "association_documents" ADD CONSTRAINT "association_documents_association_id_fkey" FOREIGN KEY ("association_id") REFERENCES "associations"("id") ON DELETE CASCADE ON UPDATE CASCADE;

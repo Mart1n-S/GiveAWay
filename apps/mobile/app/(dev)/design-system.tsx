@@ -18,8 +18,17 @@ import {
   AvailabilityTypeDot,
   MissionHistoryItem,
   ProfileActionRow,
-  MultiSelectList
+  MultiSelectList,
+  AvailabilityPicker,
+  AvailabilityValue
 } from "@/components/ui";
+
+import {
+  AvailabilityFrequency,
+  AvailabilityTime,
+  AvailabilityType,
+} from "@repo/shared";
+
 
 // --- CONFIGURATION DES ICÔNES ---
 import AddIconSource from "../../assets/icons/ic_add.svg";
@@ -208,6 +217,28 @@ function MultiSelectListDemo({ variant }: { variant: "orange" | "blue" }) {
       onChange={setSelectedIds}
       variant={variant}
     />
+  );
+}
+
+function AvailabilityPickerDemo() {
+  const [availability, setAvailability] = useState<Partial<AvailabilityValue>>({
+    frequency: [AvailabilityFrequency.HOURS_WEEK],
+    timeSlots: [AvailabilityTime.WEEKDAY],
+    type: AvailabilityType.REMOTE,
+  });
+
+  return (
+    <View className="gap-4">
+      <AvailabilityPicker value={availability} onChange={setAvailability} />
+      <View className="p-3 border rounded-lg bg-grey-50 border-grey-100">
+        <Text className="text-[10px] font-bold uppercase text-grey-400 mb-1">
+          Valeur courante
+        </Text>
+        <Text className="font-mono text-xs text-grey-600">
+          {JSON.stringify(availability, null, 2)}
+        </Text>
+      </View>
+    </View>
   );
 }
 
@@ -2238,11 +2269,7 @@ export default function DesignSystemScreen() {
                 type="ReactNode"
                 desc="Icône SVG à afficher à gauche du label. La couleur s'adapte automatiquement au variant et à l'état pressed."
               />
-              <ApiProp
-                name="label"
-                type="string"
-                desc="Texte de l'action."
-              />
+              <ApiProp name="label" type="string" desc="Texte de l'action." />
               <ApiProp
                 name="variant"
                 type="'default' | 'danger'"
@@ -2458,6 +2485,121 @@ export default function DesignSystemScreen() {
             </View>
           </View>
           {/* FIN CHAPITRE 15 */}
+
+          {/* ============================================================
+          CHAPITRE 16 : AVAILABILITY PICKER 📅
+          ============================================================ */}
+          <View>
+            <SectionTitle
+              title="16. Availability Picker"
+              description="Sélecteur de disponibilités complet — fréquence (multi), créneau (multi) et type (unique)."
+            />
+
+            {/* --- 📚 DOC API --- */}
+            <View className="p-4 mb-8 border border-blue-200 rounded-lg bg-blue-50/50">
+              <Text className="mb-4 text-sm font-bold text-blue-800 uppercase">
+                📚 API Reference
+              </Text>
+              <ApiProp
+                name="value"
+                type="Partial<AvailabilityValue>"
+                desc="Valeur actuelle. frequency: AvailabilityFrequency[] (multi), timeSlots: AvailabilityTime[] (multi), type: AvailabilityType (unique)."
+              />
+              <ApiProp
+                name="onChange"
+                type="(value: Partial<AvailabilityValue>) => void"
+                desc="Callback appelé à chaque changement avec la nouvelle valeur complète."
+              />
+              <ApiProp
+                name="className"
+                type="string"
+                desc="Classes Tailwind additionnelles."
+              />
+            </View>
+
+            {/* --- DÉMO INTERACTIVE --- */}
+            <View className="p-4 mb-6 bg-white border rounded-lg border-grey-200">
+              <Text className="mb-2 text-lg font-bold text-primary">
+                Démo interactive
+              </Text>
+              <Text className="mb-4 text-xs text-grey-500">
+                Fréquence et créneau sont multi-sélectionnables. Type est
+                unique.
+              </Text>
+              <AvailabilityPickerDemo />
+            </View>
+
+            {/* --- ÉTATS PRÉDÉFINIS --- */}
+            <View className="p-4 mb-6 bg-white border rounded-lg border-grey-200">
+              <Text className="mb-2 text-lg font-bold text-grey-800">
+                États prédéfinis
+              </Text>
+
+              <VariantLabel title="Vide (aucune sélection)" />
+              <AvailabilityPicker value={{}} onChange={() => {}} />
+
+              <View className="h-px my-6 bg-grey-100" />
+
+              <VariantLabel title="Semaine — Quelques heures/semaine — À distance" />
+              <AvailabilityPicker
+                value={{
+                  frequency: [AvailabilityFrequency.HOURS_WEEK],
+                  timeSlots: [AvailabilityTime.WEEKDAY],
+                  type: AvailabilityType.REMOTE,
+                }}
+                onChange={() => {}}
+              />
+
+              <View className="h-px my-6 bg-grey-100" />
+
+              <VariantLabel title="Weekend + Soirée — Une journée + Ponctuel — Sur site" />
+              <AvailabilityPicker
+                value={{
+                  frequency: [
+                    AvailabilityFrequency.ONE_DAY,
+                    AvailabilityFrequency.PUNCTUAL,
+                  ],
+                  timeSlots: [
+                    AvailabilityTime.WEEKEND,
+                    AvailabilityTime.EVENING,
+                  ],
+                  type: AvailabilityType.ON_SITE,
+                }}
+                onChange={() => {}}
+              />
+
+              <View className="h-px my-6 bg-grey-100" />
+
+              <VariantLabel title="Peu importe (tous créneaux) — Plusieurs fréquences — Hybride" />
+              <AvailabilityPicker
+                value={{
+                  frequency: [
+                    AvailabilityFrequency.HOURS_WEEK,
+                    AvailabilityFrequency.DAYS_WEEK,
+                  ],
+                  timeSlots: [
+                    AvailabilityTime.WEEKDAY,
+                    AvailabilityTime.WEEKEND,
+                    AvailabilityTime.EVENING,
+                  ],
+                  type: AvailabilityType.HYBRID,
+                }}
+                onChange={() => {}}
+              />
+            </View>
+
+            {/* --- CAS D'USAGE RÉEL --- */}
+            <View className="p-4 bg-white border rounded-lg border-grey-200">
+              <Text className="mb-2 text-lg font-bold text-grey-800">
+                💡 Cas d'usage — Édition du profil
+              </Text>
+              <Text className="mb-4 text-xs text-grey-500">
+                Tel qu'utilisé dans le formulaire de modification du profil.
+              </Text>
+              <AvailabilityPickerDemo />
+            </View>
+          </View>
+          {/* FIN CHAPITRE 16 */}
         </View>
       </ScrollView>
     </>

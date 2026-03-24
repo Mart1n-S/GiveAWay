@@ -8,6 +8,9 @@ import {
   MissionFrequency,
   Association,
   User,
+  AvailabilityFrequency,
+  AvailabilityTime,
+  AvailabilityType,
 } from '../src/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
@@ -231,6 +234,31 @@ async function main() {
       });
       createdUsers.push(user);
     }
+
+    // 3bis. Disponibilités pour l'admin
+    await tx.userAvailability.create({
+      data: {
+        userId: createdUsers[0].id,
+        frequency: [
+          AvailabilityFrequency.HOURS_WEEK,
+          AvailabilityFrequency.DAYS_WEEK,
+        ],
+        timeSlot: [AvailabilityTime.WEEKDAY, AvailabilityTime.WEEKEND],
+        type: AvailabilityType.HYBRID,
+      },
+    });
+
+    // Compétences et causes pour l'admin
+    const skills = await tx.skill.findMany({ take: 3 });
+    const causes = await tx.cause.findMany({ take: 3 });
+
+    await tx.userSkill.createMany({
+      data: skills.map((s) => ({ userId: createdUsers[0].id, skillId: s.id })),
+    });
+
+    await tx.userCause.createMany({
+      data: causes.map((c) => ({ userId: createdUsers[0].id, causeId: c.id })),
+    });
 
     // 4. Association
     const category = await tx.associationCategory.findFirst({

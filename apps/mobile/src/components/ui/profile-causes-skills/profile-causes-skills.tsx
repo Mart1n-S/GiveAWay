@@ -58,7 +58,7 @@ export function ProfileCausesSkills({
               <TagBadge
                 key={skill.id}
                 label={skill.label}
-                variant="surface"
+                variant="blue"
               />
             ))}
           </View>

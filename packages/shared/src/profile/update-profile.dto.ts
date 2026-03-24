@@ -101,15 +101,27 @@ export const UpdateProfileSchema = z.object({
       },
       z
         .object({
-          frequency: z.enum(AvailabilityFrequency, {
-            message: "Fréquence de disponibilité invalide",
-          }),
-          timeSlot: z.enum(AvailabilityTime, {
-            message: "Créneau horaire invalide",
-          }),
-          type: z.enum(AvailabilityType, {
-            message: "Type de disponibilité invalide",
-          }),
+          frequency: z
+            .array(
+              z.nativeEnum(AvailabilityFrequency, {
+                message: "Fréquence de disponibilité invalide",
+              }),
+            )
+            .min(1, { message: "Sélectionnez au moins une fréquence" })
+            .optional(),
+          timeSlots: z
+            .array(
+              z.nativeEnum(AvailabilityTime, {
+                message: "Créneau horaire invalide",
+              }),
+            )
+            .min(1, { message: "Sélectionnez au moins un créneau" })
+            .optional(),
+          type: z
+            .nativeEnum(AvailabilityType, {
+              message: "Type de disponibilité invalide",
+            })
+            .optional(),
         })
         .optional(),
     )

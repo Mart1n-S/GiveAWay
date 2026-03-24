@@ -38,22 +38,10 @@ const frequencyLabels: Record<AvailabilityFrequency, string> = {
 };
 
 /**
- * Retourne true si le créneau doit être affiché comme actif.
- * ALL_TIME = tous les créneaux sont actifs.
- */
-const isSlotActive = (
-  timeSlot: string,
-  slotValue: "WEEKDAY" | "WEEKEND" | "EVENING",
-): boolean => {
-  if (timeSlot === AvailabilityTime.ALL_TIME) return true;
-  return timeSlot === slotValue;
-};
-
-/**
  * Section disponibilités & préférences du profil bénévole.
  *
  * Affiche :
- * - La fréquence de disponibilité (ex: "Quelques heures / semaine")
+ * - Les fréquences de disponibilité (badges multiples)
  * - Les créneaux horaires (Semaine / Weekend / Soirée)
  * - Le type de disponibilité (Sur site / À distance / Hybride)
  *
@@ -85,9 +73,18 @@ export function ProfileAvailability({
     );
   }
 
-  const isWeekdayActive = isSlotActive(availability.timeSlot, "WEEKDAY");
-  const isWeekendActive = isSlotActive(availability.timeSlot, "WEEKEND");
-  const isEveningActive = isSlotActive(availability.timeSlot, "EVENING");
+  const timeSlots = availability.timeSlots ?? [];
+
+  // ALL_TIME = tous les créneaux actifs
+  const isAllTime = timeSlots.includes(AvailabilityTime.ALL_TIME);
+  const isWeekdayActive =
+    isAllTime || timeSlots.includes(AvailabilityTime.WEEKDAY);
+  const isWeekendActive =
+    isAllTime || timeSlots.includes(AvailabilityTime.WEEKEND);
+  const isEveningActive =
+    isAllTime || timeSlots.includes(AvailabilityTime.EVENING);
+
+  const frequencies = availability.frequency ?? [];
 
   return (
     <View
@@ -102,11 +99,22 @@ export function ProfileAvailability({
 
       {/* Fréquence */}
       <View className="flex-row flex-wrap gap-2">
-        <View className="px-4 py-2 border rounded-full bg-white-active border-primary">
-          <Text className="text-xs font-semibold text-primary">
-            {frequencyLabels[availability.frequency as AvailabilityFrequency]}
+        {frequencies.length > 0 ? (
+          frequencies.map((freq) => (
+            <View
+              key={freq}
+              className="px-4 py-2 border rounded-full bg-white-active border-primary"
+            >
+              <Text className="text-xs font-semibold text-primary">
+                {frequencyLabels[freq as AvailabilityFrequency]}
+              </Text>
+            </View>
+          ))
+        ) : (
+          <Text className="text-sm text-grey-400">
+            Aucune fréquence renseignée.
           </Text>
-        </View>
+        )}
       </View>
 
       {/* Créneaux horaires */}

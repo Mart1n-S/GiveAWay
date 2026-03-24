@@ -20,6 +20,9 @@ import {
   UserAvailability,
   MissionParticipant,
   Mission,
+  AvailabilityType,
+  AvailabilityTime,
+  AvailabilityFrequency,
 } from '../generated/prisma/client';
 import {
   User,
@@ -252,9 +255,11 @@ export class AuthService {
 
       availability: user.availability
         ? {
-            frequency: user.availability.frequency,
-            timeSlot: user.availability.timeSlot,
-            type: user.availability.type,
+            frequency: user.availability
+              .frequency as unknown as AvailabilityFrequency[],
+            timeSlots: user.availability
+              .timeSlot as unknown as AvailabilityTime[],
+            type: user.availability.type as unknown as AvailabilityType,
           }
         : null,
 

@@ -5,7 +5,7 @@ import {
 } from "../profile/availability.enums";
 
 export interface UserAvailability {
-  frequency: AvailabilityFrequency;
-  timeSlot: AvailabilityTime;
+  frequency: AvailabilityFrequency[];
+  timeSlots: AvailabilityTime[];
   type: AvailabilityType;
 }
