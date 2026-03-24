@@ -1,14 +1,13 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useCallback } from "react";
 import {
   View,
   ScrollView,
   RefreshControl,
   ActivityIndicator,
 } from "react-native";
-import { useRouter, Stack } from "expo-router"; // Ajout de Stack ici
+import { useRouter, Stack } from "expo-router";
 import Toast from "react-native-toast-message";
 
-import { User } from "@repo/shared";
 import { Text } from "@/components/ui";
 import {
   ProfileHeader,
@@ -23,16 +22,19 @@ import {
 import { ProfileService } from "@/services/profile.service";
 import { AuthService } from "@/services/auth.service";
 import { useAuthStore } from "@/stores/auth.store";
+import { useProfileStore } from "@/stores/profile.store";
 import { colors } from "@/components/ui/theme/tokens";
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const storeUser = useAuthStore((state) => state.user);
 
-  const [user, setUser] = useState<User | null>(storeUser);
-  const [isLoading, setIsLoading] = useState(!storeUser);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  // Store
+  const user = useProfileStore((state) => state.profile);
+  const isLoading = useProfileStore((state) => state.isLoading);
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
+  const [isLoggingOut, setIsLoggingOut] = React.useState(false);
+
+  // Chargement
 
   const loadProfile = useCallback(async (isRefresh = false) => {
     // Ne pas charger si l'utilisateur n'est plus connecté
@@ -40,18 +42,16 @@ export default function ProfileScreen() {
     if (!isAuthenticated) return;
 
     if (isRefresh) {
+      // Pour le refresh on force le rechargement depuis l'API
+      useProfileStore.getState().clearProfile();
       setIsRefreshing(true);
-    } else {
-      setIsLoading(true);
     }
 
     try {
-      const data = await ProfileService.getProfile();
-      setUser(data);
+      await ProfileService.getProfile();
     } catch {
       // Ne pas afficher le toast si l'utilisateur s'est déconnecté entre temps
       if (!useAuthStore.getState().isAuthenticated) return;
-
       Toast.show({
         type: "error",
         text1: "Erreur",
@@ -60,7 +60,6 @@ export default function ProfileScreen() {
         onPress: () => Toast.hide(),
       });
     } finally {
-      setIsLoading(false);
       setIsRefreshing(false);
     }
   }, []);
@@ -69,10 +68,11 @@ export default function ProfileScreen() {
     void loadProfile();
   }, [loadProfile]);
 
+  // Actions
+
   const handleEdit = () => router.push("/profil/modifier");
   const handleDelete = () => router.push("/profil/supprimer");
-  const handleMissionPress = (id: number) =>
-    router.push(`/missions/${id}`);
+  const handleMissionPress = (id: number) => router.push(`/missions/${id}`);
   const handleSeeAllMissions = () => router.push("/profil/historique");
 
   const handleLogout = async () => {
@@ -84,6 +84,8 @@ export default function ProfileScreen() {
       setIsLoggingOut(false);
     }
   };
+
+  // États de chargement
 
   if (isLoading && !user) {
     return (
@@ -105,11 +107,7 @@ export default function ProfileScreen() {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          headerShown: false,
-        }}
-      />
+      <Stack.Screen options={{ headerShown: false }} />
 
       <ScrollView
         className="flex-1 bg-grey-50"

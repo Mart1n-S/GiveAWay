@@ -13,5 +13,6 @@ export interface AvailabilityValue {
 export interface AvailabilityPickerProps {
   value: Partial<AvailabilityValue>;
   onChange: (value: Partial<AvailabilityValue>) => void;
+  errors?: any;
   className?: string;
 }

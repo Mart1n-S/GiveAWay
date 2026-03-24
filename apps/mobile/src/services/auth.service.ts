@@ -98,19 +98,32 @@ export const AuthService = {
       formData.append("address", JSON.stringify(data.address));
     }
 
-    // 3. Ajout de l'image (Spécifique React Native)
+    // 3. Ajout de l'image
     if (imageUri) {
-      const filename = imageUri.split("/").pop() || "avatar.jpg";
-      const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : "image/jpeg";
+      if (Platform.OS === "web") {
+        // Solution web
+        const response = await fetch(imageUri);
+        const blob = await response.blob();
 
-      const file: ReactNativeFile = {
-        uri: imageUri,
-        name: filename,
-        type,
-      };
+        // On détermine l'extension à partir du type MIME du blob (plus fiable)
+        const extension = blob.type.split("/")[1] || "jpg";
+        const filename = `avatar-${Date.now()}.${extension}`;
 
-      formData.append("profilePicture", file as unknown as Blob);
+        formData.append("profilePicture", blob, filename);
+      } else {
+        // Solution mobile
+        const filename = imageUri.split("/").pop() || "avatar.jpg";
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : "image/jpeg";
+
+        const file = {
+          uri: imageUri,
+          name: filename,
+          type,
+        } as any;
+
+        formData.append("profilePicture", file);
+      }
     }
 
     // 4. Appel API

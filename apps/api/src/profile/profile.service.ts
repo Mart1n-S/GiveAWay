@@ -118,11 +118,20 @@ export class ProfileService {
       throw new BadRequestException('Votre compte a été supprimé ou suspendu.');
     }
 
-    // 2. Upload de la nouvelle photo si fournie
+    // 2. Gestion de la photo de profil
     let profilePictureUrl: string | undefined;
+    let shouldRemovePicture = false;
+
     if (file) {
+      // Nouvelle photo → upload
       const uploadResult = await this.fileService.uploadFile(file, 'avatars');
       profilePictureUrl = uploadResult.publicId;
+    } else if (dto.removeProfilePicture && existingUser.profilePicture) {
+      // Suppression explicite → supprime du storage
+      shouldRemovePicture = true;
+      await this.fileService
+        .deleteFile(existingUser.profilePicture)
+        .catch((e) => logger.warn('Erreur suppression photo profil', e));
     }
 
     try {
@@ -130,33 +139,36 @@ export class ProfileService {
       await prisma.user.update({
         where: { id: userId },
         data: {
-          ...(dto.firstName && { firstName: dto.firstName }),
-          ...(dto.lastName && { lastName: dto.lastName }),
-          ...(dto.age !== undefined && { age: dto.age }),
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          age: dto.age,
           ...(dto.biography !== undefined && { biography: dto.biography }),
-          ...(profilePictureUrl && { profilePicture: profilePictureUrl }),
+          // Photo : nouvelle url, null si supprimée, rien si inchangée
+          ...(profilePictureUrl
+            ? { profilePicture: profilePictureUrl }
+            : shouldRemovePicture
+              ? { profilePicture: null }
+              : {}),
 
-          // 4. Mise à jour de l'adresse (upsert — crée ou met à jour)
-          ...(dto.address && {
-            address: {
-              upsert: {
-                create: {
-                  street: dto.address.street,
-                  postalCode: dto.address.postalCode,
-                  city: dto.address.city,
-                  latitude: dto.address.latitude,
-                  longitude: dto.address.longitude,
-                },
-                update: {
-                  street: dto.address.street,
-                  postalCode: dto.address.postalCode,
-                  city: dto.address.city,
-                  latitude: dto.address.latitude,
-                  longitude: dto.address.longitude,
-                },
+          // 4. Adresse obligatoire - toujours upsert
+          address: {
+            upsert: {
+              create: {
+                street: dto.address.street,
+                postalCode: dto.address.postalCode,
+                city: dto.address.city,
+                latitude: dto.address.latitude,
+                longitude: dto.address.longitude,
+              },
+              update: {
+                street: dto.address.street,
+                postalCode: dto.address.postalCode,
+                city: dto.address.city,
+                latitude: dto.address.latitude,
+                longitude: dto.address.longitude,
               },
             },
-          }),
+          },
         },
       });
 

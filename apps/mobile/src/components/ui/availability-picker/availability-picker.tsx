@@ -147,6 +147,7 @@ export function AvailabilityPicker({
   value,
   onChange,
   className,
+  errors
 }: AvailabilityPickerProps) {
   const frequencies = value.frequency ?? [];
   const timeSlots = value.timeSlots ?? [];
@@ -204,6 +205,12 @@ export function AvailabilityPicker({
             />
           ))}
         </View>
+        {/* Affichage de l'erreur Fréquence */}
+        {errors?.frequency?.message && (
+          <Text className="text-xs font-medium text-error-100">
+            {errors.frequency.message}
+          </Text>
+        )}
       </View>
 
       {/* Créneau horaire (multi-sélection) */}
@@ -301,6 +308,12 @@ export function AvailabilityPicker({
             </Text>
           </View>
         </Pressable>
+        {/* Affichage de l'erreur Créneau */}
+        {errors?.timeSlots?.message && (
+          <Text className="text-xs font-medium text-error-100">
+            {errors.timeSlots.message}
+          </Text>
+        )}
       </View>
 
       {/* Type (sélection unique) */}
@@ -318,6 +331,12 @@ export function AvailabilityPicker({
             />
           ))}
         </View>
+        {/* Affichage de l'erreur Type */}
+        {errors?.type?.message && (
+          <Text className="text-xs font-medium text-error-100">
+            {errors.type.message}
+          </Text>
+        )}
       </View>
     </View>
   );

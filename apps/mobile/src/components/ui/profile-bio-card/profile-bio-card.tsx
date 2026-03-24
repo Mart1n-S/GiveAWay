@@ -32,8 +32,7 @@ export function ProfileBioCard({ user, className }: ProfileBioCardProps) {
         className,
       )}
     >
-      {/* Biographie */}
-      {user.biography && (
+      {!!user.biography && (
         <View className="gap-1">
           <Text className="text-[10px] font-bold uppercase tracking-widest text-grey-900">
             Biographie
@@ -52,7 +51,7 @@ export function ProfileBioCard({ user, className }: ProfileBioCardProps) {
         <View className="flex-row items-center gap-2 p-3 mt-1 border rounded-lg bg-grey-50 border-grey-100">
           <EmailIcon className="w-4 h-4 text-grey-500" />
           <Text className="text-sm font-medium text-grey-700">
-            {user.email}
+            {user.email || "Non renseigné"}
           </Text>
         </View>
       </View>

@@ -15,26 +15,26 @@ export const UpdateProfileSchema = z.object({
   firstName: z
     .string()
     .trim()
+    .min(1, { message: "Le prénom est obligatoire" })
     .min(2, { message: "Le prénom est trop court (2 caractères minimum)" })
     .max(50, { message: "Le prénom est trop long (50 caractères maximum)" })
     .regex(NAME_REGEX, {
       message:
         "Le prénom doit contenir uniquement des lettres, espaces, tirets ou apostrophes",
     })
-    .transform(FORMAT_FIRST_NAME)
-    .optional(),
+    .transform(FORMAT_FIRST_NAME),
 
   lastName: z
     .string()
     .trim()
+    .min(1, { message: "Le nom est obligatoire" })
     .min(2, { message: "Le nom est trop court (2 caractères minimum)" })
     .max(50, { message: "Le nom est trop long (50 caractères maximum)" })
     .regex(NAME_REGEX, {
       message:
         "Le nom doit contenir uniquement des lettres, espaces, tirets ou apostrophes",
     })
-    .transform((val) => val.toUpperCase())
-    .optional(),
+    .transform((val) => val.toUpperCase()),
 
   age: z.preprocess(
     (val) => {
@@ -44,18 +44,18 @@ export const UpdateProfileSchema = z.object({
     z
       .string()
       .trim()
-      .optional()
-      .transform((value) => (value ? Number(value) : undefined))
-      .refine((value) => value === undefined || !Number.isNaN(value), {
+      .min(1, { message: "L'âge est obligatoire" })
+      .transform((value) => Number(value))
+      .refine((value) => !Number.isNaN(value), {
         message: "L'âge doit être un nombre valide",
       })
-      .refine((value) => value === undefined || Number.isInteger(value), {
+      .refine((value) => Number.isInteger(value), {
         message: "L'âge doit être un nombre entier",
       })
-      .refine((value) => value === undefined || value >= 18, {
+      .refine((value) => value >= 18, {
         message: "Vous devez avoir au moins 18 ans",
       })
-      .refine((value) => value === undefined || value <= 100, {
+      .refine((value) => value <= 100, {
         message: "Veuillez entrer un âge valide inférieur à 100 ans",
       }),
   ),
@@ -74,18 +74,17 @@ export const UpdateProfileSchema = z.object({
 
   profilePicture: z.string().nullable().optional(),
 
-  address: z
-    .preprocess((val) => {
-      if (typeof val === "string") {
-        try {
-          return JSON.parse(val);
-        } catch {
-          return val;
-        }
+  address: z.preprocess((val) => {
+    // Si c'est une string (cas du Multipart), on parse le JSON
+    if (typeof val === "string") {
+      try {
+        return JSON.parse(val);
+      } catch {
+        return val; // Si c'est pas du JSON valide, on laisse Zod échouer après
       }
-      return val;
-    }, AddressSchema.optional())
-    .optional(),
+    }
+    return val;
+  }, AddressSchema),
 
   availability: z
     .preprocess(
@@ -107,7 +106,6 @@ export const UpdateProfileSchema = z.object({
                 message: "Fréquence de disponibilité invalide",
               }),
             )
-            .min(1, { message: "Sélectionnez au moins une fréquence" })
             .optional(),
           timeSlots: z
             .array(
@@ -115,7 +113,6 @@ export const UpdateProfileSchema = z.object({
                 message: "Créneau horaire invalide",
               }),
             )
-            .min(1, { message: "Sélectionnez au moins un créneau" })
             .optional(),
           type: z
             .nativeEnum(AvailabilityType, {
@@ -141,9 +138,12 @@ export const UpdateProfileSchema = z.object({
       },
       z
         .array(
-          z.number().int().positive({
-            message: "L'identifiant de compétence est invalide",
-          }),
+          z
+            .number({ message: "L'identifiant doit être un nombre" })
+            .int()
+            .positive({
+              message: "L'identifiant de compétence est invalide",
+            }),
         )
         .optional(),
     )
@@ -163,13 +163,20 @@ export const UpdateProfileSchema = z.object({
       },
       z
         .array(
-          z.number().int().positive({
-            message: "L'identifiant de cause est invalide",
-          }),
+          z
+            .number({ message: "L'identifiant doit être un nombre" })
+            .int()
+            .positive({
+              message: "L'identifiant de cause est invalide",
+            }),
         )
         .optional(),
     )
     .optional(),
+  removeProfilePicture: z.preprocess(
+    (val) => val === "true" || val === true,
+    z.boolean().optional(),
+  ),
 });
 
 export type UpdateProfileFormValues = z.input<typeof UpdateProfileSchema>;

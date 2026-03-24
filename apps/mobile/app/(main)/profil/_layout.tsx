@@ -21,6 +21,12 @@ export default function ProfileLayout() {
           title: "Mon Profil",
         }}
       />
+      <Stack.Screen
+        name="modifier"
+        options={{
+          title: "Modifier mon Profil",
+        }}
+      />
       {/* TODO: Futures pages comme name="modifier" 
          hériteront automatiquement de ce style.
       */}
