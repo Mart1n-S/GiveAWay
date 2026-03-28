@@ -174,7 +174,6 @@ export function WebNavBar({
             icon={logoutIcon}
             className="text-white bg-red-600 border-red-600 hover:bg-red-700 hover:border-red-700 active:bg-red-800"
           >
-            Se déconnecter
           </Button>
         </View>
       );

@@ -9,9 +9,9 @@ test.beforeEach(async () => {
   await cleanDatabase();
 });
 
-afterAll(async () => {
-  await prisma.$disconnect();
-});
+// afterAll(async () => {
+//   await prisma.$disconnect();
+// });
 
 test.describe("Flux d'inscription bénévole", () => {
   test("devrait créer un compte et afficher l'écran OTP", async ({ page }) => {

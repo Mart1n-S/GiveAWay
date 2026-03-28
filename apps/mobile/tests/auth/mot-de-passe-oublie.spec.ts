@@ -9,9 +9,9 @@ test.beforeEach(async () => {
   await cleanDatabase();
 });
 
-afterAll(async () => {
-  await prisma.$disconnect();
-});
+// afterAll(async () => {
+//   await prisma.$disconnect();
+// });
 
 test.describe("Flux de Réinitialisation du mot de passe", () => {
   test("devrait permettre de réinitialiser son mot de passe avec succès", async ({

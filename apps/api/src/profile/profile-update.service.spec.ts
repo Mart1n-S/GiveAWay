@@ -87,7 +87,10 @@ describe('ProfileService — updateProfile', () => {
   });
 
   it('✅ Doit remplacer les skills si skillIds fournis', async () => {
-    await service.updateProfile(1, { skillIds: [1, 2, 3], address: mockAddress });
+    await service.updateProfile(1, {
+      skillIds: [1, 2, 3],
+      address: mockAddress,
+    });
 
     expect(mockAuthService.prisma.userSkill.deleteMany).toHaveBeenCalledWith({
       where: { userId: 1 },
@@ -134,9 +137,7 @@ describe('ProfileService — updateProfile', () => {
       },
     });
 
-    expect(
-      mockAuthService.prisma.userAvailability.upsert,
-    ).toHaveBeenCalledWith(
+    expect(mockAuthService.prisma.userAvailability.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { userId: 1 },
         create: expect.objectContaining({ userId: 1 }),
@@ -168,12 +169,8 @@ describe('ProfileService — updateProfile', () => {
   it('✅ Ne doit pas appeler userSkill si skillIds absent', async () => {
     await service.updateProfile(1, { firstName: 'Jean', address: mockAddress });
 
-    expect(
-      mockAuthService.prisma.userSkill.deleteMany,
-    ).not.toHaveBeenCalled();
-    expect(
-      mockAuthService.prisma.userSkill.createMany,
-    ).not.toHaveBeenCalled();
+    expect(mockAuthService.prisma.userSkill.deleteMany).not.toHaveBeenCalled();
+    expect(mockAuthService.prisma.userSkill.createMany).not.toHaveBeenCalled();
   });
 
   it('✅ Ne doit pas appeler userAvailability si availability absent', async () => {
@@ -188,9 +185,9 @@ describe('ProfileService — updateProfile', () => {
     const mockFile = { buffer: Buffer.from('img') } as Express.Multer.File;
     mockAuthService.prisma.user.update.mockRejectedValue(new Error('DB error'));
 
-    await expect(service.updateProfile(1, { address: mockAddress }, mockFile)).rejects.toThrow(
-      'DB error',
-    );
+    await expect(
+      service.updateProfile(1, { address: mockAddress }, mockFile),
+    ).rejects.toThrow('DB error');
 
     expect(mockFileService.deleteFile).toHaveBeenCalledWith('avatars/test.jpg');
   });
@@ -198,9 +195,9 @@ describe('ProfileService — updateProfile', () => {
   it('❌ Doit lever UnauthorizedException si user non trouvé', async () => {
     mockAuthService.prisma.user.findUnique.mockResolvedValue(null);
 
-    await expect(service.updateProfile(999, { address: mockAddress })).rejects.toThrow(
-      UnauthorizedException,
-    );
+    await expect(
+      service.updateProfile(999, { address: mockAddress }),
+    ).rejects.toThrow(UnauthorizedException);
   });
 
   it('❌ Doit lever BadRequestException si compte suspendu', async () => {
