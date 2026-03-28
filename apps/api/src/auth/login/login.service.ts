@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Injectable,
   UnauthorizedException,
+  Inject,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { verify } from 'argon2';
@@ -13,6 +14,10 @@ import { UserStatus } from '../../generated/prisma/client';
 import { AuthService, UserWithRelations } from '../auth.service';
 import { CookieService } from '../shared/cookie.service';
 import { buildAuthResponse } from '../shared/token-response.helper';
+import {
+  IFileService,
+  FILE_SERVICE,
+} from '../../common/files/interfaces/file-service.interface';
 
 @Injectable()
 export class LoginService {
@@ -22,6 +27,7 @@ export class LoginService {
     private readonly authService: AuthService,
     private readonly cookieService: CookieService,
     private readonly config: ConfigService,
+    @Inject(FILE_SERVICE) private readonly fileService: IFileService,
   ) {
     // Le Web Client ID est utilisé pour initialiser le client OAuth2
     // La vérification multi-audience se fait dans verifyIdToken()
@@ -209,6 +215,42 @@ export class LoginService {
         throw new BadRequestException('Email ou identifiant Google non fourni');
       }
 
+      // --- Téléchargement et stockage de l'avatar Google ---
+      // On évite ainsi la dépendance au CDN Google (rate limits 429)
+      let storedPicture: string | undefined;
+      if (picture) {
+        try {
+          const response = await fetch(picture);
+          if (response.ok) {
+            const buffer = Buffer.from(await response.arrayBuffer());
+
+            const file: Express.Multer.File = {
+              buffer,
+              originalname: `google-avatar-${googleId}.jpg`,
+              mimetype: 'image/jpeg',
+              size: buffer.length,
+              fieldname: 'profilePicture',
+              encoding: '7bit',
+              stream: null as any,
+              destination: '',
+              filename: '',
+              path: '',
+            };
+
+            const uploadResult = await this.fileService.uploadFile(
+              file,
+              'avatars',
+            );
+            storedPicture = uploadResult.publicId;
+          }
+        } catch (e) {
+          // Non bloquant : on continue sans image si l'upload échoue
+          logger.warn(
+            `Impossible de stocker l'avatar Google: ${e instanceof Error ? e.message : e}`,
+          );
+        }
+      }
+
       const include = {
         address: true,
         associations: { include: { association: true } },
@@ -231,7 +273,7 @@ export class LoginService {
             firstName:
               given_name || `Bénévole-${Math.floor(Math.random() * 10000)}`,
             lastName: (family_name || 'Nom').toUpperCase(),
-            profilePicture: picture,
+            profilePicture: storedPicture ?? null,
             status: UserStatus.ACTIVE,
             emailVerifiedAt: new Date(),
             termsAcceptedAt: new Date(),
@@ -239,13 +281,16 @@ export class LoginService {
           include,
         })) as UserWithRelations;
       } else if (!user.googleId) {
-        // Compte existant créé via email/password : on lie le googleId
-        // et on profite de la liaison pour valider l'email si nécessaire
+        // Compte existant créé via email/password : liaison du googleId
+        // On ajoute l'avatar Google uniquement si l'utilisateur n'en a pas déjà un
         user = (await prisma.user.update({
           where: { id: user.id },
           data: {
             googleId,
             emailVerifiedAt: user.emailVerifiedAt ?? new Date(),
+            ...(storedPicture && !user.profilePicture
+              ? { profilePicture: storedPicture }
+              : {}),
           },
           include,
         })) as UserWithRelations;

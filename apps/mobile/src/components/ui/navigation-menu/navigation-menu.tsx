@@ -37,6 +37,7 @@ export function NavigationMenu({
         isDestructive={link.isDestructive}
         disabled={link.disabled}
         onPress={link.onPress}
+        testID={link.testID}
       />
     );
 

@@ -36,6 +36,7 @@ export function ProfileActionRow({
   onPress,
   loading = false,
   className,
+  ...props
 }: ProfileActionRowProps) {
   const iconColorClass = clsx(
     variant === "default" && "text-grey-800 group-active:text-grey-900",
@@ -60,6 +61,7 @@ export function ProfileActionRow({
     <Pressable
       onPress={onPress}
       disabled={loading}
+      {...props}
       accessibilityRole="button"
       className={clsx(
         "group flex-row items-center justify-between px-4 py-4 bg-white transition-all",

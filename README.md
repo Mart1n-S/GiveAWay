@@ -111,6 +111,18 @@ Copier le fichier .env.example en .env et remplir les valeurs appropriées.
 cp .env.example .env
 ```
 
+## 📱 Configuration mobile
+
+Vous devez également configurer les variables d’environnement pour l’application mobile :
+
+```bash
+cp apps/mobile/.env.example apps/mobile/.env
+```
+
+Ensuite, complétez les variables nécessaires.
+
+---
+
 Pour le `JWT_ACCESS_SECRET` et `JWT_REFRESH_SECRET`, générer des clés secrètes sécurisées différentes en utilisant la commande suivante 2 fois :
 ```bash
 openssl rand -base64 62
@@ -127,6 +139,18 @@ Pour configurer l'authentification Google (Web, Android, iOS), suivre la documen
 Elle explique comment créer les clients OAuth dans Google Cloud Console,
 générer l'empreinte SHA-1 Android, récupérer le `google-services.json`
 depuis Firebase et configurer les variables d'environnement associées.
+
+> [!IMPORTANT]
+> Si vous souhaitez simplement tester rapidement sans config complète :
+>
+> * Définissez au minimum une valeur dans le `.env` de `apps/mobile` aléatoire pour :
+>
+> ```env
+> EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=demo-value
+> ```
+>
+> Cela permet d’éviter les erreurs au lancement de l’app mobile.
+
 
 ### 💾 Stockage des fichiers (Images)
 
@@ -197,6 +221,14 @@ docker-compose up -d
 >
 > 📘 Consultez la documentation complète :
 > [Gestion de la base de données](./apps/api/gestionDB.md)
+
+### ▶️ Appliquer les migrations
+
+Une fois les bases lancées, appliquez les migrations Prisma :
+
+```bash
+npm run db:migrate
+```
 
 ---
 
@@ -326,7 +358,7 @@ Une fois les services démarrés, lancez les tests depuis la racine :
 Pour lancer un fichier de test spécifique :
 
 ```bash
-npm run test:e2e:mobile -- inscription-benevole.spec.ts
+npm run test:e2e --workspace=apps/mobile -- tests/profil/profil.spec.ts
 ```
 
 ---

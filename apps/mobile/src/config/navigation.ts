@@ -5,6 +5,7 @@ export interface NavLink {
   iconName?: "home" | "info" | "user" | "settings" | "logout";
   isDestructive?: boolean;
   hideInMobileDrawer?: boolean;
+  testID?: string;
 }
 
 // 1. LIENS PUBLICS
@@ -42,6 +43,7 @@ export const USER_LINKS: NavLink[] = [
     href: "/profil",
     iconName: "user",
     hideInMobileDrawer: true,
+    testID: "link-profile",
   },
   {
     id: "settings",

@@ -37,7 +37,10 @@ export function ProfileHeader({ user, className }: ProfileHeaderProps) {
 
       {/* Infos */}
       <View className="items-center gap-1 mt-3">
-        <Text className="text-2xl font-bold tracking-tight text-grey-900">
+        <Text
+          className="text-2xl font-bold tracking-tight text-grey-900"
+          testID="profile-fullname"
+        >
           {user.firstName} {user.lastName}
         </Text>
 

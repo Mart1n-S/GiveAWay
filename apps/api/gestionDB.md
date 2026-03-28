@@ -31,24 +31,29 @@ Une fois vos modifications enregistrées dans ce fichier, passez à l'étape sui
 
 Pour appliquer vos changements à la base de données réelle, il faut créer une "migration" (un fichier SQL généré par Prisma).
 
-⚠️ **Important :** Les commandes doivent toujours être lancées depuis le dossier `apps/api`.
+### ⚠️ Important
 
-**Procédure :**
+Vous pouvez lancer les commandes :
 
-1. Ouvrez votre terminal et placez-vous dans le dossier de l'API :
+* soit depuis la racine du projet
+* soit depuis `apps/api`
 
-```bash
-cd apps/api
+## **Procédure**
 
-```
-
-2. Lancez la commande de migration personnalisée :
+#### Option 1 — Depuis la racine du projet
 
 ```bash
 npm run db:migrate
-
 ```
-3. Donnez un nom à votre migration (ex: `add_user_profile`), puis validez.
+
+#### Option 2 — Depuis `apps/api`
+
+```bash
+cd apps/api
+npm run db:migrate
+```
+
+Si besoin, donnez un nom à votre migration (ex: `add_user_profile`), puis validez.
 
 >[!IMPORTANT]
 Après chaque modification du schéma Prisma, **n'oubliez pas de régénérer les clients Prisma** depuis la racine du projet :

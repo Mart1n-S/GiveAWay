@@ -349,6 +349,7 @@ export default function EditProfileScreen() {
                     control={control}
                     name="firstName"
                     label="Prénom"
+                    testID="input-firstName"
                     required
                   />
                 </View>
@@ -470,6 +471,7 @@ export default function EditProfileScreen() {
               onPress={handleSubmit(onSubmit)}
               loading={isSubmitting}
               className="w-full"
+              testID="btn-save-profile"
             >
               Sauvegarder les modifications
             </Button>

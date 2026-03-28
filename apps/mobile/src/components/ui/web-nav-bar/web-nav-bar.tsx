@@ -150,6 +150,7 @@ export function WebNavBar({
             )}
             accessibilityRole="button"
             accessibilityLabel="Ouvrir mon profil"
+            testID="btn-profile-nav"
           >
             {isDesktop && (
               <View className="items-end">
@@ -282,7 +283,13 @@ export function WebNavBar({
                 <NavigationMenu
                   user={user}
                   isGuest={!user}
-                  mainLinks={mainLinks}
+                  mainLinks={mainLinks.map((link) => ({
+                    ...link,
+                    onPress: () => {
+                      setIsMenuOpen(false);
+                      link.onPress?.();
+                    },
+                  }))}
                   secondaryLinks={secondaryLinks}
                   bottomLinks={bottomLinks}
                   onLoginPress={() => {

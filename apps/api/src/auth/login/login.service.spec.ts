@@ -9,6 +9,7 @@ import * as argon2 from 'argon2';
 import { LoginService } from './login.service';
 import { AuthService } from '../auth.service';
 import { CookieService } from '../shared/cookie.service';
+import { FILE_SERVICE } from '../../common/files/interfaces/file-service.interface';
 import { UserStatus } from '../../generated/prisma/client';
 import { Response } from 'express';
 
@@ -62,7 +63,40 @@ const mockConfig = {
   get: jest.fn().mockReturnValue('google-client-id'),
 };
 
+// Mock fileService : upload retourne un publicId fictif
+const mockFileService = {
+  uploadFile: jest.fn().mockResolvedValue({
+    publicId: 'avatars/google-avatar-google-sub-123.jpg',
+  }),
+  deleteFile: jest.fn().mockResolvedValue(undefined),
+};
+
 const mockResponse = {} as Response;
+
+// Helper : mock fetch pour les tests Web (UserInfo + avatar)
+function mockWebFetch(pictureUrl: string | null = 'https://photo.url') {
+  (global.fetch as jest.Mock)
+    // Premier appel : UserInfo Google
+    .mockResolvedValueOnce({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        email: 'google@test.com',
+        sub: 'google-sub-123',
+        given_name: 'Google',
+        family_name: 'User',
+        picture: pictureUrl,
+      }),
+    })
+    // Deuxième appel : téléchargement de l'avatar (si picture présent)
+    .mockResolvedValueOnce(
+      pictureUrl
+        ? {
+            ok: true,
+            arrayBuffer: jest.fn().mockResolvedValue(new ArrayBuffer(8)),
+          }
+        : { ok: false },
+    );
+}
 
 describe('LoginService', () => {
   let service: LoginService;
@@ -74,13 +108,18 @@ describe('LoginService', () => {
         { provide: AuthService, useValue: mockAuthService },
         { provide: CookieService, useValue: mockCookieService },
         { provide: ConfigService, useValue: mockConfig },
+        { provide: FILE_SERVICE, useValue: mockFileService },
       ],
     }).compile();
 
     service = module.get<LoginService>(LoginService);
     jest.clearAllMocks();
+    global.fetch = jest.fn();
   });
 
+  // ===========================================================================
+  // LOGIN
+  // ===========================================================================
   describe('login', () => {
     it('✅ Login réussi — pose les cookies et retourne la réponse web', async () => {
       mockAuthService.prisma.user.findUnique.mockResolvedValue(mockUser);
@@ -178,6 +217,9 @@ describe('LoginService', () => {
     });
   });
 
+  // ===========================================================================
+  // GOOGLE LOGIN
+  // ===========================================================================
   describe('googleLogin', () => {
     const mockGoogleUser = {
       id: 2,
@@ -188,7 +230,7 @@ describe('LoginService', () => {
       lastName: 'USER',
       age: null,
       biography: null,
-      profilePicture: 'https://photo.url',
+      profilePicture: 'avatars/google-avatar-google-sub-123.jpg',
       emailVerifiedAt: new Date(),
       status: UserStatus.ACTIVE,
       createdAt: new Date(),
@@ -197,227 +239,296 @@ describe('LoginService', () => {
       associations: [],
     };
 
-    beforeEach(() => {
-      // Reset du fetch global avant chaque test
-      global.fetch = jest.fn();
-    });
+    // --- Cas Web (isAccessToken: true) ---
+    describe('[Web] isAccessToken: true', () => {
+      it('✅ Crée un compte si utilisateur inconnu via UserInfo', async () => {
+        mockWebFetch();
+        mockAuthService.prisma.user = {
+          findUnique: jest.fn(),
+          findFirst: jest.fn().mockResolvedValue(null),
+          create: jest.fn().mockResolvedValue(mockGoogleUser),
+          update: jest.fn(),
+        };
 
-    // Cas isAccessToken: true (Web)
-
-    it('✅ [Web] Crée un compte si utilisateur inconnu via UserInfo', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({
-        ok: true,
-        json: jest.fn().mockResolvedValue({
-          email: 'google@test.com',
-          sub: 'google-sub-123',
-          given_name: 'Google',
-          family_name: 'User',
-          picture: 'https://photo.url',
-        }),
-      });
-
-      mockAuthService.prisma.user = {
-        findUnique: jest.fn(),
-        findFirst: jest.fn().mockResolvedValue(null),
-        create: jest.fn().mockResolvedValue(mockGoogleUser),
-        update: jest.fn(),
-      };
-
-      const result = await service.googleLogin(
-        { idToken: 'access_token_web', isAccessToken: true },
-        mockResponse,
-        'Mozilla',
-        '127.0.0.1',
-        'web',
-      );
-
-      expect(mockAuthService.prisma.user.create).toHaveBeenCalled();
-      expect(result).toHaveProperty('message', 'Connexion réussie');
-      expect(result).not.toHaveProperty('backendTokens');
-    });
-
-    it('✅ [Web] Connecte un utilisateur Google existant', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({
-        ok: true,
-        json: jest.fn().mockResolvedValue({
-          email: 'google@test.com',
-          sub: 'google-sub-123',
-          given_name: 'Google',
-          family_name: 'User',
-          picture: 'https://photo.url',
-        }),
-      });
-
-      mockAuthService.prisma.user = {
-        findFirst: jest.fn().mockResolvedValue(mockGoogleUser),
-        create: jest.fn(),
-        update: jest.fn(),
-      };
-
-      const result = await service.googleLogin(
-        { idToken: 'access_token_web', isAccessToken: true },
-        mockResponse,
-        'Mozilla',
-        '127.0.0.1',
-        'web',
-      );
-
-      expect(mockAuthService.prisma.user.create).not.toHaveBeenCalled();
-      expect(mockAuthService.prisma.user.update).not.toHaveBeenCalled();
-      expect(result).toHaveProperty('message', 'Connexion réussie');
-    });
-
-    it('✅ [Web] Lie le googleId à un compte existant sans googleId', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({
-        ok: true,
-        json: jest.fn().mockResolvedValue({
-          email: 'google@test.com',
-          sub: 'google-sub-123',
-          given_name: 'Google',
-          family_name: 'User',
-          picture: 'https://photo.url',
-        }),
-      });
-
-      const userWithoutGoogleId = { ...mockGoogleUser, googleId: null };
-
-      mockAuthService.prisma.user = {
-        findFirst: jest.fn().mockResolvedValue(userWithoutGoogleId),
-        create: jest.fn(),
-        update: jest.fn().mockResolvedValue(mockGoogleUser),
-      };
-
-      await service.googleLogin(
-        { idToken: 'access_token_web', isAccessToken: true },
-        mockResponse,
-        'Mozilla',
-        '127.0.0.1',
-        'web',
-      );
-
-      expect(mockAuthService.prisma.user.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: userWithoutGoogleId.id },
-          data: expect.objectContaining({ googleId: 'google-sub-123' }),
-        }),
-      );
-    });
-
-    it('❌ [Web] Lève UnauthorizedException si UserInfo endpoint échoue', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({
-        ok: false,
-        status: 401,
-      });
-
-      await expect(
-        service.googleLogin(
-          { idToken: 'invalid_token', isAccessToken: true },
-          mockResponse,
-          'Mozilla',
-          '127.0.0.1',
-        ),
-      ).rejects.toThrow(UnauthorizedException);
-    });
-
-    it('❌ [Web] Lève ForbiddenException si compte suspendu', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({
-        ok: true,
-        json: jest.fn().mockResolvedValue({
-          email: 'google@test.com',
-          sub: 'google-sub-123',
-          given_name: 'Google',
-          family_name: 'User',
-          picture: null,
-        }),
-      });
-
-      mockAuthService.prisma.user = {
-        findFirst: jest.fn().mockResolvedValue({
-          ...mockGoogleUser,
-          status: UserStatus.SUSPENDED,
-        }),
-        create: jest.fn(),
-        update: jest.fn(),
-      };
-
-      await expect(
-        service.googleLogin(
+        const result = await service.googleLogin(
           { idToken: 'access_token_web', isAccessToken: true },
           mockResponse,
           'Mozilla',
           '127.0.0.1',
-        ),
-      ).rejects.toThrow(ForbiddenException);
-    });
+          'web',
+        );
 
-    // Cas isAccessToken: false (Mobile)
+        expect(mockAuthService.prisma.user.create).toHaveBeenCalled();
+        expect(mockFileService.uploadFile).toHaveBeenCalled();
+        expect(result).toHaveProperty('message', 'Connexion réussie');
+        expect(result).not.toHaveProperty('backendTokens');
+      });
 
-    it('✅ [Mobile] Connecte via id_token JWT valide', async () => {
-      const mockTicket = {
-        getPayload: jest.fn().mockReturnValue({
-          email: 'google@test.com',
-          sub: 'google-sub-123',
-          given_name: 'Google',
-          family_name: 'User',
-          picture: 'https://photo.url',
-        }),
-      };
+      it('✅ Connecte un utilisateur Google existant sans créer ni modifier', async () => {
+        mockWebFetch();
+        mockAuthService.prisma.user = {
+          findFirst: jest.fn().mockResolvedValue(mockGoogleUser),
+          create: jest.fn(),
+          update: jest.fn(),
+        };
 
-      // Mock de verifyIdToken sur l'instance googleClient
-      jest
-        .spyOn(service['googleClient'], 'verifyIdToken')
-        .mockResolvedValue(mockTicket as never);
-
-      mockAuthService.prisma.user = {
-        findFirst: jest.fn().mockResolvedValue(mockGoogleUser),
-        create: jest.fn(),
-        update: jest.fn(),
-      };
-
-      const result = await service.googleLogin(
-        { idToken: 'valid_id_token', isAccessToken: false },
-        mockResponse,
-        'Mozilla',
-        '127.0.0.1',
-        'mobile',
-      );
-
-      expect(result).toHaveProperty('backendTokens');
-      expect(result.backendTokens?.accessToken).toBe('at');
-    });
-
-    it('❌ [Mobile] Lève UnauthorizedException si id_token invalide', async () => {
-      jest
-        .spyOn(service['googleClient'], 'verifyIdToken')
-        .mockRejectedValue(new Error('Token malformé') as never);
-
-      await expect(
-        service.googleLogin(
-          { idToken: 'invalid_id_token', isAccessToken: false },
+        const result = await service.googleLogin(
+          { idToken: 'access_token_web', isAccessToken: true },
           mockResponse,
           'Mozilla',
           '127.0.0.1',
-        ),
-      ).rejects.toThrow(UnauthorizedException);
+          'web',
+        );
+
+        expect(mockAuthService.prisma.user.create).not.toHaveBeenCalled();
+        expect(mockAuthService.prisma.user.update).not.toHaveBeenCalled();
+        expect(result).toHaveProperty('message', 'Connexion réussie');
+      });
+
+      it('✅ Lie le googleId à un compte existant sans googleId', async () => {
+        mockWebFetch();
+        const userWithoutGoogleId = {
+          ...mockGoogleUser,
+          googleId: null,
+          profilePicture: null,
+        };
+
+        mockAuthService.prisma.user = {
+          findFirst: jest.fn().mockResolvedValue(userWithoutGoogleId),
+          create: jest.fn(),
+          update: jest.fn().mockResolvedValue(mockGoogleUser),
+        };
+
+        await service.googleLogin(
+          { idToken: 'access_token_web', isAccessToken: true },
+          mockResponse,
+          'Mozilla',
+          '127.0.0.1',
+          'web',
+        );
+
+        expect(mockAuthService.prisma.user.update).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: { id: userWithoutGoogleId.id },
+            data: expect.objectContaining({
+              googleId: 'google-sub-123',
+              // L'avatar est ajouté car l'utilisateur n'en avait pas
+              profilePicture: 'avatars/google-avatar-google-sub-123.jpg',
+            }),
+          }),
+        );
+      });
+
+      it('✅ Ne remplace pas la photo si le compte lié en possède déjà une', async () => {
+        mockWebFetch();
+        const userWithPhoto = {
+          ...mockGoogleUser,
+          googleId: null,
+          profilePicture: 'avatars/existing-photo.jpg',
+        };
+
+        mockAuthService.prisma.user = {
+          findFirst: jest.fn().mockResolvedValue(userWithPhoto),
+          create: jest.fn(),
+          update: jest.fn().mockResolvedValue(mockGoogleUser),
+        };
+
+        await service.googleLogin(
+          { idToken: 'access_token_web', isAccessToken: true },
+          mockResponse,
+          'Mozilla',
+          '127.0.0.1',
+          'web',
+        );
+
+        expect(mockAuthService.prisma.user.update).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.not.objectContaining({
+              profilePicture: expect.anything(),
+            }),
+          }),
+        );
+      });
+
+      it("✅ Continue sans image si le téléchargement de l'avatar échoue", async () => {
+        // UserInfo OK mais téléchargement avatar KO
+        (global.fetch as jest.Mock)
+          .mockResolvedValueOnce({
+            ok: true,
+            json: jest.fn().mockResolvedValue({
+              email: 'google@test.com',
+              sub: 'google-sub-123',
+              given_name: 'Google',
+              family_name: 'User',
+              picture: 'https://photo.url',
+            }),
+          })
+          .mockResolvedValueOnce({ ok: false });
+
+        mockAuthService.prisma.user = {
+          findFirst: jest.fn().mockResolvedValue(null),
+          create: jest.fn().mockResolvedValue(mockGoogleUser),
+          update: jest.fn(),
+        };
+
+        const result = await service.googleLogin(
+          { idToken: 'access_token_web', isAccessToken: true },
+          mockResponse,
+          'Mozilla',
+          '127.0.0.1',
+          'web',
+        );
+
+        // L'upload ne doit pas avoir été appelé
+        expect(mockFileService.uploadFile).not.toHaveBeenCalled();
+        // Mais la création doit quand même avoir eu lieu
+        expect(mockAuthService.prisma.user.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({ profilePicture: null }),
+          }),
+        );
+        expect(result).toHaveProperty('message', 'Connexion réussie');
+      });
+
+      it('✅ Continue sans image si picture est null', async () => {
+        mockWebFetch(null); // picture: null
+        mockAuthService.prisma.user = {
+          findFirst: jest.fn().mockResolvedValue(null),
+          create: jest.fn().mockResolvedValue({
+            ...mockGoogleUser,
+            profilePicture: null,
+          }),
+          update: jest.fn(),
+        };
+
+        await service.googleLogin(
+          { idToken: 'access_token_web', isAccessToken: true },
+          mockResponse,
+          'Mozilla',
+          '127.0.0.1',
+          'web',
+        );
+
+        expect(mockFileService.uploadFile).not.toHaveBeenCalled();
+        expect(mockAuthService.prisma.user.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({ profilePicture: null }),
+          }),
+        );
+      });
+
+      it('❌ Lève UnauthorizedException si UserInfo endpoint échoue', async () => {
+        (global.fetch as jest.Mock).mockResolvedValue({
+          ok: false,
+          status: 401,
+        });
+
+        await expect(
+          service.googleLogin(
+            { idToken: 'invalid_token', isAccessToken: true },
+            mockResponse,
+            'Mozilla',
+            '127.0.0.1',
+          ),
+        ).rejects.toThrow(UnauthorizedException);
+      });
+
+      it('❌ Lève ForbiddenException si compte suspendu', async () => {
+        mockWebFetch();
+        mockAuthService.prisma.user = {
+          findFirst: jest.fn().mockResolvedValue({
+            ...mockGoogleUser,
+            status: UserStatus.SUSPENDED,
+          }),
+          create: jest.fn(),
+          update: jest.fn(),
+        };
+
+        await expect(
+          service.googleLogin(
+            { idToken: 'access_token_web', isAccessToken: true },
+            mockResponse,
+            'Mozilla',
+            '127.0.0.1',
+          ),
+        ).rejects.toThrow(ForbiddenException);
+      });
     });
 
-    it('❌ [Mobile] Lève UnauthorizedException si payload vide', async () => {
-      const mockTicket = {
-        getPayload: jest.fn().mockReturnValue(null),
-      };
+    // --- Cas Mobile (isAccessToken: false) ---
+    describe('[Mobile] isAccessToken: false', () => {
+      it('✅ Connecte via id_token JWT valide', async () => {
+        const mockTicket = {
+          getPayload: jest.fn().mockReturnValue({
+            email: 'google@test.com',
+            sub: 'google-sub-123',
+            given_name: 'Google',
+            family_name: 'User',
+            picture: 'https://photo.url',
+          }),
+        };
 
-      jest
-        .spyOn(service['googleClient'], 'verifyIdToken')
-        .mockResolvedValue(mockTicket as never);
+        jest
+          .spyOn(service['googleClient'], 'verifyIdToken')
+          .mockResolvedValue(mockTicket as never);
 
-      await expect(
-        service.googleLogin(
+        // Mock fetch pour le téléchargement de l'avatar
+        (global.fetch as jest.Mock).mockResolvedValueOnce({
+          ok: true,
+          arrayBuffer: jest.fn().mockResolvedValue(new ArrayBuffer(8)),
+        });
+
+        mockAuthService.prisma.user = {
+          findFirst: jest.fn().mockResolvedValue(mockGoogleUser),
+          create: jest.fn(),
+          update: jest.fn(),
+        };
+
+        const result = await service.googleLogin(
           { idToken: 'valid_id_token', isAccessToken: false },
           mockResponse,
           'Mozilla',
           '127.0.0.1',
-        ),
-      ).rejects.toThrow(UnauthorizedException);
+          'mobile',
+        );
+
+        expect(result).toHaveProperty('backendTokens');
+        expect(result.backendTokens?.accessToken).toBe('at');
+      });
+
+      it('❌ Lève UnauthorizedException si id_token invalide', async () => {
+        jest
+          .spyOn(service['googleClient'], 'verifyIdToken')
+          .mockRejectedValue(new Error('Token malformé') as never);
+
+        await expect(
+          service.googleLogin(
+            { idToken: 'invalid_id_token', isAccessToken: false },
+            mockResponse,
+            'Mozilla',
+            '127.0.0.1',
+          ),
+        ).rejects.toThrow(UnauthorizedException);
+      });
+
+      it('❌ Lève UnauthorizedException si payload vide', async () => {
+        const mockTicket = {
+          getPayload: jest.fn().mockReturnValue(null),
+        };
+
+        jest
+          .spyOn(service['googleClient'], 'verifyIdToken')
+          .mockResolvedValue(mockTicket as never);
+
+        await expect(
+          service.googleLogin(
+            { idToken: 'valid_id_token', isAccessToken: false },
+            mockResponse,
+            'Mozilla',
+            '127.0.0.1',
+          ),
+        ).rejects.toThrow(UnauthorizedException);
+      });
     });
   });
 });

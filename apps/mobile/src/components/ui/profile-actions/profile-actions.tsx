@@ -54,6 +54,7 @@ export function ProfileActions({
         onPress={onEditPress}
         icon={<EditIcon className="w-5 h-5 text-white" />}
         className="w-full shadow-sm"
+        testID="btn-edit-profile"
       >
         Modifier le profil
       </Button>
@@ -63,6 +64,7 @@ export function ProfileActions({
           icon={<SettingsIcon />}
           label="Paramètres de confidentialité"
           onPress={() => {}}
+          testID="btn-privacy-settings"
         />
 
         {/* Séparateur plus subtil */}
@@ -74,6 +76,7 @@ export function ProfileActions({
           variant="danger"
           onPress={onLogoutPress}
           loading={isLoggingOut}
+          testID="btn-logout"
         />
       </View>
 
@@ -86,6 +89,7 @@ export function ProfileActions({
           "hover:bg-red-50 active:bg-red-200",
           "web:outline-none web:focus-visible:ring-2 web:focus-visible:ring-red-500 web:focus-visible:ring-offset-2",
         )}
+        testID="btn-delete-account"
       >
         {({ pressed }) => (
           <>
