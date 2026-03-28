@@ -270,8 +270,7 @@ export class LoginService {
           data: {
             email,
             googleId,
-            firstName:
-              given_name || `Bénévole-${Math.floor(Math.random() * 10000)}`,
+            firstName: given_name || `Bénévole-${googleId.slice(-4)}`,
             lastName: (family_name || 'Nom').toUpperCase(),
             profilePicture: storedPicture ?? null,
             status: UserStatus.ACTIVE,
