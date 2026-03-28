@@ -150,6 +150,7 @@ export function WebNavBar({
             )}
             accessibilityRole="button"
             accessibilityLabel="Ouvrir mon profil"
+            testID="btn-profile-nav"
           >
             {isDesktop && (
               <View className="items-end">
@@ -173,7 +174,6 @@ export function WebNavBar({
             icon={logoutIcon}
             className="text-white bg-red-600 border-red-600 hover:bg-red-700 hover:border-red-700 active:bg-red-800"
           >
-            Se déconnecter
           </Button>
         </View>
       );
@@ -282,7 +282,13 @@ export function WebNavBar({
                 <NavigationMenu
                   user={user}
                   isGuest={!user}
-                  mainLinks={mainLinks}
+                  mainLinks={mainLinks.map((link) => ({
+                    ...link,
+                    onPress: () => {
+                      setIsMenuOpen(false);
+                      link.onPress?.();
+                    },
+                  }))}
                   secondaryLinks={secondaryLinks}
                   bottomLinks={bottomLinks}
                   onLoginPress={() => {

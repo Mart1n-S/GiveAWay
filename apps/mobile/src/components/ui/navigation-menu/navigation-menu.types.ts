@@ -14,6 +14,7 @@ export interface MenuLink {
   isActive?: boolean;
   disabled?: boolean;
   onPress?: () => void;
+  testID?: string;
 }
 
 /**

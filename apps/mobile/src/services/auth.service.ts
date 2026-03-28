@@ -4,18 +4,19 @@ import { useAuthStore } from "../stores/auth.store";
 import {
   LoginDto,
   RegisterDto,
-  User,
   AuthResponse,
   VerifyEmailDto,
   ResendVerificationDto,
   ForgotPasswordDto,
   ResetPasswordDto,
+  GoogleLoginDto,
 } from "@repo/shared";
-import { ReactNativeFile } from "../types/files.type";
+import { googleSignOut } from "../lib/google-signin";
+import { useProfileStore } from "@/stores/profile.store";
 
 export const AuthService = {
   // =================================================================
-  // 1. AUTHENTIFICATION (Login / Register / Logout)
+  // 1. AUTHENTIFICATION (Login / Register / Logout / Google)
   // =================================================================
 
   /**
@@ -25,7 +26,6 @@ export const AuthService = {
     const response = await api.post<AuthResponse>("/auth/login", credentials);
     const { user, backendTokens } = response.data;
 
-    // On appelle toujours login, peu importe la plateforme
     useAuthStore
       .getState()
       .login(
@@ -33,6 +33,45 @@ export const AuthService = {
         backendTokens?.accessToken ?? null,
         backendTokens?.refreshToken ?? null,
       );
+
+    return user;
+  },
+
+  /**
+   * POST /auth/google
+   *
+   * Authentifie un utilisateur via Google OAuth.
+   * Gère deux cas selon la plateforme :
+   * - `isAccessToken: true`  → web, Google a renvoyé un access_token
+   * - `isAccessToken: false` → mobile, Google a renvoyé un id_token JWT
+   *
+   * @param data - DTO Google contenant le token et le flag isAccessToken
+   * @returns L'utilisateur authentifié
+   */
+  googleLogin: async (data: GoogleLoginDto) => {
+    const dto: GoogleLoginDto = {
+      idToken: data.idToken,
+      isAccessToken: data.isAccessToken,
+    };
+
+    const response = await api.post<AuthResponse>("/auth/google", dto, {
+      headers: {
+        "x-client-type": Platform.OS === "web" ? "web" : "mobile",
+      },
+    });
+
+    const { user, backendTokens } = response.data;
+
+    useAuthStore
+      .getState()
+      .login(
+        user,
+        backendTokens?.accessToken ?? null,
+        backendTokens?.refreshToken ?? null,
+      );
+
+    useProfileStore.getState().setProfile(user);
+
 
     return user;
   },
@@ -62,19 +101,32 @@ export const AuthService = {
       formData.append("address", JSON.stringify(data.address));
     }
 
-    // 3. Ajout de l'image (Spécifique React Native)
+    // 3. Ajout de l'image
     if (imageUri) {
-      const filename = imageUri.split("/").pop() || "avatar.jpg";
-      const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : "image/jpeg";
+      if (Platform.OS === "web") {
+        // Solution web
+        const response = await fetch(imageUri);
+        const blob = await response.blob();
 
-      const file: ReactNativeFile = {
-        uri: imageUri,
-        name: filename,
-        type,
-      };
+        // On détermine l'extension à partir du type MIME du blob (plus fiable)
+        const extension = blob.type.split("/")[1] || "jpg";
+        const filename = `avatar-${Date.now()}.${extension}`;
 
-      formData.append("profilePicture", file as unknown as Blob);
+        formData.append("profilePicture", blob, filename);
+      } else {
+        // Solution mobile
+        const filename = imageUri.split("/").pop() || "avatar.jpg";
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : "image/jpeg";
+
+        const file = {
+          uri: imageUri,
+          name: filename,
+          type,
+        } as any;
+
+        formData.append("profilePicture", file);
+      }
     }
 
     // 4. Appel API
@@ -91,11 +143,28 @@ export const AuthService = {
 
   /**
    * POST /auth/logout
+   *
+   * Déconnecte l'utilisateur de l'application et de Google (sur mobile).
+   * Sur mobile : envoie le refresh token dans le body (pas de cookies).
+   * Sur web : le navigateur envoie le cookie refresh_token automatiquement.
+   *
+   * Non bloquant : si l'API échoue, le store local est nettoyé quand même
+   * pour ne pas bloquer l'utilisateur sur l'écran de connexion.
    */
   logout: async () => {
     try {
       // 1. On récupère le refresh token actuel du store
       const refreshToken = useAuthStore.getState().refreshToken;
+
+      // Déconnexion Google native sur mobile
+      // Import dynamique pour ne pas crasher sur Expo Go
+      if (Platform.OS !== "web") {
+        try {
+          await googleSignOut();
+        } catch (googleError) {
+          console.warn("[AuthService] Google Sign-Out warning:", googleError);
+        }
+      }
 
       // 2. Logique conditionnelle pour le Body
       // Sur Mobile : Pas de cookies, donc on DOIT envoyer le token dans le body
@@ -108,8 +177,8 @@ export const AuthService = {
       }
     } catch (error) {
       // Si l'API échoue (ex: token déjà expiré ou serveur down),
-      // on ne bloque pas l'utilisateur, on log juste l'erreur.
-      console.log("Logout API warning:", error);
+      // on ne bloque pas l'utilisateur
+      console.warn("[AuthService] Logout API warning:", error);
     } finally {
       // 3. Quoi qu'il arrive (succès ou erreur), on nettoie le store local (UI)
       // C'est ça qui redirige l'utilisateur vers l'écran de Login.
@@ -118,22 +187,8 @@ export const AuthService = {
   },
 
   // =================================================================
-  // 2. GESTION DE COMPTE (Me / Verify)
+  // 2. GESTION DE COMPTE (Verify)
   // =================================================================
-
-  /**
-   * GET /auth/me
-   * Récupère le profil à jour grâce au Token (envoyé auto par axios)
-   */
-  getProfile: async () => {
-    // Axios injecte automatiquement le token Bearer via l'intercepteur
-    const response = await api.get<User>("/auth/me");
-
-    // On met à jour le store global pour que toute l'UI en profite
-    useAuthStore.getState().setUser(response.data);
-
-    return response.data;
-  },
 
   /**
    * POST /auth/verify

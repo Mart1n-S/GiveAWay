@@ -5,6 +5,10 @@ test.beforeEach(async () => {
   await cleanDatabase();
 });
 
+// afterAll(async () => {
+//   await prisma.$disconnect();
+// });
+
 test.describe("Flux d'activation de compte (Interface & OTP)", () => {
   test("devrait inscrire un utilisateur et permettre son activation avec le code dynamique", async ({
     page,

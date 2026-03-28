@@ -1,13 +1,37 @@
-import { View, Text, StyleSheet } from "react-native";
-import MapView, { Marker, Region } from "react-native-maps";
+import { View, Text, StyleSheet, Platform } from "react-native";
 import { SetStateAction, useState } from "react";
+import MapView, { Marker, Region } from "react-native-maps";
+import Constants, { ExecutionEnvironment } from "expo-constants";
 
-// ---- MOCK DATA ----
 const MOCK_LISTINGS = [
-  { id: "1", title: "Appartement centre-ville", price: 95, latitude: 43.5297, longitude: 5.4474 },
-  { id: "2", title: "Studio cosy", price: 72, latitude: 43.5312, longitude: 5.4413 },
-  { id: "3", title: "Loft moderne", price: 130, latitude: 43.5268, longitude: 5.4522 },
-  { id: "4", title: "Maison avec terrasse", price: 210, latitude: 43.5335, longitude: 5.4498 },
+  {
+    id: "1",
+    title: "Appartement centre-ville",
+    price: 95,
+    latitude: 43.5297,
+    longitude: 5.4474,
+  },
+  {
+    id: "2",
+    title: "Studio cosy",
+    price: 72,
+    latitude: 43.5312,
+    longitude: 5.4413,
+  },
+  {
+    id: "3",
+    title: "Loft moderne",
+    price: 130,
+    latitude: 43.5268,
+    longitude: 5.4522,
+  },
+  {
+    id: "4",
+    title: "Maison avec terrasse",
+    price: 210,
+    latitude: 43.5335,
+    longitude: 5.4498,
+  },
 ];
 
 // ---- CUSTOM PRICE MARKER ----
@@ -27,6 +51,23 @@ export default function Map() {
     latitudeDelta: 0.02,
     longitudeDelta: 0.02,
   });
+
+  // Placeholder si on est dans un Development Build ou APK
+  // (clé Google Maps non configurée)
+  // Sur Expo Go : la carte fonctionne sans clé
+  const isNativeBuild =
+    Constants.executionEnvironment !== ExecutionEnvironment.StoreClient;
+
+  if (Platform.OS === "android" && isNativeBuild) {
+    return (
+      <View style={styles.placeholder}>
+        <Text style={styles.placeholderText}>🗺️ Carte non disponible</Text>
+        <Text style={styles.placeholderSubtext}>
+          Clé Google Maps non configurée
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1, height: "100%", width: "100%" }}>
@@ -72,5 +113,21 @@ const styles = StyleSheet.create({
   markerText: {
     fontWeight: "600",
     fontSize: 14,
+  },
+  placeholder: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f5f5f5",
+  },
+  placeholderText: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#666",
+  },
+  placeholderSubtext: {
+    fontSize: 13,
+    color: "#999",
+    marginTop: 8,
   },
 });

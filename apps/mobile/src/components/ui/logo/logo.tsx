@@ -1,9 +1,9 @@
 import { View } from "react-native";
+import { Link } from "expo-router";
 import clsx from "clsx";
 import { Text } from "../text/text";
 import { LogoProps, LogoSize } from "./logo.types";
 
-// Configuration des tailles (Container de l'icône + Texte)
 const sizeConfig: Record<LogoSize, { iconBox: string; textSize: string }> = {
   sm: { iconBox: "w-6 h-6", textSize: "text-lg" },
   md: { iconBox: "w-8 h-8", textSize: "text-2xl" },
@@ -22,30 +22,36 @@ export function Logo({
   const { iconBox, textSize } = sizeConfig[size];
 
   return (
-    <View
-      {...props}
-      accessibilityRole="image"
-      accessibilityLabel="Logo GiveAWay"
-      className={clsx("flex-row items-center gap-3", className)}
-    >
-      {/* Conteneur de l'icône SVG */}
-      {/* On force la taille du conteneur, l'icône SVG dedans devra être en width/height 100% */}
-      <View className={clsx("items-center justify-center", iconBox)}>
-        {icon}
-      </View>
+    <Link href="/" asChild>
+      <View
+        {...props}
+        accessibilityRole="link"
+        accessibilityLabel="Logo GiveAWay — Retour à l'accueil"
+        className={clsx(
+          "flex-row items-center gap-3 web:cursor-pointer",
+          "rounded-md transition-all duration-200",
+          "hover:opacity-80 active:opacity-60",
+          "web:outline-none focus:outline-none",
+          "web:focus-visible:ring-2 web:focus-visible:ring-focus web:focus-visible:ring-offset-2",
+          className,
+        )}
+      >
+        <View className={clsx("items-center justify-center", iconBox)}>
+          {icon}
+        </View>
 
-      {/* Texte GiveAWay */}
-      {showText && (
-        <Text
-          className={clsx(
-            "font-bold font-title tracking-tight",
-            textSize,
-            textColor,
-          )}
-        >
-          GiveAWay
-        </Text>
-      )}
-    </View>
+        {showText && (
+          <Text
+            className={clsx(
+              "font-bold font-title tracking-tight",
+              textSize,
+              textColor,
+            )}
+          >
+            GiveAWay
+          </Text>
+        )}
+      </View>
+    </Link>
   );
 }

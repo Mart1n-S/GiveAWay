@@ -63,6 +63,7 @@ export default function RootLayout() {
             presentation: "modal",
           }}
         />
+        <Stack.Screen name="(main)" options={{ headerShown: false }} />
       </Stack>
       <Toast config={toastConfig} />
     </SafeAreaProvider>

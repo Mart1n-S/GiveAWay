@@ -107,43 +107,70 @@ cd GiveAWay
 ### 2️⃣ Configuration des variables d'environnement
 
 Copier le fichier .env.example en .env et remplir les valeurs appropriées.
-
 ```bash
 cp .env.example .env
 ```
 
-Pour le `JWT_ACCESS_SECRET` et `JWT_REFRESH_SECRET`, générer des clés secrètes sécurisées différentes en utilisant la commande suivante 2 fois :
+## 📱 Configuration mobile
 
+Vous devez également configurer les variables d’environnement pour l’application mobile :
+
+```bash
+cp apps/mobile/.env.example apps/mobile/.env
+```
+
+Ensuite, complétez les variables nécessaires.
+
+---
+
+Pour le `JWT_ACCESS_SECRET` et `JWT_REFRESH_SECRET`, générer des clés secrètes sécurisées différentes en utilisant la commande suivante 2 fois :
 ```bash
 openssl rand -base64 62
 ```
 
 Le .env.test est utilisé pour les tests d'intégration et ne nécessite pas de modification.
 
+### 🔐 Configuration Google OAuth
+
+Pour configurer l'authentification Google (Web, Android, iOS), suivre la documentation dédiée :
+
+📄 **[OAuthGoogle.md](./OAuthGoogle.md)** - à la racine du projet
+
+Elle explique comment créer les clients OAuth dans Google Cloud Console,
+générer l'empreinte SHA-1 Android, récupérer le `google-services.json`
+depuis Firebase et configurer les variables d'environnement associées.
+
+> [!IMPORTANT]
+> Si vous souhaitez simplement tester rapidement sans config complète :
+>
+> * Définissez au minimum une valeur dans le `.env` de `apps/mobile` aléatoire pour :
+>
+> ```env
+> EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=demo-value
+> ```
+>
+> Cela permet d’éviter les erreurs au lancement de l’app mobile.
+
+
 ### 💾 Stockage des fichiers (Images)
 
 Le projet supporte deux modes de stockage pour les avatars et images :
 
 - **Mode Local** (Recommandé pour le Dev) : Les images sont stockées dans le dossier `apps/api/uploads` et servies directement par l'API.
-
 ```bash
 STORAGE_TYPE=local
-
 ```
 
 - **Mode Cloudinary** (Recommandé pour la Prod) : Les images sont hébergées sur les serveurs de Cloudinary (CDN).
-
 ```bash
 STORAGE_TYPE=cloudinary
 
 CLOUDINARY_CLOUD_NAME=votre_cloud_name
 CLOUDINARY_API_KEY=votre_api_key
 CLOUDINARY_API_SECRET=votre_api_secret
-
 ```
 
 _Si vous utilisez le mode local, vous pouvez laisser les variables Cloudinary vides._
-
 
 ### 📧 Service d'e-mails (Brevo)
 
@@ -152,17 +179,13 @@ Le projet utilise **Brevo** pour l'envoi des e-mails transactionnels (validation
 1. Créez un compte gratuit sur [Brevo](https://onboarding.brevo.com/account/register).
 2. Accédez à la section **SMTP & API** dans votre panel d'administration.
 3. Récupérez votre **Clé API** et configurez les variables suivantes :
-
 ```bash
 BREVO_API_KEY=votre_cle_api_xkeysib
 MAIL_FROM_EMAIL=l_email_de_votre_compte_brevo
 MAIL_FROM_NAME=GiveAway
-
 ```
 
 *Note : L'adresse e-mail utilisée dans `MAIL_FROM_EMAIL` doit être celle configurée comme expéditeur validé sur votre compte Brevo.*
-
-
 ---
 
 ### 3️⃣ Installation et Build
@@ -197,7 +220,15 @@ docker-compose up -d
 > [http://localhost:8080/browser/](http://localhost:8080/browser/)
 >
 > 📘 Consultez la documentation complète :
-> [Gestion de la base de données](https://github.com/Mart1n-S/GiveAWay/blob/develop/apps/api/gestionDB.md)
+> [Gestion de la base de données](./apps/api/gestionDB.md)
+
+### ▶️ Appliquer les migrations
+
+Une fois les bases lancées, appliquez les migrations Prisma :
+
+```bash
+npm run db:migrate
+```
 
 ---
 
@@ -227,6 +258,27 @@ Pour le reste il suffit de regarder le fichier `apps/api/prisma/seed.ts` pour vo
 ```bash
 npm run dev
 ```
+
+> [!NOTE]
+> Cette commande lance le backend ET le frontend simultanément.
+> Sur mobile, scannez le QR code avec **Expo Go** (Android/iOS).
+> Si une page intermédiaire s'ouvre, cliquez sur **"Expo Go"** en bas de page.
+---
+
+### 7️⃣ Développement Web vs Mobile — URL de l'API
+
+En développement standard, **laisser `EXPO_PUBLIC_API_URL` vide** dans `apps/mobile/.env`.
+`axios.ts` détecte automatiquement la bonne URL selon la plateforme :
+
+| Contexte                     | URL détectée              | Comment                                                  |
+| ---------------------------- | ------------------------- | -------------------------------------------------------- |
+| **Web (navigateur)**         | `http://localhost:3000`   | Détection automatique via `Platform.OS`                  |
+| **Mobile Expo Go**           | `http://192.168.x.x:3000` | Détection automatique via `Constants.expoConfig.hostUri` |
+| **Google Auth mobile (APK)** | `http://192.168.x.x:3000` | À définir manuellement dans `.env`                       |
+
+> [!NOTE]
+> Pour tester **Google Auth sur mobile physique** (APK Development Build uniquement),
+> consulter la documentation dédiée : 📄 **[OAuthGoogle.md](./OAuthGoogle.md)**
 
 ---
 
@@ -278,8 +330,14 @@ npm run db:test:setup
 
 Vous devez ouvrir deux terminaux pour faire tourner les applications :
 
-- **Terminal A (API en mode test) :** `npm run start:test --workspace=apps/api`
-- **Terminal B (Web) :** `npm run web --workspace=apps/mobile`
+- **Terminal A (API en mode test) :**
+```bash
+npm run start:test --workspace=apps/api
+```
+- **Terminal B (Web) :** 
+```bash
+npm run web --workspace=apps/mobile
+```
 
 #### 3. Exécution des tests Playwright
 
@@ -300,7 +358,7 @@ Une fois les services démarrés, lancez les tests depuis la racine :
 Pour lancer un fichier de test spécifique :
 
 ```bash
-npm run test:e2e:mobile -- inscription-benevole.spec.ts
+npm run test:e2e --workspace=apps/mobile -- tests/profil/profil.spec.ts
 ```
 
 ---
@@ -311,9 +369,14 @@ npm run test:e2e:mobile -- inscription-benevole.spec.ts
 
 [http://localhost:3000](http://localhost:3000)
 
-### 📱 Mobile (Expo)
+### 📱 Mobile (Expo Go)
 
-Scannez le **QR Code affiché dans le terminal** avec **Expo Go** (iOS/Android)
+Scannez le **QR Code affiché dans le terminal** avec **Expo Go** (Android/iOS).
+Si une page intermédiaire s'ouvre à `/_expo/loading`, cliquez sur **"Expo Go"** en bas.
+
+> [!NOTE]
+> Pour tester **Google Auth sur mobile**, un APK Development Build est nécessaire.
+> Consulter 📄 **[OAuthGoogle.md](./OAuthGoogle.md)** pour les instructions.
 
 ### 🖥️ Web (Expo)
 

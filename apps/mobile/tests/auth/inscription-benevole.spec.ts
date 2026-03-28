@@ -9,6 +9,10 @@ test.beforeEach(async () => {
   await cleanDatabase();
 });
 
+// afterAll(async () => {
+//   await prisma.$disconnect();
+// });
+
 test.describe("Flux d'inscription bénévole", () => {
   test("devrait créer un compte et afficher l'écran OTP", async ({ page }) => {
     const uniqueEmail = `benevole.${Date.now()}@test.com`;

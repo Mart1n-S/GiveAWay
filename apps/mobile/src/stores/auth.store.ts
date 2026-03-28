@@ -40,13 +40,21 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: true,
         }),
 
-      logout: () =>
+      logout: () => {
+        // Import dynamique pour casser le cycle circulaire
+        void import("./profile.store").then(({ useProfileStore }) => {
+          useProfileStore.getState().clearProfile();
+        });
+        void import("./reference.store").then(({ useReferenceStore }) => {
+          useReferenceStore.getState().clearReferences();
+        });
         set({
           user: null,
           accessToken: null,
           refreshToken: null,
           isAuthenticated: false,
-        }),
+        });
+      },
     }),
     {
       name: "auth-storage",
