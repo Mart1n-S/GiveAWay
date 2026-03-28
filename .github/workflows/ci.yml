@@ -216,6 +216,8 @@ jobs:
           EXPO_ROUTER_APP_ROOT: "app"
           NODE_ENV: "development"
           USE_DETERMINISTIC_OTP: "true"
+          EXPO_PUBLIC_API_URL: "http://localhost:3000"
+          EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: "fake-client-id-for-ci"
           
       # Sauvegarde les captures d'écran et vidéos en cas d'échec des tests
       - name: Upload Playwright Report

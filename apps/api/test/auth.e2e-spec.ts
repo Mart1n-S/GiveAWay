@@ -608,23 +608,6 @@ describe('Auth Module (E2E)', () => {
       expect(newCookies.some((c) => c.includes('refresh_token'))).toBeTruthy();
     });
 
-    it('✅ Protected Route (/me) : Devrait fonctionner avec le cookie', async () => {
-      const loginRes = await request(httpServer)
-        .post('/auth/login')
-        .send({ email: userDto.email, password: userDto.password })
-        .expect(200);
-
-      const cookies = loginRes.get('Set-Cookie');
-
-      const res = await request(httpServer)
-        .get('/auth/me')
-        .set('Cookie', cookies)
-        .expect(200);
-
-      const body = res.body as ResponseBody;
-      expect(body.email).toBe(userDto.email);
-    });
-
     it('✅ Logout : Devrait supprimer les deux cookies', async () => {
       const loginRes = await request(httpServer)
         .post('/auth/login')

@@ -42,12 +42,18 @@ export function AvatarButton({
   const renderContent = () => {
     // Cas 1 : Image
     if (!isGuest && imageUrl) {
-      // Si l'URL est déjà absolue (Google, Cloudinary, etc.)
-      // on l'utilise directement sans préfixer avec avatarBaseUrl
-      const isAbsoluteUrl =
-        imageUrl.startsWith("http://") || imageUrl.startsWith("https://");
+      const isExternalOrLocalPath =
+        imageUrl.startsWith("http://") ||
+        imageUrl.startsWith("https://") ||
+        imageUrl.startsWith("blob:") ||
+        imageUrl.startsWith("file:") ||
+        imageUrl.startsWith("data:");
 
-      const uri = isAbsoluteUrl ? imageUrl : `${avatarBaseUrl}${imageUrl}`;
+      // Si c'est un de ces cas, on utilise imageUrl directement.
+      // Sinon (ex: "avatars/user.jpg"), on préfixe.
+        const uri = isExternalOrLocalPath
+          ? imageUrl
+          : `${avatarBaseUrl.replace(/\/$/, "")}/${imageUrl.replace(/^\//, "")}`;
 
       return (
         <Image

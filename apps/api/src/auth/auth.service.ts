@@ -13,6 +13,16 @@ import {
   Address,
   AssociationUser,
   Association,
+  UserSkill,
+  Skill,
+  UserCause,
+  Cause,
+  UserAvailability,
+  MissionParticipant,
+  Mission,
+  AvailabilityType,
+  AvailabilityTime,
+  AvailabilityFrequency,
 } from '../generated/prisma/client';
 import {
   User,
@@ -23,6 +33,12 @@ import {
 export type UserWithRelations = PrismaUser & {
   address?: Address | null;
   associations?: (AssociationUser & { association: Association })[];
+  skills?: (UserSkill & { skill: Skill })[];
+  causes?: (UserCause & { cause: Cause })[];
+  availability?: UserAvailability | null;
+  participations?: (MissionParticipant & {
+    mission: Mission & { association: Association };
+  })[];
 };
 
 @Injectable()
@@ -196,6 +212,7 @@ export class AuthService {
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
+      hasPassword: !!user.password,
       age: user.age,
       biography: user.biography,
       profilePicture: user.profilePicture,
@@ -221,6 +238,45 @@ export class AuthService {
           associationId: assocUser.associationId,
           name: assocUser.association.name,
           role: assocUser.role as unknown as SharedAssociationRole,
+        })) ?? [],
+
+      // Nouveaux champs
+      skills:
+        user.skills?.map((userSkill) => ({
+          id: userSkill.skill.id,
+          label: userSkill.skill.label,
+        })) ?? [],
+
+      causes:
+        user.causes?.map((userCause) => ({
+          id: userCause.cause.id,
+          label: userCause.cause.label,
+        })) ?? [],
+
+      availability: user.availability
+        ? {
+            frequency: user.availability
+              .frequency as unknown as AvailabilityFrequency[],
+            timeSlots: user.availability
+              .timeSlot as unknown as AvailabilityTime[],
+            type: user.availability.type as unknown as AvailabilityType,
+          }
+        : null,
+
+      participations:
+        user.participations?.map((p) => ({
+          missionId: p.missionId,
+          createdAt: p.createdAt.toISOString(),
+          mission: {
+            id: p.mission.id,
+            title: p.mission.title,
+            type: p.mission.type,
+            startDate: p.mission.startDate?.toISOString() ?? null,
+            association: {
+              id: p.mission.association.id,
+              name: p.mission.association.name,
+            },
+          },
         })) ?? [],
     };
   }

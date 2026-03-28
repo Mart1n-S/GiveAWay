@@ -284,14 +284,14 @@ model MissionCause {
 }
 
 model UserAvailability {
-  id        Int                   @id @default(autoincrement())
-  userId    Int                   @unique @map("user_id")
-  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  frequency AvailabilityFrequency @default(HOURS_WEEK)
-  timeSlot  AvailabilityTime      @default(ALL_TIME)
-  type      AvailabilityType      @default(HYBRID)
-  createdAt DateTime              @default(now()) @map("created_at")
-  updatedAt DateTime              @updatedAt @map("updated_at")
+  id        Int                    @id @default(autoincrement())
+  userId    Int                    @unique @map("user_id")
+  user      User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  frequency AvailabilityFrequency[] @default([HOURS_WEEK])
+  timeSlot  AvailabilityTime[]     @default([ALL_TIME])
+  type      AvailabilityType       @default(HYBRID)
+  createdAt DateTime               @default(now()) @map("created_at")
+  updatedAt DateTime               @updatedAt @map("updated_at")
 
   @@map("user_availabilities")
 }

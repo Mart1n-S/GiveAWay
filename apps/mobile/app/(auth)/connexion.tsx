@@ -50,7 +50,7 @@ export default function LoginScreen() {
         const user = await AuthService.googleLogin(dto);
 
         if (!user.age || !user.address) {
-          router.replace("/(auth)/complete-profile");
+          router.replace("/profil/modifier");
         } else {
           router.replace("/");
         }

@@ -5,10 +5,12 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { MulterModule } from '@nestjs/platform-express';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
+import { ProfileModule } from './profile/profile.module';
 import { MailModule } from './mail/mail.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'node:path';
 import { FilesModule } from './common/files/files.module';
+import { ReferenceModule } from './reference/reference.module';
 
 @Module({
   imports: [
@@ -59,6 +61,8 @@ import { FilesModule } from './common/files/files.module';
     MailModule, // Gestion des Emails
     AuthModule, // Authentification
     FilesModule, // Gestion des fichiers (upload, stockage, suppression)
+    ProfileModule, // Gestion du profil utilisateur
+    ReferenceModule, // Endpoints de référence (compétences, causes, etc.)
   ],
   controllers: [],
   providers: [

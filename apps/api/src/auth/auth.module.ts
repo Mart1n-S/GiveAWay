@@ -8,8 +8,6 @@ import { JwtStrategy } from './jwt.strategy';
 import { JwtRefreshStrategy } from './jwt-refresh.strategy';
 import { GuestGuard } from './guards/guest.guard';
 import { CookieService } from './shared/cookie.service';
-import { MeController } from './me/me.controller';
-import { MeService } from './me/me.service';
 import { LogoutController } from './logout/logout.controller';
 import { LogoutService } from './logout/logout.service';
 import { TokenController } from './token/token.controller';
@@ -26,7 +24,6 @@ import { RegisterService } from './register/register.service';
 @Module({
   imports: [ConfigModule, PassportModule, JwtModule.register({}), FilesModule],
   controllers: [
-    MeController,
     LogoutController,
     TokenController,
     EmailVerificationController,
@@ -40,7 +37,6 @@ import { RegisterService } from './register/register.service';
     JwtRefreshStrategy,
     GuestGuard,
     CookieService,
-    MeService,
     LogoutService,
     TokenService,
     EmailVerificationService,

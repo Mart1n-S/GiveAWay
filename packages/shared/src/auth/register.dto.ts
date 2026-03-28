@@ -88,7 +88,7 @@ export const RegisterSchema = z
           message: "Vous devez avoir au moins 18 ans pour vous inscrire",
         })
         .refine((value) => value <= 100, {
-          message: "Veuillez entrer un âge valide intérieur à 100 ans",
+          message: "Veuillez entrer un âge valide inférieur à 100 ans",
         }),
     ),
     biography: z

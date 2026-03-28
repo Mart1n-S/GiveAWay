@@ -1,11 +1,9 @@
 import { Platform } from "react-native";
-import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { api } from "../lib/axios";
 import { useAuthStore } from "../stores/auth.store";
 import {
   LoginDto,
   RegisterDto,
-  User,
   AuthResponse,
   VerifyEmailDto,
   ResendVerificationDto,
@@ -13,7 +11,8 @@ import {
   ResetPasswordDto,
   GoogleLoginDto,
 } from "@repo/shared";
-import { ReactNativeFile } from "../types/files.type";
+import { googleSignOut } from "../lib/google-signin";
+import { useProfileStore } from "@/stores/profile.store";
 
 export const AuthService = {
   // =================================================================
@@ -71,6 +70,9 @@ export const AuthService = {
         backendTokens?.refreshToken ?? null,
       );
 
+    useProfileStore.getState().setProfile(user);
+
+
     return user;
   },
 
@@ -99,19 +101,32 @@ export const AuthService = {
       formData.append("address", JSON.stringify(data.address));
     }
 
-    // 3. Ajout de l'image (Spécifique React Native)
+    // 3. Ajout de l'image
     if (imageUri) {
-      const filename = imageUri.split("/").pop() || "avatar.jpg";
-      const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : "image/jpeg";
+      if (Platform.OS === "web") {
+        // Solution web
+        const response = await fetch(imageUri);
+        const blob = await response.blob();
 
-      const file: ReactNativeFile = {
-        uri: imageUri,
-        name: filename,
-        type,
-      };
+        // On détermine l'extension à partir du type MIME du blob (plus fiable)
+        const extension = blob.type.split("/")[1] || "jpg";
+        const filename = `avatar-${Date.now()}.${extension}`;
 
-      formData.append("profilePicture", file as unknown as Blob);
+        formData.append("profilePicture", blob, filename);
+      } else {
+        // Solution mobile
+        const filename = imageUri.split("/").pop() || "avatar.jpg";
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : "image/jpeg";
+
+        const file = {
+          uri: imageUri,
+          name: filename,
+          type,
+        } as any;
+
+        formData.append("profilePicture", file);
+      }
     }
 
     // 4. Appel API
@@ -142,19 +157,11 @@ export const AuthService = {
       const refreshToken = useAuthStore.getState().refreshToken;
 
       // Déconnexion Google native sur mobile
+      // Import dynamique pour ne pas crasher sur Expo Go
       if (Platform.OS !== "web") {
         try {
-          // GoogleSignin doit être reconfiguré avant signOut()
-          // car la configuration faite dans useGoogleAuth n'est pas persistante
-          GoogleSignin.configure({
-            webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-            iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-            offlineAccess: true,
-          });
-          await GoogleSignin.signOut();
+          await googleSignOut();
         } catch (googleError) {
-          // Non bloquant — une erreur Google Sign-Out ne doit pas
-          // empêcher la déconnexion de l'app
           console.warn("[AuthService] Google Sign-Out warning:", googleError);
         }
       }
@@ -180,22 +187,8 @@ export const AuthService = {
   },
 
   // =================================================================
-  // 2. GESTION DE COMPTE (Me / Verify)
+  // 2. GESTION DE COMPTE (Verify)
   // =================================================================
-
-  /**
-   * GET /auth/me
-   * Récupère le profil à jour grâce au Token (envoyé auto par axios)
-   */
-  getProfile: async () => {
-    // Axios injecte automatiquement le token Bearer via l'intercepteur
-    const response = await api.get<User>("/auth/me");
-
-    // On met à jour le store global pour que toute l'UI en profite
-    useAuthStore.getState().setUser(response.data);
-
-    return response.data;
-  },
 
   /**
    * POST /auth/verify
