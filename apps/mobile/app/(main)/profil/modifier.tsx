@@ -122,7 +122,7 @@ export default function EditProfileScreen() {
   }, [availability, setValue]);
 
   useEffect(() => {
-    void fetchReferences();
+    fetchReferences();
   }, [fetchReferences]);
 
   // Nettoie l'erreur root dès qu'un champ change

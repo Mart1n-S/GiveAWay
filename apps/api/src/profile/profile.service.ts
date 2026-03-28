@@ -123,15 +123,20 @@ export class ProfileService {
     let shouldRemovePicture = false;
 
     if (file) {
-      // Nouvelle photo → upload
       const uploadResult = await this.fileService.uploadFile(file, 'avatars');
       profilePictureUrl = uploadResult.publicId;
     } else if (dto.removeProfilePicture && existingUser.profilePicture) {
-      // Suppression explicite → supprime du storage
       shouldRemovePicture = true;
       await this.fileService
         .deleteFile(existingUser.profilePicture)
         .catch((e) => logger.warn('Erreur suppression photo profil', e));
+    }
+
+    let profilePictureData = {};
+    if (profilePictureUrl) {
+      profilePictureData = { profilePicture: profilePictureUrl };
+    } else if (shouldRemovePicture) {
+      profilePictureData = { profilePicture: null };
     }
 
     try {
@@ -143,12 +148,7 @@ export class ProfileService {
           lastName: dto.lastName,
           age: dto.age,
           ...(dto.biography !== undefined && { biography: dto.biography }),
-          // Photo : nouvelle url, null si supprimée, rien si inchangée
-          ...(profilePictureUrl
-            ? { profilePicture: profilePictureUrl }
-            : shouldRemovePicture
-              ? { profilePicture: null }
-              : {}),
+          ...profilePictureData,
 
           // 4. Adresse obligatoire - toujours upsert
           address: {
@@ -225,7 +225,7 @@ export class ProfileService {
         });
       }
     } catch (error) {
-      // Rollback image si une erreur survient après l'upload
+      // Rollback image si erreur après upload
       if (profilePictureUrl) {
         this.fileService
           .deleteFile(profilePictureUrl)
@@ -282,6 +282,13 @@ export class ProfileService {
     }
 
     // 2. Vérification selon le type de compte
+
+    if (!user.password && dto.confirmation !== 'SUPPRIMER') {
+      throw new BadRequestException(
+        'Veuillez saisir exactement "SUPPRIMER" pour confirmer',
+      );
+    }
+
     if (user.password) {
       // Compte email/password — vérification du mot de passe
       if (!dto.password) {
@@ -294,18 +301,9 @@ export class ProfileService {
       if (!isMatch) {
         throw new BadRequestException('Mot de passe incorrect');
       }
-    } else {
-      // Compte Google — vérification du texte de confirmation
-      if (dto.confirmation !== 'SUPPRIMER') {
-        throw new BadRequestException(
-          'Veuillez saisir exactement "SUPPRIMER" pour confirmer',
-        );
-      }
     }
 
     // 3. Supprimer la photo de profil du storage si elle existe
-    // Non bloquant — une erreur de suppression ne doit pas empêcher
-    // la suppression du compte
     if (user.profilePicture) {
       await this.fileService
         .deleteFile(user.profilePicture)

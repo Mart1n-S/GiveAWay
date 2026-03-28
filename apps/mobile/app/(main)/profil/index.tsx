@@ -65,7 +65,7 @@ export default function ProfileScreen() {
   }, []);
 
   useEffect(() => {
-    void loadProfile();
+    loadProfile();
   }, [loadProfile]);
 
   // Actions

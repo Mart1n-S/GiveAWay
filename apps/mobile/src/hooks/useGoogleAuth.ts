@@ -53,11 +53,13 @@ export const useGoogleAuth = (
     scopes: ["openid", "profile", "email"],
   };
 
-  const googleAuthConfig = isGoogleAuthAvailable
-    ? Platform.OS === "web"
-      ? webConfig
-      : mobileConfig
-    : undefined;
+  let googleAuthConfig;
+
+  if (!isGoogleAuthAvailable) {
+    googleAuthConfig = undefined;
+  } else {
+    googleAuthConfig = Platform.OS === "web" ? webConfig : mobileConfig;
+  }
 
   const [request, response, promptAsync] =
     Google.useAuthRequest(googleAuthConfig);
