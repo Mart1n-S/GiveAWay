@@ -4,6 +4,7 @@ export interface ProfileActionsProps {
   onEditPress: () => void;
   onLogoutPress: () => void;
   onDeletePress: () => void;
+  onPasswordPress: () => void;
   isLoggingOut?: boolean;
   className?: string;
 }

@@ -1,16 +1,22 @@
-import { Tabs } from "expo-router";
+import { Tabs, usePathname } from "expo-router";
 import { Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "@/components/ui";
 import { AppShell, HomeIcon, UserIcon } from "@/components/layouts/AppShell";
 import { useAuthStore } from "@/stores/auth.store";
 
+const MOBILE_SUBPAGE_ROUTES = ["/profil/modifier", "/profil/mot-de-passe"];
+
 export default function MainLayout() {
   const insets = useSafeAreaInsets();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const pathname = usePathname();
+
+  const isMobileSubpage =
+    Platform.OS !== "web" && MOBILE_SUBPAGE_ROUTES.includes(pathname);
 
   return (
-    <AppShell layoutType="main">
+    <AppShell layoutType={isMobileSubpage ? "subpage" : "main"}>
       <Tabs
         // On ajoute une "key" dynamique basée sur l'auth.
         // Si l'état change, React détruit et recrée proprement les onglets.

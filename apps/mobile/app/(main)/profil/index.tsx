@@ -72,6 +72,7 @@ export default function ProfileScreen() {
 
   const handleEdit = () => router.push("/profil/modifier");
   const handleDelete = () => router.push("/profil/supprimer");
+  const handleChangePassword = () => router.push("/profil/mot-de-passe");
   const handleMissionPress = (id: number) => router.push(`/missions/${id}`);
   const handleSeeAllMissions = () => router.push("/profil/historique");
 
@@ -144,6 +145,7 @@ export default function ProfileScreen() {
             onEditPress={handleEdit}
             onLogoutPress={handleLogout}
             onDeletePress={handleDelete}
+            onPasswordPress={handleChangePassword}
             isLoggingOut={isLoggingOut}
           />
         </View>
