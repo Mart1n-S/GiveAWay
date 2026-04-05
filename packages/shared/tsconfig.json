@@ -8,7 +8,6 @@
     "target": "es6",
 
     "moduleResolution": "node10",
-    "ignoreDeprecations": "5.0",
 
     "esModuleInterop": true,
     "skipLibCheck": true,
