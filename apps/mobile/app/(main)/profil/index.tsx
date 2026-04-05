@@ -21,6 +21,7 @@ import {
 
 import { ProfileService } from "@/services/profile.service";
 import { AuthService } from "@/services/auth.service";
+import { ExportService } from "@/services/export.service";
 import { useAuthStore } from "@/stores/auth.store";
 import { useProfileStore } from "@/stores/profile.store";
 import { colors } from "@/components/ui/theme/tokens";
@@ -33,6 +34,7 @@ export default function ProfileScreen() {
   const isLoading = useProfileStore((state) => state.isLoading);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [isLoggingOut, setIsLoggingOut] = React.useState(false);
+  const [isExporting, setIsExporting] = React.useState(false);
 
   // Chargement
 
@@ -72,6 +74,8 @@ export default function ProfileScreen() {
 
   const handleEdit = () => router.push("/profil/modifier");
   const handleDelete = () => router.push("/profil/supprimer");
+  const handleChangePassword = () => router.push("/profil/mot-de-passe");
+  const handleNotifications = () => router.push("/profil/notifications");
   const handleMissionPress = (id: number) => router.push(`/missions/${id}`);
   const handleSeeAllMissions = () => router.push("/profil/historique");
 
@@ -82,6 +86,23 @@ export default function ProfileScreen() {
       router.replace("/");
     } finally {
       setIsLoggingOut(false);
+    }
+  };
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      await ExportService.exportUserData();
+    } catch {
+      Toast.show({
+        type: "error",
+        text1: "Erreur",
+        text2: "Impossible d'exporter vos données. Veuillez réessayer.",
+        visibilityTime: 10000,
+        onPress: () => Toast.hide(),
+      });
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -144,7 +165,11 @@ export default function ProfileScreen() {
             onEditPress={handleEdit}
             onLogoutPress={handleLogout}
             onDeletePress={handleDelete}
+            onPasswordPress={handleChangePassword}
+            onNotificationsPress={handleNotifications}
+            onExportPress={handleExport}
             isLoggingOut={isLoggingOut}
+            isExporting={isExporting}
           />
         </View>
       </ScrollView>

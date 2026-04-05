@@ -9,7 +9,9 @@ import type { ProfileActionsProps } from "./profile-actions.types";
 import EditIconSource from "@assets/icons/ic_edit.svg";
 import LogoutIconSource from "@assets/icons/ic_logout.svg";
 import TrashIconSource from "@assets/icons/ic_trash.svg";
+import ShieldIconSource from "@assets/icons/ic_shield.svg";
 import SettingsIconSource from "@assets/icons/ic_settings.svg";
+import DownloadIconSource from "@assets/icons/ic_download.svg";
 
 const iconConfig = {
   className: {
@@ -21,7 +23,9 @@ const iconConfig = {
 const EditIcon = cssInterop(EditIconSource, iconConfig);
 const LogoutIcon = cssInterop(LogoutIconSource, iconConfig);
 const TrashIcon = cssInterop(TrashIconSource, iconConfig);
+const ShieldIcon = cssInterop(ShieldIconSource, iconConfig);
 const SettingsIcon = cssInterop(SettingsIconSource, iconConfig);
+const DownloadIcon = cssInterop(DownloadIconSource, iconConfig);
 
 /**
  * Section actions du profil bénévole.
@@ -45,7 +49,12 @@ export function ProfileActions({
   onEditPress,
   onLogoutPress,
   onDeletePress,
+  onPasswordPress,
+  onNotificationsPress,
+  onExportPress,
+  isGoogleAccount,
   isLoggingOut = false,
+  isExporting = false,
   className,
 }: ProfileActionsProps) {
   return (
@@ -60,14 +69,35 @@ export function ProfileActions({
       </Button>
 
       <View className="overflow-hidden bg-white border rounded-md shadow-sm border-grey-200">
+        {!isGoogleAccount && (
+          <>
+            <ProfileActionRow
+              icon={<ShieldIcon />}
+              label="Mot de passe et sécurité"
+              onPress={onPasswordPress}
+              testID="btn-password-security"
+            />
+            <View className="h-[1px] ml-12 bg-grey-100" />
+          </>
+        )}
+
         <ProfileActionRow
           icon={<SettingsIcon />}
-          label="Paramètres de confidentialité"
-          onPress={() => {}}
-          testID="btn-privacy-settings"
+          label="Notifications"
+          onPress={onNotificationsPress}
+          testID="btn-notifications"
         />
 
-        {/* Séparateur plus subtil */}
+        <View className="h-[1px] ml-12 bg-grey-100" />
+
+        <ProfileActionRow
+          icon={<DownloadIcon />}
+          label="Exporter mes données"
+          onPress={onExportPress}
+          loading={isExporting}
+          testID="btn-export-data"
+        />
+
         <View className="h-[1px] ml-12 bg-grey-100" />
 
         <ProfileActionRow

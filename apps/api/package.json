@@ -27,7 +27,8 @@
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",
     "start:test": "dotenv -e ../../.env.test -- nest start --watch",
     "db:test:migrate": "dotenv -e ../../.env.test -- prisma migrate dev",
-    "seed": "prisma db seed"
+    "seed": "prisma db seed",
+    "prisma:reset": "prisma migrate reset"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -46,6 +47,7 @@
     "class-validator": "^0.14.3",
     "cloudinary": "^2.9.0",
     "cookie-parser": "^1.4.7",
+    "exceljs": "^4.4.0",
     "google-auth-library": "^10.6.1",
     "nodemailer": "^7.0.12",
     "passport": "^0.7.0",
@@ -62,9 +64,10 @@
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",
     "@types/cookie-parser": "^1.4.10",
+    "@types/exceljs": "^0.5.3",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
-    "@types/multer": "^2.0.0",
+    "@types/multer": "^2.1.0",
     "@types/node": "^22.10.7",
     "@types/nodemailer": "^7.0.4",
     "@types/passport-jwt": "^4.0.1",

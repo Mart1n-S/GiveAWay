@@ -34,6 +34,8 @@ export const AuthService = {
         backendTokens?.refreshToken ?? null,
       );
 
+    useProfileStore.getState().setProfile(user);
+
     return user;
   },
 

@@ -217,6 +217,7 @@ export class AuthService {
       biography: user.biography,
       profilePicture: user.profilePicture,
       status: user.status as unknown as SharedUserStatus,
+      emailNotifications: user.emailNotifications,
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
       address: user.address

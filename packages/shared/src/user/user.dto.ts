@@ -18,6 +18,8 @@ export interface User {
   profilePicture: string | null;
   status: UserStatus;
 
+  emailNotifications: boolean;
+
   createdAt: Date | string;
   updatedAt: Date | string;
 

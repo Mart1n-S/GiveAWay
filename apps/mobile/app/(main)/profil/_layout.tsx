@@ -1,8 +1,24 @@
-import { Stack } from "expo-router";
-import { Platform } from "react-native";
+import { Stack, Redirect } from "expo-router";
+import { Platform, ActivityIndicator, View } from "react-native";
+import { useAuthStore } from "@/stores/auth.store";
+import { colors } from "@/components/ui";
 
 export default function ProfileLayout() {
   const isWeb = Platform.OS === "web";
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isHydrated = useAuthStore((state) => state.isHydrated);
+
+  if (!isHydrated) {
+    return (
+      <View className="items-center justify-center flex-1 bg-grey-50">
+        <ActivityIndicator size="large" color={colors.primary.default} />
+      </View>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Redirect href="/" />;
+  }
 
   return (
     <Stack
@@ -31,9 +47,14 @@ export default function ProfileLayout() {
         name="supprimer"
         options={{ headerTitle: "Supprimer le compte" }}
       />
-      {/* TODO: Futures pages comme name="modifier" 
-         hériteront automatiquement de ce style.
-      */}
+      <Stack.Screen
+        name="mot-de-passe"
+        options={{ headerTitle: "Mot de passe et sécurité" }}
+      />
+      <Stack.Screen
+        name="notifications"
+        options={{ headerTitle: "Notifications" }}
+      />
     </Stack>
   );
 }

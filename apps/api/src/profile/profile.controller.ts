@@ -21,6 +21,8 @@ import {
   DeleteAccountSchema,
   UpdateProfileDto,
   UpdateProfileSchema,
+  UpdateNotificationsDto,
+  UpdateNotificationsSchema,
   User,
 } from '@repo/shared';
 import { AuthenticatedRequest } from '../common/interfaces/authenticated-request.interface';
@@ -48,6 +50,31 @@ export class ProfileController {
   }
 
   /**
+   * GET /profile/export
+   * Exporte toutes les données personnelles de l'utilisateur au format CSV (RGPD)
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Get('export')
+  async exportData(
+    @Req() req: AuthenticatedRequest,
+    @Res() res: Response,
+  ): Promise<void> {
+    if (!req.user.id) {
+      throw new UnauthorizedException('Utilisateur non identifié');
+    }
+
+    const buffer = await this.profileService.exportData(req.user.id);
+    const filename = `giveaway-mes-donnees-${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buffer);
+  }
+
+  /**
    * PATCH /profile
    * Met à jour le profil de l'utilisateur connecté
    */
@@ -65,6 +92,25 @@ export class ProfileController {
     }
 
     return this.profileService.updateProfile(req.user.id, dto, file);
+  }
+
+  /**
+   * PATCH /profile/notifications
+   * Met à jour les préférences de notifications de l'utilisateur connecté
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Patch('notifications')
+  @HttpCode(HttpStatus.OK)
+  async updateNotifications(
+    @Req() req: AuthenticatedRequest,
+    @Body(new ZodValidationPipe(UpdateNotificationsSchema))
+    dto: UpdateNotificationsDto,
+  ): Promise<User> {
+    if (!req.user.id) {
+      throw new UnauthorizedException('Utilisateur non identifié');
+    }
+
+    return this.profileService.updateNotifications(req.user.id, dto);
   }
 
   /**

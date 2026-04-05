@@ -12,6 +12,7 @@ export const mockUserComplete = {
   password: 'hashed_password',
   emailVerifiedAt: new Date(),
   status: UserStatus.ACTIVE,
+  emailNotifications: false,
   createdAt: new Date(),
   updatedAt: new Date(),
   address: {

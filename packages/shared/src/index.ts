@@ -16,6 +16,7 @@ export * from "./user/mission-participation.dto";
 export * from "./responses/auth.responses";
 export * from "./profile/update-profile.dto";
 export * from "./profile/delete-account.dto";
+export * from "./profile/update-notifications.dto";
 export * from "./profile/availability.enums";
 export * from "./skill/skill.dto";
 export * from "./cause/cause.dto";

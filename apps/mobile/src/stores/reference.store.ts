@@ -4,15 +4,16 @@ import { platformStorage } from "./storage";
 import { Skill, Cause } from "@repo/shared";
 import { ReferenceService } from "../services/reference.service";
 
-// Types
+const TTL_MS = 15 * 60 * 1000; // 15 minutes
 
 interface ReferenceState {
   skills: Skill[];
   causes: Cause[];
   isLoaded: boolean;
   isLoading: boolean;
+  lastFetchedAt: number | null;
 
-  /** Charge les listes depuis l'API si pas encore chargées */
+  /** Charge les listes depuis l'API si pas encore chargées ou si le cache est périmé */
   fetchReferences: () => Promise<void>;
 
   /** Force le rechargement depuis l'API */
@@ -22,8 +23,6 @@ interface ReferenceState {
   clearReferences: () => void;
 }
 
-// Store
-
 export const useReferenceStore = create<ReferenceState>()(
   persist(
     (set, get) => ({
@@ -31,10 +30,17 @@ export const useReferenceStore = create<ReferenceState>()(
       causes: [],
       isLoaded: false,
       isLoading: false,
+      lastFetchedAt: null,
 
       fetchReferences: async () => {
-        // Si déjà chargé, on ne refait pas la requête
-        if (get().isLoaded) return;
+        const { isLoaded, lastFetchedAt, isLoading } = get();
+
+        // Si un chargement est déjà en cours, on ne double pas la requête
+        if (isLoading) return;
+
+        // Si les données sont chargées et encore fraîches, rien à faire
+        const isStale = !lastFetchedAt || Date.now() - lastFetchedAt > TTL_MS;
+        if (isLoaded && !isStale) return;
 
         set({ isLoading: true });
         try {
@@ -43,7 +49,7 @@ export const useReferenceStore = create<ReferenceState>()(
             ReferenceService.getCauses(),
           ]);
 
-          set({ skills, causes, isLoaded: true });
+          set({ skills, causes, isLoaded: true, lastFetchedAt: Date.now() });
         } catch (error) {
           console.warn("[ReferenceStore] Erreur chargement références:", error);
         } finally {
@@ -52,22 +58,21 @@ export const useReferenceStore = create<ReferenceState>()(
       },
 
       refreshReferences: async () => {
-        // Force le rechargement en réinitialisant isLoaded
-        set({ isLoaded: false });
+        set({ isLoaded: false, lastFetchedAt: null });
         await get().fetchReferences();
       },
 
       clearReferences: () =>
-        set({ skills: [], causes: [], isLoaded: false, isLoading: false }),
+        set({ skills: [], causes: [], isLoaded: false, isLoading: false, lastFetchedAt: null }),
     }),
     {
       name: "reference-storage",
       storage: createJSONStorage(() => platformStorage),
-      // On persiste les listes - elles changent rarement
       partialize: (state) => ({
         skills: state.skills,
         causes: state.causes,
         isLoaded: state.isLoaded,
+        lastFetchedAt: state.lastFetchedAt,
       }),
     },
   ),

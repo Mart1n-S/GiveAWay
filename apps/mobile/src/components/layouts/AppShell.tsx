@@ -9,6 +9,7 @@ import { cssInterop } from "nativewind";
 import { WebNavBar, Logo } from "@/components/ui";
 import { PUBLIC_LINKS, USER_LINKS, AUTH_ROUTES } from "../../config/navigation";
 import { useAuthStore } from "../../stores/auth.store";
+import { useProfileStore } from "../../stores/profile.store";
 import { AuthService } from "../../services/auth.service";
 
 // --- ASSETS (Centralisés une seule fois ici) ---
@@ -70,7 +71,8 @@ export function AppShell({ children, layoutType = "main" }: AppShellProps) {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
-  const { user, isAuthenticated } = useAuthStore();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const profile = useProfileStore((state) => state.profile);
 
   const handleLogout = async () => {
     await AuthService.logout();
@@ -78,14 +80,14 @@ export function AppShell({ children, layoutType = "main" }: AppShellProps) {
   };
 
   const navBarUser =
-    isAuthenticated && user
+    isAuthenticated && profile
       ? {
-          name: `${user.firstName} ${user.lastName}`,
-          email: user.email,
-          initials: user.firstName
-            ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
+          name: `${profile.firstName} ${profile.lastName}`,
+          email: profile.email,
+          initials: profile.firstName
+            ? `${profile.firstName[0]}${profile.lastName[0]}`.toUpperCase()
             : "??",
-          avatarUrl: user.profilePicture || null,
+          avatarUrl: profile.profilePicture || null,
         }
       : null;
 
