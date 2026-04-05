@@ -114,8 +114,10 @@ model User {
   biography     String?     @db.Text
   profilePicture String?    @map("profile_picture_url")
   
-  emailVerifiedAt DateTime? @map("email_verified_at")
-  status        UserStatus  @default(PENDING)
+  emailVerifiedAt    DateTime? @map("email_verified_at")
+  status             UserStatus @default(PENDING)
+
+  emailNotifications Boolean   @default(false) @map("email_notifications")
 
   termsAcceptedAt DateTime  @default(now()) @map("terms_accepted_at")
 

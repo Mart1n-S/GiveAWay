@@ -1,6 +1,11 @@
 import { api } from "../lib/axios";
 import { useAuthStore } from "../stores/auth.store";
-import { User, UpdateProfileDto, DeleteAccountDto } from "@repo/shared";
+import {
+  User,
+  UpdateProfileDto,
+  DeleteAccountDto,
+  UpdateNotificationsDto,
+} from "@repo/shared";
 import { useProfileStore } from "../stores/profile.store";
 import { Platform } from "react-native";
 
@@ -101,6 +106,19 @@ export const ProfileService = {
     });
 
     // Mise à jour des stores
+    useAuthStore.getState().setUser(response.data);
+    useProfileStore.getState().setProfile(response.data);
+
+    return response.data;
+  },
+
+  /**
+   * PATCH /profile/notifications
+   * Met à jour les préférences de notifications de l'utilisateur connecté.
+   */
+  updateNotifications: async (dto: UpdateNotificationsDto): Promise<User> => {
+    const response = await api.patch<User>("/profile/notifications", dto);
+
     useAuthStore.getState().setUser(response.data);
     useProfileStore.getState().setProfile(response.data);
 

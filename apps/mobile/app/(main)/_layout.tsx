@@ -5,7 +5,11 @@ import { colors } from "@/components/ui";
 import { AppShell, HomeIcon, UserIcon } from "@/components/layouts/AppShell";
 import { useAuthStore } from "@/stores/auth.store";
 
-const MOBILE_SUBPAGE_ROUTES = ["/profil/modifier", "/profil/mot-de-passe"];
+const MOBILE_SUBPAGE_ROUTES = [
+  "/profil/modifier",
+  "/profil/mot-de-passe",
+  "/profil/notifications",
+];
 
 export default function MainLayout() {
   const insets = useSafeAreaInsets();

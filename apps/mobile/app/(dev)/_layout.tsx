@@ -19,9 +19,14 @@ export default function DevLayout() {
           contentStyle: { backgroundColor: "white" },
         }}
       >
+        {/* TODO: Supprimer pour la production */}
         <Stack.Screen
           name="design-system"
           options={{ headerTitle: "Design System 🎨" }}
+        />
+        <Stack.Screen
+          name="notifications"
+          options={{ headerTitle: "Notifications 🔔" }}
         />
       </Stack>
     </AppShell>

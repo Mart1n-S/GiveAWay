@@ -4,11 +4,10 @@
     "moduleSuffixes": [".native", ".web", ""],
     "strict": true,
     "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
     "paths": {
-      "@/*": [
-        "./src/*" 
-      ],
-       "@assets/*": ["./assets/*"],
+      "@/*": ["./src/*"],
+      "@assets/*": ["./assets/*"]
     }
   },
   "include": [

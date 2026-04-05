@@ -9,7 +9,12 @@ import {
   UserAvailability,
   AvailabilityTime,
 } from '../generated/prisma/client';
-import { User, UpdateProfileDto, DeleteAccountDto } from '@repo/shared';
+import {
+  User,
+  UpdateProfileDto,
+  DeleteAccountDto,
+  UpdateNotificationsDto,
+} from '@repo/shared';
 import { Response } from 'express';
 import { verify } from 'argon2';
 import { AuthService } from '../auth/auth.service';
@@ -235,6 +240,50 @@ export class ProfileService {
     }
 
     // 8. Retourner le profil mis à jour
+    return this.getProfile(userId);
+  }
+
+  /**
+   * Met à jour les préférences de notifications de l'utilisateur connecté.
+   *
+   * @param userId - Identifiant de l'utilisateur connecté
+   * @param dto - Nouvelles préférences (emailNotifications, pushNotifications)
+   * @returns Le profil mis à jour mappé en DTO partagé
+   */
+  async updateNotifications(
+    userId: number,
+    dto: UpdateNotificationsDto,
+  ): Promise<User> {
+    const { prisma } = this.authService;
+
+    // Vérification défensive des types (double sécurité après ZodValidationPipe)
+    if (typeof dto.emailNotifications !== 'boolean') {
+      throw new BadRequestException(
+        'Les préférences de notifications doivent être des booléens',
+      );
+    }
+
+    // Vérification que l'utilisateur existe et est actif
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+
+    if (!user) {
+      throw new UnauthorizedException('Utilisateur introuvable');
+    }
+
+    if (
+      user.status === UserStatus.DELETED ||
+      user.status === UserStatus.SUSPENDED
+    ) {
+      throw new BadRequestException('Votre compte a été supprimé ou suspendu.');
+    }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        emailNotifications: dto.emailNotifications,
+      },
+    });
+
     return this.getProfile(userId);
   }
 

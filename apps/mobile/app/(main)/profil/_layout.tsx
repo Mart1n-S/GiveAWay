@@ -51,6 +51,10 @@ export default function ProfileLayout() {
         name="mot-de-passe"
         options={{ headerTitle: "Mot de passe et sécurité" }}
       />
+      <Stack.Screen
+        name="notifications"
+        options={{ headerTitle: "Notifications" }}
+      />
     </Stack>
   );
 }
