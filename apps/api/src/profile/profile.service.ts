@@ -9,7 +9,12 @@ import {
   UserAvailability,
   AvailabilityTime,
 } from '../generated/prisma/client';
-import { User, UpdateProfileDto, DeleteAccountDto } from '@repo/shared';
+import {
+  User,
+  UpdateProfileDto,
+  DeleteAccountDto,
+  UpdateNotificationsDto,
+} from '@repo/shared';
 import { Response } from 'express';
 import { verify } from 'argon2';
 import { AuthService } from '../auth/auth.service';
@@ -18,6 +23,7 @@ import {
   IFileService,
   FILE_SERVICE,
 } from '../common/files/interfaces/file-service.interface';
+import * as ExcelJS from 'exceljs';
 
 @Injectable()
 export class ProfileService {
@@ -239,6 +245,50 @@ export class ProfileService {
   }
 
   /**
+   * Met à jour les préférences de notifications de l'utilisateur connecté.
+   *
+   * @param userId - Identifiant de l'utilisateur connecté
+   * @param dto - Nouvelles préférences (emailNotifications, pushNotifications)
+   * @returns Le profil mis à jour mappé en DTO partagé
+   */
+  async updateNotifications(
+    userId: number,
+    dto: UpdateNotificationsDto,
+  ): Promise<User> {
+    const { prisma } = this.authService;
+
+    // Vérification défensive des types (double sécurité après ZodValidationPipe)
+    if (typeof dto.emailNotifications !== 'boolean') {
+      throw new BadRequestException(
+        'Les préférences de notifications doivent être des booléens',
+      );
+    }
+
+    // Vérification que l'utilisateur existe et est actif
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+
+    if (!user) {
+      throw new UnauthorizedException('Utilisateur introuvable');
+    }
+
+    if (
+      user.status === UserStatus.DELETED ||
+      user.status === UserStatus.SUSPENDED
+    ) {
+      throw new BadRequestException('Votre compte a été supprimé ou suspendu.');
+    }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        emailNotifications: dto.emailNotifications,
+      },
+    });
+
+    return this.getProfile(userId);
+  }
+
+  /**
    * Supprime définitivement le compte de l'utilisateur connecté (hard delete).
    *
    * La confirmation diffère selon le type de compte :
@@ -315,5 +365,251 @@ export class ProfileService {
 
     // 5. Hard delete — les relations en cascade sont gérées par Prisma
     await prisma.user.delete({ where: { id: userId } });
+  }
+
+  /**
+   * Génère un export Excel (.xlsx) de toutes les données personnelles de l'utilisateur (RGPD).
+   *
+   * Produit un classeur avec une feuille par thème : informations personnelles,
+   * adresse, notifications, compétences, causes, disponibilités, associations
+   * et l'intégralité de l'historique de missions.
+   *
+   * @param userId - Identifiant de l'utilisateur connecté
+   * @returns Buffer du fichier .xlsx
+   * @throws UnauthorizedException si l'utilisateur est introuvable
+   */
+  async exportData(userId: number): Promise<Buffer> {
+    const { prisma } = this.authService;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        address: true,
+        associations: { include: { association: true } },
+        skills: { include: { skill: true } },
+        causes: { include: { cause: true } },
+        availability: true,
+        participations: {
+          include: { mission: { include: { association: true } } },
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Utilisateur introuvable');
+    }
+
+    const workbook = new ExcelJS.Workbook();
+
+    workbook.creator = 'GiveAWay';
+    workbook.created = new Date();
+
+    // Helpers de style --------------------------------------------------------
+
+    const HEADER_FILL: ExcelJS.FillPattern = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF4F46E5' }, // indigo-600
+    };
+
+    const applyHeader = (row: ExcelJS.Row) => {
+      row.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+      row.fill = HEADER_FILL;
+      row.alignment = { vertical: 'middle' };
+      row.height = 20;
+    };
+
+    const autoWidth = (sheet: ExcelJS.Worksheet) => {
+      sheet.columns.forEach((col) => {
+        let max = 10;
+        col.eachCell?.({ includeEmpty: false }, (cell) => {
+          let len = 0;
+          if (typeof cell.value === 'string') {
+            len = cell.value.length;
+          } else if (
+            typeof cell.value === 'number' ||
+            typeof cell.value === 'boolean'
+          ) {
+            len = String(cell.value).length;
+          } else if (cell.value instanceof Date) {
+            len = cell.value.toLocaleDateString('fr-FR').length;
+          }
+          if (len > max) max = len;
+        });
+        col.width = Math.min(max + 4, 60);
+      });
+    };
+
+    const addKVSheet = (
+      name: string,
+      rows: [string, string | number | null | undefined][],
+    ) => {
+      const sheet = workbook.addWorksheet(name);
+      sheet.columns = [
+        { header: 'Champ', key: 'label', width: 28 },
+        { header: 'Valeur', key: 'value', width: 40 },
+      ];
+      applyHeader(sheet.getRow(1));
+      rows.forEach(([label, value]) =>
+        sheet.addRow({ label, value: value ?? 'Non renseigné' }),
+      );
+      autoWidth(sheet);
+    };
+
+    // =========================================================================
+    // FEUILLE 1 — Informations personnelles
+    // =========================================================================
+    addKVSheet('Informations personnelles', [
+      ['Prénom', user.firstName],
+      ['Nom', user.lastName],
+      ['E-mail', user.email],
+      ['Âge', user.age],
+      ['Biographie', user.biography],
+      ['Connexion Google', user.googleId ? 'Oui' : 'Non'],
+      ['Mot de passe défini', user.password ? 'Oui' : 'Non'],
+      ['Statut du compte', String(user.status)],
+      [
+        'E-mail vérifié le',
+        user.emailVerifiedAt?.toLocaleDateString('fr-FR') ?? null,
+      ],
+      ['CGU acceptées le', user.termsAcceptedAt.toLocaleDateString('fr-FR')],
+      ['Membre depuis', user.createdAt.toLocaleDateString('fr-FR')],
+      ["Date d'export", new Date().toLocaleString('fr-FR')],
+    ]);
+
+    // =========================================================================
+    // FEUILLE 2 — Adresse
+    // =========================================================================
+    addKVSheet(
+      'Adresse',
+      user.address
+        ? [
+            ['Rue', user.address.street],
+            ['Code postal', user.address.postalCode],
+            ['Ville', user.address.city],
+            [
+              'Latitude',
+              user.address.latitude != null
+                ? String(user.address.latitude)
+                : null,
+            ],
+            [
+              'Longitude',
+              user.address.longitude != null
+                ? String(user.address.longitude)
+                : null,
+            ],
+          ]
+        : [['', 'Aucune adresse renseignée']],
+    );
+
+    // =========================================================================
+    // FEUILLE 3 — Notifications
+    // =========================================================================
+    addKVSheet('Notifications', [
+      [
+        'Notifications e-mail',
+        user.emailNotifications ? 'Activées' : 'Désactivées',
+      ],
+    ]);
+
+    // =========================================================================
+    // FEUILLE 4 — Compétences
+    // =========================================================================
+    {
+      const sheet = workbook.addWorksheet('Compétences');
+      sheet.columns = [{ header: 'Compétence', key: 'label', width: 32 }];
+      applyHeader(sheet.getRow(1));
+      if (user.skills.length) {
+        user.skills.forEach((s) => sheet.addRow({ label: s.skill.label }));
+      } else {
+        sheet.addRow({ label: 'Aucune compétence renseignée' });
+      }
+      autoWidth(sheet);
+    }
+
+    // =========================================================================
+    // FEUILLE 5 — Causes soutenues
+    // =========================================================================
+    {
+      const sheet = workbook.addWorksheet('Causes soutenues');
+      sheet.columns = [{ header: 'Cause', key: 'label', width: 32 }];
+      applyHeader(sheet.getRow(1));
+      if (user.causes.length) {
+        user.causes.forEach((c) => sheet.addRow({ label: c.cause.label }));
+      } else {
+        sheet.addRow({ label: 'Aucune cause renseignée' });
+      }
+      autoWidth(sheet);
+    }
+
+    // =========================================================================
+    // FEUILLE 6 — Disponibilités
+    // =========================================================================
+    addKVSheet(
+      'Disponibilités',
+      user.availability
+        ? [
+            ['Fréquence', String(user.availability.frequency)],
+            ['Créneaux', user.availability.timeSlot.map(String).join(' / ')],
+            ['Type', String(user.availability.type)],
+          ]
+        : [['', 'Aucune disponibilité renseignée']],
+    );
+
+    // =========================================================================
+    // FEUILLE 7 — Associations
+    // =========================================================================
+    {
+      const sheet = workbook.addWorksheet('Associations');
+      sheet.columns = [
+        { header: 'Association', key: 'name', width: 32 },
+        { header: 'Rôle', key: 'role', width: 16 },
+      ];
+      applyHeader(sheet.getRow(1));
+      if (user.associations.length) {
+        user.associations.forEach((a) =>
+          sheet.addRow({ name: a.association.name, role: String(a.role) }),
+        );
+      } else {
+        sheet.addRow({ name: 'Aucune association', role: '' });
+      }
+      autoWidth(sheet);
+    }
+
+    // =========================================================================
+    // FEUILLE 8 — Historique de missions
+    // =========================================================================
+    {
+      const sheet = workbook.addWorksheet('Historique de missions');
+      sheet.columns = [
+        { header: 'Mission', key: 'title', width: 36 },
+        { header: 'Association', key: 'asso', width: 28 },
+        { header: 'Type', key: 'type', width: 16 },
+        { header: 'Date de participation', key: 'date', width: 22 },
+      ];
+      applyHeader(sheet.getRow(1));
+      if (user.participations.length) {
+        user.participations.forEach((p) =>
+          sheet.addRow({
+            title: p.mission.title,
+            asso: p.mission.association.name,
+            type: String(p.mission.type),
+            date: p.createdAt.toLocaleDateString('fr-FR'),
+          }),
+        );
+      } else {
+        sheet.addRow({
+          title: 'Aucune participation',
+          asso: '',
+          type: '',
+          date: '',
+        });
+      }
+      autoWidth(sheet);
+    }
+
+    return workbook.xlsx.writeBuffer() as unknown as Promise<Buffer>;
   }
 }

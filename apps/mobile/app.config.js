@@ -37,6 +37,7 @@ module.exports = {
       permissions: [
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.POST_NOTIFICATIONS",
       ],
     },
     web: {
@@ -63,6 +64,13 @@ module.exports = {
         {
           locationAlwaysAndWhenInUsePermission:
             "Autorisez GiveAWay à accéder à votre position pour trouver des missions de bénévolat près de vous.",
+        },
+      ],
+      [
+        "expo-notifications",
+        {
+          iosPermissionDescription:
+            "Autorisez GiveAWay à vous envoyer des notifications pour les nouvelles missions de bénévolat.",
         },
       ],
       "expo-web-browser",

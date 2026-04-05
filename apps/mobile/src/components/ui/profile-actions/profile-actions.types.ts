@@ -5,6 +5,9 @@ export interface ProfileActionsProps {
   onLogoutPress: () => void;
   onDeletePress: () => void;
   onPasswordPress: () => void;
+  onNotificationsPress: () => void;
+  onExportPress: () => void;
   isLoggingOut?: boolean;
+  isExporting?: boolean;
   className?: string;
 }

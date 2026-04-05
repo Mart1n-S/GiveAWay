@@ -54,3 +54,5 @@ export * from "./multi-select-list/multi-select-list";
 export * from "./multi-select-list/multi-select-list.types";
 export * from "./availability-picker/availability-picker";
 export * from "./availability-picker/availability-picker.types";
+export * from "./toggle-row/toggle-row";
+export * from "./toggle-row/toggle-row.types";

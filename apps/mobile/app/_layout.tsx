@@ -7,7 +7,19 @@ import {
 } from "react-native-reanimated";
 import Toast from "react-native-toast-message";
 import { toastConfig } from "@/components/ui";
+import * as Notifications from "expo-notifications";
 import "../global.css";
+
+// Affiche les notifications même quand l'app est au premier plan
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
 // Import du store
 import { useAuthStore } from "../src/stores/auth.store";

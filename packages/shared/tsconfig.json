@@ -6,20 +6,22 @@
 
     "module": "commonjs",
     "target": "es6",
-  
-    "moduleResolution": "node",
+
+    "moduleResolution": "node10",
 
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    
-    "declaration": true
+
+    "declaration": true,
+
+    "types": ["jest", "node"]
   },
   "include": ["src/**/*"],
   "exclude": [
-    "node_modules", 
-    "dist", 
-    "**/*.spec.ts", 
+    "node_modules",
+    "dist",
+    "**/*.spec.ts",
     "**/*.test.ts"
   ]
 }

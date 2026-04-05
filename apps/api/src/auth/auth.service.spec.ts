@@ -34,6 +34,7 @@ const basePrismaUser: UserWithRelations = {
   status: 'ACTIVE' as any,
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-06-01'),
+  emailNotifications: true,
   address: {
     id: 10,
     street: 'Rue Test',
