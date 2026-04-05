@@ -3,6 +3,7 @@
   "compilerOptions": {
     "moduleSuffixes": [".native", ".web", ""],
     "strict": true,
+    "skipLibCheck": true,
     "paths": {
       "@/*": ["./src/*"],
       "@assets/*": ["./assets/*"]
