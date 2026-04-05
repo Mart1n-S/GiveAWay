@@ -16,7 +16,7 @@
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
-    "types": ["jest", "node", "multer"],
+    "types": ["jest", "node", "multer", "exceljs"],
     "paths": {
       "@repo/shared": ["../../packages/shared/dist/index.js"],
       "@repo/shared/*": ["../../packages/shared/dist/*"]
