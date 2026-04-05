@@ -17,14 +17,14 @@ export const ProfileService = {
    * Inclut les compétences, causes, disponibilités et historique des missions.
    */
   getProfile: async (): Promise<User> => {
-    const cached = useProfileStore.getState().profile;
-    if (cached) return cached;
+    const store = useProfileStore.getState();
 
-    useProfileStore.getState().setLoading(true);
+    if (store.profile && !store.isStale()) return store.profile;
+
+    store.setLoading(true);
     try {
       const response = await api.get<User>("/profile");
       useProfileStore.getState().setProfile(response.data);
-      useAuthStore.getState().setUser(response.data);
       return response.data;
     } finally {
       useProfileStore.getState().setLoading(false);
@@ -105,8 +105,6 @@ export const ProfileService = {
       headers: { "Content-Type": "multipart/form-data" },
     });
 
-    // Mise à jour des stores
-    useAuthStore.getState().setUser(response.data);
     useProfileStore.getState().setProfile(response.data);
 
     return response.data;
@@ -119,7 +117,6 @@ export const ProfileService = {
   updateNotifications: async (dto: UpdateNotificationsDto): Promise<User> => {
     const response = await api.patch<User>("/profile/notifications", dto);
 
-    useAuthStore.getState().setUser(response.data);
     useProfileStore.getState().setProfile(response.data);
 
     return response.data;
