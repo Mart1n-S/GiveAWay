@@ -77,9 +77,13 @@ describe('ProfileController — exportData', () => {
     await controller.exportData(req, res as Response);
 
     const calls = (res.setHeader as jest.Mock).mock.calls;
-    const dispositionCall = calls.find(([header]) => header === 'Content-Disposition');
+    const dispositionCall = calls.find(
+      ([header]) => header === 'Content-Disposition',
+    );
     expect(dispositionCall).toBeDefined();
-    expect(dispositionCall[1]).toMatch(/attachment; filename="giveaway-mes-donnees-.+\.xlsx"/);
+    expect(dispositionCall[1]).toMatch(
+      /attachment; filename="giveaway-mes-donnees-.+\.xlsx"/,
+    );
   });
 
   it('✅ Doit envoyer le buffer retourné par le service', async () => {
@@ -103,9 +107,9 @@ describe('ProfileController — exportData', () => {
     });
     const res = createMockResponse();
 
-    await expect(
-      controller.exportData(req, res as Response),
-    ).rejects.toThrow(UnauthorizedException);
+    await expect(controller.exportData(req, res as Response)).rejects.toThrow(
+      UnauthorizedException,
+    );
 
     expect(mockProfileService.exportData).not.toHaveBeenCalled();
   });
@@ -115,8 +119,8 @@ describe('ProfileController — exportData', () => {
     const res = createMockResponse();
     mockProfileService.exportData.mockRejectedValue(new Error('ExcelJS error'));
 
-    await expect(
-      controller.exportData(req, res as Response),
-    ).rejects.toThrow('ExcelJS error');
+    await expect(controller.exportData(req, res as Response)).rejects.toThrow(
+      'ExcelJS error',
+    );
   });
 });
