@@ -5,11 +5,11 @@ import { colors } from "@/components/ui";
 import { AppShell, HomeIcon, UserIcon } from "@/components/layouts/AppShell";
 import { useAuthStore } from "@/stores/auth.store";
 
-const MOBILE_SUBPAGE_ROUTES = [
+const MOBILE_SUBPAGE_ROUTES = new Set([
   "/profil/modifier",
   "/profil/mot-de-passe",
   "/profil/notifications",
-];
+]);
 
 export default function MainLayout() {
   const insets = useSafeAreaInsets();
@@ -17,7 +17,7 @@ export default function MainLayout() {
   const pathname = usePathname();
 
   const isMobileSubpage =
-    Platform.OS !== "web" && MOBILE_SUBPAGE_ROUTES.includes(pathname);
+    Platform.OS !== "web" && MOBILE_SUBPAGE_ROUTES.has(pathname);
 
   return (
     <AppShell layoutType={isMobileSubpage ? "subpage" : "main"}>

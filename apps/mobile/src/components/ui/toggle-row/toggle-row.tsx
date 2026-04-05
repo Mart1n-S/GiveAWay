@@ -60,7 +60,7 @@ export function ToggleRow({
           >
             {label}
           </Text>
-          {description && (
+          {!!description && (
             <Text className="text-sm text-grey-500">{description}</Text>
           )}
         </View>
@@ -98,7 +98,7 @@ export function ToggleRow({
         </Pressable>
       </View>
 
-      {errorMessage && (
+      {!!errorMessage && (
         <Text className="text-xs text-red-600 mt-0.5">{errorMessage}</Text>
       )}
     </View>
