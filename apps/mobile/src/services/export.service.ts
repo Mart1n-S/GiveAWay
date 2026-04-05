@@ -1,10 +1,18 @@
 import { Platform } from "react-native";
-import * as FileSystem from "expo-file-system/legacy";
+import { File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import { api } from "../lib/axios";
 
 const XLSX_MIME =
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+// expo-file-system v2 : write() et uri sont hérités du NativeModule natif
+// mais TypeScript ne résout pas la chaîne d'héritage — on type manuellement.
+interface NativeFile {
+  write(content: Uint8Array): void;
+  create(options?: { overwrite?: boolean }): void;
+  readonly uri: string;
+}
 
 export const ExportService = {
   /**
@@ -31,18 +39,13 @@ export const ExportService = {
       return;
     }
 
-    // Mobile : arraybuffer → base64 → fichier temporaire → share sheet
+    // Mobile : arraybuffer → fichier temporaire → share sheet
     const bytes = new Uint8Array(response.data);
-    let binary = "";
-    bytes.forEach((b) => (binary += String.fromCharCode(b)));
-    const base64 = btoa(binary);
+    const file = new File(Paths.cache, filename) as unknown as NativeFile;
+    file.create({ overwrite: true });
+    file.write(bytes);
 
-    const fileUri = `${FileSystem.cacheDirectory}${filename}`;
-    await FileSystem.writeAsStringAsync(fileUri, base64, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-
-    await Sharing.shareAsync(fileUri, {
+    await Sharing.shareAsync(file.uri, {
       mimeType: XLSX_MIME,
       dialogTitle: "Exporter mes données GiveAWay",
       UTI: "com.microsoft.excel.xlsx",
