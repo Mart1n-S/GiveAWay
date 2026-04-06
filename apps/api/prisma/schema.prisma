@@ -342,22 +342,28 @@ model AssociationCategory {
 }
 
 model Association {
-  id         Int               @id @default(autoincrement())
-  name       String
-  email      String            @unique
-  siret      String?
-  rna        String?
-  logoUrl    String?           @map("logo_url")
-  status     AssociationStatus @default(PENDING)
-  createdAt  DateTime          @default(now()) @map("created_at")
-  updatedAt  DateTime          @updatedAt @map("updated_at")
-  addressId  Int?              @map("address_id")
-  address    Address?          @relation(fields: [addressId], references: [id])
-  categoryId Int?              @map("category_id")
-  category   AssociationCategory? @relation(fields: [categoryId], references: [id])
-  members    AssociationUser[]
-  missions   Mission[]
-  documents  AssociationDocument[]
+  id                   Int               @id @default(autoincrement())
+  name                 String
+  siret                String?
+  rna                  String?
+  phone                String?
+  website              String?
+  description          String?           @db.Text
+  object               String?           @db.Text  // Objet statutaire déclaré dans les statuts
+  legalStatus          String?           @map("legal_status") // Ex: "Association loi 1901", "Loi 1908"
+  logoUrl              String?           @map("logo_url")
+  requiresManualReview Boolean           @default(false) @map("requires_manual_review")
+  status               AssociationStatus @default(PENDING)
+  createdAt            DateTime          @default(now()) @map("created_at")
+  updatedAt            DateTime          @updatedAt @map("updated_at")
+  addressId            Int?              @map("address_id")
+  address              Address?          @relation(fields: [addressId], references: [id])
+  categoryId           Int?              @map("category_id")
+  category             AssociationCategory? @relation(fields: [categoryId], references: [id])
+  members              AssociationUser[]
+  missions             Mission[]
+  documents            AssociationDocument[]
+
   @@map("associations")
 }
 

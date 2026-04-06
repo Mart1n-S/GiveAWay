@@ -1,20 +1,29 @@
-import { Injectable, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { hash } from 'argon2';
-import { UserStatus, TokenType } from '../../generated/prisma/client';
+import { UserStatus, AssociationRole, TokenType } from '../../generated/prisma/client';
 import { MailService } from '../../mail/mail.service';
-import { RegisterDto } from '@repo/shared';
+import { RegisterDto, RegisterAssociationDto } from '@repo/shared';
 import { AuthService } from '../auth.service';
 import {
   IFileService,
   FILE_SERVICE,
 } from '../../common/files/interfaces/file-service.interface';
+import { AssociationVerificationService } from './association-verification.service';
 
 @Injectable()
 export class RegisterService {
+  private readonly logger = new Logger(RegisterService.name);
+
   constructor(
     private readonly authService: AuthService,
     private readonly mailService: MailService,
     @Inject(FILE_SERVICE) private readonly fileService: IFileService,
+    private readonly associationVerificationService: AssociationVerificationService,
   ) {}
 
   async register(dto: RegisterDto, file?: Express.Multer.File) {
@@ -83,5 +92,190 @@ export class RegisterService {
       message:
         'Inscription réussie ! Veuillez vérifier vos emails pour activer votre compte (Code valide 15 min).',
     };
+  }
+
+  async registerAssociation(
+    dto: RegisterAssociationDto,
+    logoFile?: Express.Multer.File,
+    documentFiles?: Express.Multer.File[],
+  ): Promise<{ message: string; requiresManualReview: boolean }> {
+    const { prisma } = this.authService;
+
+    // 1. Vérification de disponibilité de l'email (table users)
+    await this.authService.checkEmailAvailability(dto.email);
+
+    // 2. Vérification via l'API gouvernementale
+    const verification =
+      await this.associationVerificationService.verifyAssociation(dto);
+
+    // 3. Blocage si association dissoute / inactive
+    if (verification.rejectionReason) {
+      throw new BadRequestException(verification.rejectionReason);
+    }
+
+    // 4. Hashage du mot de passe
+    const hashedPassword = await hash(dto.password);
+
+    // 5. Upload du logo (priorité au fichier multipart, fallback sur l'URL du DTO)
+    let logoUrl: string | undefined = dto.logoUrl;
+    if (logoFile) {
+      const result = await this.fileService.uploadFile(
+        logoFile,
+        'association-logos',
+      );
+      logoUrl = result.publicId;
+    }
+
+    // 6. Upload des documents justificatifs (priorité aux fichiers multipart, fallback sur les URLs du DTO)
+    const uploadedDocuments: { url: string }[] = (dto.documentUrls ?? []).map(
+      (url) => ({ url }),
+    );
+    if (documentFiles && documentFiles.length > 0) {
+      for (const doc of documentFiles) {
+        try {
+          const result = await this.fileService.uploadFile(
+            doc,
+            'association-documents',
+          );
+          uploadedDocuments.push({ url: result.publicId });
+        } catch (error) {
+          // Rollback uniquement des fichiers uploadés dans cette requête (pas les URLs du DTO)
+          const uploadedFileUrls = uploadedDocuments
+            .slice(dto.documentUrls?.length ?? 0)
+            .map((d) => d.url);
+          await this.rollbackUploads(
+            logoFile ? logoUrl : undefined,
+            uploadedFileUrls,
+          );
+          throw error;
+        }
+      }
+    }
+
+    // 7. Création du compte user + association (OWNER) + documents en transaction atomique
+    let newUserId: number;
+    try {
+      await prisma.$transaction(async (tx) => {
+        const user = await tx.user.create({
+          data: {
+            firstName: dto.firstName,
+            lastName: dto.lastName,
+            email: dto.email,
+            password: hashedPassword,
+            emailVerifiedAt: null,
+            status: UserStatus.PENDING,
+            ...(dto.userAddress
+              ? {
+                  address: {
+                    create: {
+                      street: dto.userAddress.street,
+                      postalCode: dto.userAddress.postalCode,
+                      city: dto.userAddress.city,
+                      latitude: dto.userAddress.latitude,
+                      longitude: dto.userAddress.longitude,
+                    },
+                  },
+                }
+              : {}),
+          },
+        });
+        newUserId = user.id;
+
+        const association = await tx.association.create({
+          data: {
+            name: dto.name,
+            siret: dto.siret,
+            rna: dto.rna,
+            phone: dto.phone,
+            website: dto.website,
+            description: dto.description,
+            object: dto.object,
+            legalStatus: dto.legalStatus,
+            logoUrl,
+            requiresManualReview: verification.requiresManualReview,
+            members: {
+              create: {
+                userId: user.id,
+                role: AssociationRole.OWNER,
+              },
+            },
+            ...(dto.address
+              ? {
+                  address: {
+                    create: {
+                      street: dto.address.street,
+                      postalCode: dto.address.postalCode,
+                      city: dto.address.city,
+                      latitude: dto.address.latitude,
+                      longitude: dto.address.longitude,
+                    },
+                  },
+                }
+              : {}),
+          },
+        });
+
+        if (uploadedDocuments.length > 0) {
+          await tx.associationDocument.createMany({
+            data: uploadedDocuments.map((doc) => ({
+              fileUrl: doc.url,
+              type: 'JUSTIFICATIF',
+              associationId: association.id,
+            })),
+          });
+        }
+      });
+    } catch (error) {
+      // Rollback uniquement des fichiers uploadés dans cette requête (pas les URLs du DTO)
+      const uploadedFileUrls = uploadedDocuments
+        .slice(dto.documentUrls?.length ?? 0)
+        .map((d) => d.url);
+      await this.rollbackUploads(
+        logoFile ? logoUrl : undefined,
+        uploadedFileUrls,
+      );
+      throw error;
+    }
+
+    // 8. Génération du token de vérification lié au nouvel utilisateur
+    const rawCode = await this.authService.generateAndSaveToken(
+      newUserId,
+      TokenType.EMAIL_VERIFICATION,
+    );
+
+    // 9. Envoi de l'email selon le flux de vérification de l'association
+    if (verification.requiresManualReview) {
+      await this.mailService.sendAssociationPendingReviewEmail(
+        dto.email,
+        dto.name,
+      );
+    } else {
+      await this.mailService.sendAssociationVerificationEmail(
+        dto.email,
+        dto.name,
+        rawCode,
+      );
+    }
+
+    return {
+      message: verification.requiresManualReview
+        ? 'Votre dossier a été soumis et sera examiné par notre équipe.'
+        : 'Inscription soumise ! Veuillez vérifier vos emails pour activer votre compte (Code valide 15 min).',
+      requiresManualReview: verification.requiresManualReview,
+    };
+  }
+
+  private async rollbackUploads(
+    logoUrl: string | undefined,
+    documentUrls: string[],
+  ): Promise<void> {
+    const toDelete = [...(logoUrl ? [logoUrl] : []), ...documentUrls];
+    await Promise.allSettled(
+      toDelete.map((id) =>
+        this.fileService
+          .deleteFile(id)
+          .catch((e) => this.logger.error('Erreur rollback fichier', e)),
+      ),
+    );
   }
 }

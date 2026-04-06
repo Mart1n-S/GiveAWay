@@ -2,6 +2,7 @@
 export * from "./address/address.dto";
 export * from "./auth/resend-verification.dto";
 export * from "./auth/register.dto";
+export * from "./auth/register-association.dto";
 export * from "./auth/login.dto";
 export * from "./auth/google-login.dto";
 export * from "./auth/forgot-password.dto";

@@ -51,3 +51,21 @@ export const formatFirstName = (val: string) => {
     return match.toUpperCase();
   });
 };
+
+/**
+ * Regex pour les numéros de téléphone :
+ * Autorise les chiffres, espaces, +, -, ., (, )
+ * Longueur entre 6 et 20 caractères pour éviter les numéros trop courts ou trop longs
+ */
+export const PHONE_REGEX = /^[\d\s+\-.()/]{6,20}$/;
+
+/**
+ * Regex pour les numéros RNA : Commence par W suivi de 9 chiffres
+ * Ex: W123456789
+ */
+export const RNA_REGEX = /^W\d{9}$/;
+
+/**
+ * Regex pour les numéros SIRET : Doit contenir exactement 14 chiffres
+ */
+export const SIRET_REGEX = /^\d{14}$/;
