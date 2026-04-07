@@ -181,7 +181,7 @@ export class AssociationVerificationService {
     candidate: ApiCandidate,
   ): boolean {
     const normalize = (s: string) =>
-      s.trim().toLowerCase().replace(/\s+/g, ' ');
+      s.trim().toLowerCase().replaceAll(/\s+/g, ' ');
 
     // Vérification du nom
     if (candidate.nom_raison_sociale) {

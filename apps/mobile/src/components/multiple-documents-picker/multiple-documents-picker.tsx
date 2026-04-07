@@ -103,8 +103,7 @@ export const MultipleDocumentsPicker: React.FC<MultipleDocumentsPickerProps> = (
     const next: ReactNativeFile[] = [];
     const rejected: Array<{ name: string; type: string }> = [];
 
-    for (let i = 0; i < files.length; i++) {
-      const f = files[i];
+    for (const f of Array.from(files)) {
       const mime = f.type || "application/octet-stream";
       if (!ACCEPTED_MIME.includes(mime)) {
         rejected.push({ name: f.name, type: mime });

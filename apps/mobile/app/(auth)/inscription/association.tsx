@@ -31,6 +31,7 @@ import {
   TermsCheckbox,
   colors,
 } from "@/components/ui";
+import { AddressResult } from "@/components/ui/form-tools/useAddress";
 import {
   MultipleDocumentsPicker,
   ReactNativeFile,
@@ -149,7 +150,7 @@ export default function RegisterAssociationScreen() {
     const siretValid =
       typeof siretValue === "string" && SIRET_REGEX.test(siretValue);
     if (rnaValid || siretValid) {
-      void trigger(["rna", "siret"]);
+      trigger(["rna", "siret"]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rnaValue, siretValue]);
@@ -167,14 +168,14 @@ export default function RegisterAssociationScreen() {
   // ------------------------------------------------------------------
   // Helpers image
   // ------------------------------------------------------------------
-  const ACCEPTED_IMAGE_MIME = ["image/jpeg", "image/png", "image/webp"];
+  const ACCEPTED_IMAGE_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 
   const handleWebImageFile = (
     file: File,
     onSet: (uri: string, rn: ReactNativeFile) => void,
     toastMsg: string,
   ) => {
-    if (!ACCEPTED_IMAGE_MIME.includes(file.type)) {
+    if (!ACCEPTED_IMAGE_MIME.has(file.type)) {
       Toast.show({
         type: "error",
         text1: "Fichier non supporté",
@@ -523,11 +524,7 @@ export default function RegisterAssociationScreen() {
                     }
                     className="bg-grey-100 border-grey-200"
                   />
-                  {!avatarUri ? (
-                    <View className="absolute bottom-0 right-0 items-center justify-center w-6 h-6 border-2 border-white rounded-full pointer-events-none bg-primary">
-                      <AddIcon className="w-4 h-4 text-white" />
-                    </View>
-                  ) : (
+                  {avatarUri ? (
                     <Button
                       onPress={removeAvatar}
                       variant="primary"
@@ -536,6 +533,10 @@ export default function RegisterAssociationScreen() {
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                       accessibilityLabel="Supprimer la photo"
                     />
+                  ) : (
+                    <View className="absolute bottom-0 right-0 items-center justify-center w-6 h-6 border-2 border-white rounded-full pointer-events-none bg-primary">
+                      <AddIcon className="w-4 h-4 text-white" />
+                    </View>
                   )}
                 </View>
                 <Text className="mt-2 text-sm text-grey-500">
@@ -661,7 +662,7 @@ export default function RegisterAssociationScreen() {
                 }) => (
                   <AddressAutocomplete
                     label="Votre adresse personnelle"
-                    value={value as any}
+                    value={value as unknown as AddressResult}
                     onSelect={(result) => {
                       if (result) {
                         onChange({
@@ -713,11 +714,7 @@ export default function RegisterAssociationScreen() {
                     }
                     className="bg-grey-100 border-grey-200"
                   />
-                  {!logoUri ? (
-                    <View className="absolute bottom-0 right-0 items-center justify-center w-6 h-6 border-2 border-white rounded-full pointer-events-none bg-primary">
-                      <AddIcon className="w-4 h-4 text-white" />
-                    </View>
-                  ) : (
+                  {logoUri ? (
                     <Button
                       onPress={removeLogo}
                       variant="primary"
@@ -726,6 +723,10 @@ export default function RegisterAssociationScreen() {
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                       accessibilityLabel="Supprimer le logo"
                     />
+                  ) : (
+                    <View className="absolute bottom-0 right-0 items-center justify-center w-6 h-6 border-2 border-white rounded-full pointer-events-none bg-primary">
+                      <AddIcon className="w-4 h-4 text-white" />
+                    </View>
                   )}
                 </View>
                 <Text className="mt-2 text-sm text-grey-500">
@@ -853,7 +854,7 @@ export default function RegisterAssociationScreen() {
                 }) => (
                   <AddressAutocomplete
                     label="Adresse du siège de l'association"
-                    value={value as any}
+                    value={value as unknown as AddressResult}
                     onSelect={(result) => {
                       if (result) {
                         onChange({
@@ -919,7 +920,7 @@ export default function RegisterAssociationScreen() {
                   fieldState: { error },
                 }) => (
                   <TermsCheckbox
-                    checked={value as any}
+                    checked={Boolean(value)}
                     testID="checkbox-terms"
                     onChange={(isChecked) => {
                       onChange(isChecked);
@@ -945,13 +946,13 @@ export default function RegisterAssociationScreen() {
               >
                 {isSubmitting ? (
                   <ActivityIndicator
-                    color={!acceptTerms ? "#6B7280" : colors.grey[400]}
+                    color={acceptTerms ? colors.grey[400] : "#6B7280"}
                   />
                 ) : (
                   <Text
                     className={clsx(
                       "font-bold text-base",
-                      !acceptTerms ? "text-grey-400" : "text-white",
+                      acceptTerms ? "text-white" : "text-grey-400",
                     )}
                   >
                     Inscrire mon association
