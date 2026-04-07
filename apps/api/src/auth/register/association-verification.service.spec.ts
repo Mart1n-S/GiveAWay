@@ -17,7 +17,11 @@ const makeDto = (
     legalStatus: 'Association loi 1901',
     password: 'Password123!',
     confirmPassword: 'Password123!',
-    address: { street: '10 rue de la Paix', postalCode: '75001', city: 'Paris' },
+    address: {
+      street: '10 rue de la Paix',
+      postalCode: '75001',
+      city: 'Paris',
+    },
     ...overrides,
   }) as RegisterAssociationDto;
 
@@ -55,7 +59,9 @@ describe('AssociationVerificationService', () => {
     );
     jest.clearAllMocks();
     // Fournir l'URL par défaut
-    mockConfigService.get.mockReturnValue('https://api.example.fr/associations');
+    mockConfigService.get.mockReturnValue(
+      'https://api.example.fr/associations',
+    );
   });
 
   // ----------------------------------------------------------------
@@ -92,7 +98,7 @@ describe('AssociationVerificationService', () => {
       expect(result.requiresManualReview).toBe(true);
     });
 
-    it('✅ Doit retourner requiresManualReview si l\'API retourne un statut non-OK', async () => {
+    it("✅ Doit retourner requiresManualReview si l'API retourne un statut non-OK", async () => {
       global.fetch = jest
         .fn()
         .mockResolvedValue({ ok: false, status: 500 } as Response);
@@ -103,7 +109,7 @@ describe('AssociationVerificationService', () => {
     it('✅ Doit retourner requiresManualReview si total_results vaut 0', async () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ total_results: 0, results: [] }),
+        json: () => ({ total_results: 0, results: [] }),
       } as unknown as Response);
       const result = await service.verifyAssociation(makeDto());
       expect(result.requiresManualReview).toBe(true);
@@ -118,7 +124,7 @@ describe('AssociationVerificationService', () => {
     it('✅ Doit retourner requiresManualReview si est_association !== true', async () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
-        json: async () =>
+        json: () =>
           makeApiResponse({ complements: { est_association: false } }),
       } as unknown as Response);
 
@@ -135,8 +141,7 @@ describe('AssociationVerificationService', () => {
     it('❌ Doit bloquer l\'inscription si etat_administratif === "F"', async () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
-        json: async () =>
-          makeApiResponse({ etat_administratif: 'F' }),
+        json: () => makeApiResponse({ etat_administratif: 'F' }),
       } as unknown as Response);
 
       const result = await service.verifyAssociation(makeDto());
@@ -153,7 +158,7 @@ describe('AssociationVerificationService', () => {
     it('✅ Doit retourner requiresManualReview si etat_administratif est inconnu', async () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
-        json: async () => makeApiResponse({ etat_administratif: 'X' }),
+        json: () => makeApiResponse({ etat_administratif: 'X' }),
       } as unknown as Response);
 
       const result = await service.verifyAssociation(makeDto());
@@ -169,7 +174,7 @@ describe('AssociationVerificationService', () => {
     it('✅ Doit retourner isConsistent: true si toutes les données correspondent', async () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
-        json: async () => makeApiResponse(),
+        json: () => makeApiResponse(),
       } as unknown as Response);
 
       const result = await service.verifyAssociation(makeDto());
@@ -183,7 +188,7 @@ describe('AssociationVerificationService', () => {
     it('✅ Doit ignorer la casse et les espaces sur le nom', async () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
-        json: async () =>
+        json: () =>
           makeApiResponse({ nom_raison_sociale: 'les amis du quartier' }),
       } as unknown as Response);
 
@@ -199,7 +204,7 @@ describe('AssociationVerificationService', () => {
     it('✅ Doit mettre requiresManualReview si le nom ne correspond pas', async () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
-        json: async () =>
+        json: () =>
           makeApiResponse({ nom_raison_sociale: 'Autre Association' }),
       } as unknown as Response);
 
@@ -212,8 +217,7 @@ describe('AssociationVerificationService', () => {
     it('✅ Doit mettre requiresManualReview si le code postal ne correspond pas', async () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
-        json: async () =>
-          makeApiResponse({ siege: { code_postal: '69001' } }),
+        json: () => makeApiResponse({ siege: { code_postal: '69001' } }),
       } as unknown as Response);
 
       const result = await service.verifyAssociation(makeDto());
@@ -224,7 +228,7 @@ describe('AssociationVerificationService', () => {
     it('✅ Doit mettre requiresManualReview si le RNA soumis ne correspond pas', async () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
-        json: async () =>
+        json: () =>
           makeApiResponse({
             complements: {
               est_association: true,
@@ -241,7 +245,7 @@ describe('AssociationVerificationService', () => {
     it('✅ Ne doit pas vérifier le code postal si aucune adresse fournie', async () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
-        json: async () => makeApiResponse(),
+        json: () => makeApiResponse(),
       } as unknown as Response);
 
       const result = await service.verifyAssociation(
@@ -254,11 +258,11 @@ describe('AssociationVerificationService', () => {
   // ----------------------------------------------------------------
   // URL construite correctement
   // ----------------------------------------------------------------
-  describe('Construction de l\'URL', () => {
-    it('✅ Doit appeler l\'API avec ?q=<identifiant>', async () => {
+  describe("Construction de l'URL", () => {
+    it("✅ Doit appeler l'API avec ?q=<identifiant>", async () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
-        json: async () => makeApiResponse(),
+        json: () => makeApiResponse(),
       } as unknown as Response);
 
       await service.verifyAssociation(makeDto({ rna: 'W123456789' }));
@@ -272,7 +276,7 @@ describe('AssociationVerificationService', () => {
     it('✅ Doit utiliser le SIRET si pas de RNA', async () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
-        json: async () => makeApiResponse(),
+        json: () => makeApiResponse(),
       } as unknown as Response);
 
       await service.verifyAssociation(

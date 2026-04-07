@@ -72,10 +72,13 @@ export class AssociationVerificationService {
     let candidate: ApiCandidate | null = null;
 
     try {
-      const response = await fetch(`${apiUrl}?q=${encodeURIComponent(identifier)}`, {
-        headers: { Accept: 'application/json' },
-        signal: AbortSignal.timeout(8000),
-      });
+      const response = await fetch(
+        `${apiUrl}?q=${encodeURIComponent(identifier)}`,
+        {
+          headers: { Accept: 'application/json' },
+          signal: AbortSignal.timeout(8000),
+        },
+      );
 
       if (!response.ok) {
         this.logger.warn(

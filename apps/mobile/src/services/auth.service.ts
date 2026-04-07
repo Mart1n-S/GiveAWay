@@ -4,6 +4,7 @@ import { useAuthStore } from "../stores/auth.store";
 import {
   LoginDto,
   RegisterDto,
+  RegisterAssociationFormValues,
   AuthResponse,
   VerifyEmailDto,
   ResendVerificationDto,
@@ -139,6 +140,131 @@ export const AuthService = {
         headers: { "Content-Type": "multipart/form-data" },
       },
     );
+
+    return response.data;
+  },
+
+  /**
+   * POST /auth/register/association
+   * Inscription combinée User (owner) + Association, avec logo et documents.
+   */
+  registerAssociation: async (
+    data: RegisterAssociationFormValues,
+    logo: {
+      uri: string;
+      name: string;
+      type: string;
+      webFile?: File;
+    } | null,
+    documents: Array<{
+      uri: string;
+      name: string;
+      type: string;
+      webFile?: File;
+    }> = [],
+    profilePicture: {
+      uri: string;
+      name: string;
+      type: string;
+      webFile?: File;
+    } | null = null,
+  ) => {
+    const formData = new FormData();
+
+    // 1. Champs utilisateur (futur owner)
+    formData.append("firstName", data.firstName);
+    formData.append("lastName", data.lastName);
+    formData.append("email", data.email);
+    formData.append("password", data.password);
+    formData.append("confirmPassword", data.confirmPassword);
+    formData.append("age", String(data.age));
+    formData.append("acceptTerms", String(data.acceptTerms));
+
+    if (data.biography) {
+      formData.append("biography", data.biography);
+    }
+
+    if (data.userAddress) {
+      formData.append("userAddress", JSON.stringify(data.userAddress));
+    }
+
+    // 2. Champs association
+    formData.append("name", data.name);
+    if (data.rna) formData.append("rna", data.rna);
+    if (data.siret) formData.append("siret", data.siret);
+    if (data.phone) formData.append("phone", data.phone);
+    if (data.website) formData.append("website", data.website);
+    if (data.description) formData.append("description", data.description);
+    formData.append("object", data.object);
+    formData.append("legalStatus", data.legalStatus);
+
+    if (data.address) {
+      formData.append("address", JSON.stringify(data.address));
+    }
+
+    // 3.a Photo de profil du owner (optionnelle)
+    if (profilePicture) {
+      if (Platform.OS === "web" && profilePicture.webFile) {
+        formData.append("profilePicture", profilePicture.webFile, profilePicture.name);
+      } else if (Platform.OS === "web") {
+        const response = await fetch(profilePicture.uri);
+        const blob = await response.blob();
+        const extension = blob.type.split("/")[1] || "jpg";
+        formData.append(
+          "profilePicture",
+          blob,
+          `avatar-${Date.now()}.${extension}`,
+        );
+      } else {
+        formData.append("profilePicture", {
+          uri: profilePicture.uri,
+          name: profilePicture.name,
+          type: profilePicture.type,
+        } as any);
+      }
+    }
+
+    // 3.b Logo de l'association (optionnel)
+    if (logo) {
+      if (Platform.OS === "web" && logo.webFile) {
+        formData.append("logo", logo.webFile, logo.name);
+      } else if (Platform.OS === "web") {
+        const response = await fetch(logo.uri);
+        const blob = await response.blob();
+        const extension = blob.type.split("/")[1] || "jpg";
+        formData.append("logo", blob, `logo-${Date.now()}.${extension}`);
+      } else {
+        formData.append("logo", {
+          uri: logo.uri,
+          name: logo.name,
+          type: logo.type,
+        } as any);
+      }
+    }
+
+    // 4. Documents (multiples sous la même clé "documents")
+    for (const doc of documents) {
+      if (Platform.OS === "web" && doc.webFile) {
+        formData.append("documents", doc.webFile, doc.name);
+      } else if (Platform.OS === "web") {
+        const response = await fetch(doc.uri);
+        const blob = await response.blob();
+        formData.append("documents", blob, doc.name);
+      } else {
+        formData.append("documents", {
+          uri: doc.uri,
+          name: doc.name,
+          type: doc.type,
+        } as any);
+      }
+    }
+
+    const response = await api.post<{
+      message: string;
+      requiresManualReview: boolean;
+    }>("/auth/register/association", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
 
     return response.data;
   },

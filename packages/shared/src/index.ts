@@ -1,5 +1,6 @@
 // Export des DTOs
 export * from "./address/address.dto";
+export * from "./auth/auth.constants";
 export * from "./auth/resend-verification.dto";
 export * from "./auth/register.dto";
 export * from "./auth/register-association.dto";

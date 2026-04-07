@@ -31,6 +31,7 @@ export default defineConfig({
   retries: 2,
   workers: 1,
   reporter: "html",
+  globalSetup: require.resolve("./tests/global-setup"),
   globalTeardown: require.resolve("./tests/global-teardown"),
 
   use: {
@@ -54,9 +55,16 @@ export default defineConfig({
     {
       command: "npm run start --prefix ../../ --workspace=api",
       port: 3000,
+      // En local : réutilise l'API déjà lancée par le dev via
+      // `npm run start:test --workspace=apps/api` (qui charge .env.test).
+      // En CI : Playwright démarre l'API lui-même avec `npm run start`,
+      // et on injecte ASSOCIATION_API_URL via le bloc `env:` ci-dessous.
       reuseExistingServer: !process.env.CI,
       stdout: "pipe",
       stderr: "pipe",
+      env: {
+        ASSOCIATION_API_URL: "http://localhost:4555/search",
+      },
     },
     {
       command: "npx expo start --web --host localhost",

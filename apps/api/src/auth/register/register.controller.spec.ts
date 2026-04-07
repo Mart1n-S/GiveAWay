@@ -72,8 +72,12 @@ describe('RegisterController', () => {
     const dto = { name: 'Test Asso', email: 'owner@test.fr' } as any;
 
     it('✅ Devrait déléguer avec dto, logo et documents validés', async () => {
-      jest.spyOn(ImageValidationPipe.prototype, 'transform').mockReturnValue(undefined);
-      jest.spyOn(DocumentsValidationPipe.prototype, 'transform').mockReturnValue(undefined);
+      jest
+        .spyOn(ImageValidationPipe.prototype, 'transform')
+        .mockReturnValue(undefined);
+      jest
+        .spyOn(DocumentsValidationPipe.prototype, 'transform')
+        .mockReturnValue(undefined);
 
       mockRegisterService.registerAssociation.mockResolvedValue({
         message: 'Inscription soumise',
@@ -89,15 +93,20 @@ describe('RegisterController', () => {
 
       expect(mockRegisterService.registerAssociation).toHaveBeenCalledWith(
         dto,
-        undefined, // ImageValidationPipe mocked → undefined
+        undefined, // ImageValidationPipe mocked → undefined (logo)
         undefined, // DocumentsValidationPipe mocked → undefined
+        undefined, // ImageValidationPipe mocked → undefined (profilePicture)
       );
       expect(result.requiresManualReview).toBe(false);
     });
 
     it('✅ Devrait fonctionner sans fichiers (rawFiles undefined)', async () => {
-      jest.spyOn(ImageValidationPipe.prototype, 'transform').mockReturnValue(undefined);
-      jest.spyOn(DocumentsValidationPipe.prototype, 'transform').mockReturnValue(undefined);
+      jest
+        .spyOn(ImageValidationPipe.prototype, 'transform')
+        .mockReturnValue(undefined);
+      jest
+        .spyOn(DocumentsValidationPipe.prototype, 'transform')
+        .mockReturnValue(undefined);
 
       mockRegisterService.registerAssociation.mockResolvedValue({
         message: 'Dossier soumis',
@@ -110,6 +119,7 @@ describe('RegisterController', () => {
         dto,
         undefined,
         undefined,
+        undefined,
       );
       expect(result.requiresManualReview).toBe(true);
     });
@@ -118,8 +128,10 @@ describe('RegisterController', () => {
       const logoFile = { originalname: 'logo.png' } as Express.Multer.File;
       jest
         .spyOn(ImageValidationPipe.prototype, 'transform')
-        .mockReturnValue(logoFile);
-      jest.spyOn(DocumentsValidationPipe.prototype, 'transform').mockReturnValue(undefined);
+        .mockImplementation((file) => file);
+      jest
+        .spyOn(DocumentsValidationPipe.prototype, 'transform')
+        .mockReturnValue(undefined);
 
       mockRegisterService.registerAssociation.mockResolvedValue({
         message: 'ok',
@@ -135,12 +147,45 @@ describe('RegisterController', () => {
         dto,
         logoFile,
         undefined,
+        undefined,
+      );
+    });
+
+    it('✅ Doit passer la photo de profil du owner validée au service', async () => {
+      const profilePicture = {
+        originalname: 'me.jpg',
+      } as Express.Multer.File;
+      jest
+        .spyOn(ImageValidationPipe.prototype, 'transform')
+        .mockImplementation((file) => file);
+      jest
+        .spyOn(DocumentsValidationPipe.prototype, 'transform')
+        .mockReturnValue(undefined);
+
+      mockRegisterService.registerAssociation.mockResolvedValue({
+        message: 'ok',
+        requiresManualReview: false,
+      });
+
+      await controller.registerAssociation(dto, {
+        profilePicture: [profilePicture],
+      });
+
+      expect(mockRegisterService.registerAssociation).toHaveBeenCalledWith(
+        dto,
+        undefined,
+        undefined,
+        profilePicture,
       );
     });
 
     it("❌ Devrait propager l'erreur si le service échoue", async () => {
-      jest.spyOn(ImageValidationPipe.prototype, 'transform').mockReturnValue(undefined);
-      jest.spyOn(DocumentsValidationPipe.prototype, 'transform').mockReturnValue(undefined);
+      jest
+        .spyOn(ImageValidationPipe.prototype, 'transform')
+        .mockReturnValue(undefined);
+      jest
+        .spyOn(DocumentsValidationPipe.prototype, 'transform')
+        .mockReturnValue(undefined);
 
       mockRegisterService.registerAssociation.mockRejectedValue(
         new Error('Service Error'),

@@ -36,7 +36,12 @@ const makeFile = (
   mimetype: string,
   originalname = 'doc.pdf',
 ): Express.Multer.File =>
-  ({ buffer, mimetype, originalname, size: buffer.length }) as Express.Multer.File;
+  ({
+    buffer,
+    mimetype,
+    originalname,
+    size: buffer.length,
+  }) as Express.Multer.File;
 
 describe('DocumentsValidationPipe', () => {
   let pipe: DocumentsValidationPipe;
@@ -133,8 +138,12 @@ describe('DocumentsValidationPipe', () => {
       expect(() => pipe.transform([file])).toThrow('format invalide');
     });
 
-    it('❌ Doit inclure le nom du fichier dans le message d\'erreur', () => {
-      const file = makeFile(makeInvalid(), 'application/pdf', 'mauvais-fichier.pdf');
+    it("❌ Doit inclure le nom du fichier dans le message d'erreur", () => {
+      const file = makeFile(
+        makeInvalid(),
+        'application/pdf',
+        'mauvais-fichier.pdf',
+      );
       expect(() => pipe.transform([file])).toThrow('mauvais-fichier.pdf');
     });
   });
@@ -149,7 +158,11 @@ describe('DocumentsValidationPipe', () => {
     });
 
     it('❌ Doit échouer si le MIME type est application/octet-stream', () => {
-      const file = makeFile(makePdf(), 'application/octet-stream', 'trompeur.bin');
+      const file = makeFile(
+        makePdf(),
+        'application/octet-stream',
+        'trompeur.bin',
+      );
       expect(() => pipe.transform([file])).toThrow('non autorisé');
     });
   });

@@ -5,7 +5,12 @@ import {
   Logger,
 } from '@nestjs/common';
 import { hash } from 'argon2';
-import { UserStatus, AssociationRole, TokenType } from '../../generated/prisma/client';
+import {
+  UserStatus,
+  AssociationRole,
+  AssociationStatus,
+  TokenType,
+} from '../../generated/prisma/client';
 import { MailService } from '../../mail/mail.service';
 import { RegisterDto, RegisterAssociationDto } from '@repo/shared';
 import { AuthService } from '../auth.service';
@@ -98,6 +103,7 @@ export class RegisterService {
     dto: RegisterAssociationDto,
     logoFile?: Express.Multer.File,
     documentFiles?: Express.Multer.File[],
+    profilePictureFile?: Express.Multer.File,
   ): Promise<{ message: string; requiresManualReview: boolean }> {
     const { prisma } = this.authService;
 
@@ -124,6 +130,21 @@ export class RegisterService {
         'association-logos',
       );
       logoUrl = result.publicId;
+    }
+
+    // 5.b Upload de la photo de profil du owner (optionnelle)
+    let profilePictureUrl: string | undefined = dto.profilePicture;
+    if (profilePictureFile) {
+      try {
+        const result = await this.fileService.uploadFile(
+          profilePictureFile,
+          'avatars',
+        );
+        profilePictureUrl = result.publicId;
+      } catch (error) {
+        await this.rollbackUploads(logoFile ? logoUrl : undefined, []);
+        throw error;
+      }
     }
 
     // 6. Upload des documents justificatifs (priorité aux fichiers multipart, fallback sur les URLs du DTO)
@@ -162,21 +183,20 @@ export class RegisterService {
             lastName: dto.lastName,
             email: dto.email,
             password: hashedPassword,
+            age: dto.age,
+            biography: dto.biography,
+            profilePicture: profilePictureUrl,
             emailVerifiedAt: null,
             status: UserStatus.PENDING,
-            ...(dto.userAddress
-              ? {
-                  address: {
-                    create: {
-                      street: dto.userAddress.street,
-                      postalCode: dto.userAddress.postalCode,
-                      city: dto.userAddress.city,
-                      latitude: dto.userAddress.latitude,
-                      longitude: dto.userAddress.longitude,
-                    },
-                  },
-                }
-              : {}),
+            address: {
+              create: {
+                street: dto.userAddress.street,
+                postalCode: dto.userAddress.postalCode,
+                city: dto.userAddress.city,
+                latitude: dto.userAddress.latitude,
+                longitude: dto.userAddress.longitude,
+              },
+            },
           },
         });
         newUserId = user.id;
@@ -192,6 +212,9 @@ export class RegisterService {
             object: dto.object,
             legalStatus: dto.legalStatus,
             logoUrl,
+            status: verification.requiresManualReview
+              ? AssociationStatus.PENDING
+              : AssociationStatus.VALIDATED,
             requiresManualReview: verification.requiresManualReview,
             members: {
               create: {
@@ -233,6 +256,7 @@ export class RegisterService {
       await this.rollbackUploads(
         logoFile ? logoUrl : undefined,
         uploadedFileUrls,
+        profilePictureFile ? profilePictureUrl : undefined,
       );
       throw error;
     }
@@ -243,17 +267,18 @@ export class RegisterService {
       TokenType.EMAIL_VERIFICATION,
     );
 
-    // 9. Envoi de l'email selon le flux de vérification de l'association
+    // 9. Envoi systématique de l'email de vérification OTP
+    await this.mailService.sendAssociationVerificationEmail(
+      dto.email,
+      dto.name,
+      rawCode,
+    );
+
+    // 9.b Si vérification manuelle requise, envoi en plus du mail d'avis
     if (verification.requiresManualReview) {
       await this.mailService.sendAssociationPendingReviewEmail(
         dto.email,
         dto.name,
-      );
-    } else {
-      await this.mailService.sendAssociationVerificationEmail(
-        dto.email,
-        dto.name,
-        rawCode,
       );
     }
 
@@ -268,8 +293,13 @@ export class RegisterService {
   private async rollbackUploads(
     logoUrl: string | undefined,
     documentUrls: string[],
+    profilePictureUrl?: string,
   ): Promise<void> {
-    const toDelete = [...(logoUrl ? [logoUrl] : []), ...documentUrls];
+    const toDelete = [
+      ...(logoUrl ? [logoUrl] : []),
+      ...(profilePictureUrl ? [profilePictureUrl] : []),
+      ...documentUrls,
+    ];
     await Promise.allSettled(
       toDelete.map((id) =>
         this.fileService

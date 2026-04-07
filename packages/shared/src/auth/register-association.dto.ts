@@ -93,19 +93,32 @@ export const RegisterAssociationSchema = z
         }),
     ),
 
-    // Adresse personnelle du bénévole/owner (optionnelle, ajoutée via profil plus tard)
-    userAddress: z
-      .preprocess((val) => {
-        if (typeof val === "string") {
-          try {
-            return JSON.parse(val);
-          } catch {
-            return val;
-          }
+    // Adresse personnelle du owner (obligatoire)
+    userAddress: z.preprocess((val) => {
+      if (typeof val === "string") {
+        try {
+          return JSON.parse(val);
+        } catch {
+          return val;
         }
-        return val;
-      }, AddressSchema)
+      }
+      return val;
+    }, AddressSchema),
+
+    // Biographie optionnelle du owner
+    biography: z
+      .string()
+      .trim()
+      .max(1000, {
+        message: "La biographie est trop longue (1000 caractères maximum)",
+      })
+      .regex(NO_HTML_TAGS, {
+        message: "La biographie contient des caractères interdits (< ou >)",
+      })
       .optional(),
+
+    // URL de la photo de profil du owner (renseignée après upload serveur)
+    profilePicture: z.string().optional(),
 
     // ------------------------------------------------------------------
     // Champs de l'association
@@ -125,10 +138,14 @@ export const RegisterAssociationSchema = z
         message: "Le nom contient des caractères interdits (< ou >)",
       }),
 
+    // Les champs optionnels ci-dessous utilisent .refine() plutôt que z.preprocess()
+    // pour conserver string | undefined comme type d'entrée (compatible react-hook-form).
+    // Une valeur vide ("") est acceptée comme absente via `!v`.
+
     rna: z
       .string()
       .trim()
-      .regex(RNA_REGEX, {
+      .refine((v) => !v || RNA_REGEX.test(v), {
         message:
           "Le numéro RNA doit commencer par W suivi de 9 chiffres (ex: W123456789)",
       })
@@ -137,7 +154,7 @@ export const RegisterAssociationSchema = z
     siret: z
       .string()
       .trim()
-      .regex(SIRET_REGEX, {
+      .refine((v) => !v || SIRET_REGEX.test(v), {
         message: "Le numéro SIRET doit contenir exactement 14 chiffres",
       })
       .optional(),
@@ -145,30 +162,40 @@ export const RegisterAssociationSchema = z
     phone: z
       .string()
       .trim()
-      .regex(PHONE_REGEX, {
-        message: "Le numéro de téléphone est invalide",
+      .refine((v) => !v || PHONE_REGEX.test(v), {
+        message:
+          "Le numéro de téléphone doit contenir 10 chiffres et commencer par 0 (ex : 0606060606)",
       })
       .optional(),
 
     website: z
       .string()
       .trim()
-      .url({ message: "L'URL du site web est invalide" })
+      .refine(
+        (v) => {
+          if (!v) return true;
+          try {
+            new URL(v);
+            return true;
+          } catch {
+            return false;
+          }
+        },
+        { message: "L'URL du site web est invalide" },
+      )
       .optional(),
 
-    // Adresse du siège de l'association
-    address: z
-      .preprocess((val) => {
-        if (typeof val === "string") {
-          try {
-            return JSON.parse(val);
-          } catch {
-            return val;
-          }
+    // Adresse du siège de l'association (obligatoire)
+    address: z.preprocess((val) => {
+      if (typeof val === "string") {
+        try {
+          return JSON.parse(val);
+        } catch {
+          return val;
         }
-        return val;
-      }, AddressSchema)
-      .optional(),
+      }
+      return val;
+    }, AddressSchema),
 
     description: z
       .string()
@@ -215,6 +242,12 @@ export const RegisterAssociationSchema = z
         path: ["confirmPassword"],
         message: "Les mots de passe ne correspondent pas",
       });
+    }
+    // Au moins un des deux identifiants (RNA ou SIRET) doit être renseigné
+    if (!data.rna && !data.siret) {
+      const message = "Veuillez renseigner au moins le RNA ou le SIRET";
+      ctx.addIssue({ code: "custom", path: ["rna"], message });
+      ctx.addIssue({ code: "custom", path: ["siret"], message });
     }
   });
 

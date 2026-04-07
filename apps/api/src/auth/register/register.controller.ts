@@ -48,6 +48,7 @@ export class RegisterController {
   @UseInterceptors(
     FileFieldsInterceptor([
       { name: 'logo', maxCount: 1 },
+      { name: 'profilePicture', maxCount: 1 },
       { name: 'documents', maxCount: 5 },
     ]),
   )
@@ -57,13 +58,22 @@ export class RegisterController {
     @UploadedFiles()
     rawFiles?: {
       logo?: Express.Multer.File[];
+      profilePicture?: Express.Multer.File[];
       documents?: Express.Multer.File[];
     },
   ) {
     const logo = new ImageValidationPipe(false).transform(rawFiles?.logo?.[0]);
+    const profilePicture = new ImageValidationPipe(false).transform(
+      rawFiles?.profilePicture?.[0],
+    );
     const documents = new DocumentsValidationPipe(false).transform(
       rawFiles?.documents,
     );
-    return this.registerService.registerAssociation(dto, logo, documents);
+    return this.registerService.registerAssociation(
+      dto,
+      logo,
+      documents,
+      profilePicture,
+    );
   }
 }

@@ -16,6 +16,7 @@ const validData = {
   confirmPassword: "Password123!",
   age: 30,
   acceptTerms: true,
+  userAddress: validAddress,
   // Champs association
   name: "Les Amis du Quartier",
   rna: "W123456789",
@@ -39,7 +40,7 @@ describe("RegisterAssociationSchema", () => {
       expect(RegisterAssociationSchema.safeParse(validData).success).toBe(true);
     });
 
-    it("Doit accepter sans champs optionnels (rna, siret, phone, website, address, description, logo, documents, userAddress)", () => {
+    it("Doit accepter sans champs optionnels (phone, website, description, biography, logo, documents) — RNA seul suffit", () => {
       const minimal = {
         firstName: "Jean",
         lastName: "Dupont",
@@ -48,11 +49,38 @@ describe("RegisterAssociationSchema", () => {
         confirmPassword: "Password123!",
         age: 25,
         acceptTerms: true,
+        userAddress: validAddress,
+        address: validAddress,
         name: "Association Minimale",
+        rna: "W123456789",
         object: "Objet statutaire.",
         legalStatus: "Association loi 1901",
       };
       expect(RegisterAssociationSchema.safeParse(minimal).success).toBe(true);
+    });
+
+    it("Doit accepter phone et website vides (chaînes vides → optionnels)", () => {
+      const data = { ...validData, phone: "", website: "" };
+      expect(RegisterAssociationSchema.safeParse(data).success).toBe(true);
+    });
+
+    it("Doit accepter rna et siret vides si l'autre est renseigné", () => {
+      const data = { ...validData, siret: "" };
+      expect(RegisterAssociationSchema.safeParse(data).success).toBe(true);
+    });
+
+    it("Doit accepter un dossier avec SIRET seul (sans RNA)", () => {
+      const { rna: _rna, ...rest } = validData;
+      void _rna;
+      expect(RegisterAssociationSchema.safeParse(rest).success).toBe(true);
+    });
+
+    it("Doit accepter une biographie optionnelle du owner", () => {
+      const res = RegisterAssociationSchema.safeParse({
+        ...validData,
+        biography: "Bénévole passionnée depuis 10 ans.",
+      });
+      expect(res.success).toBe(true);
     });
 
     it("Doit normaliser l'email en minuscules", () => {
@@ -98,12 +126,33 @@ describe("RegisterAssociationSchema", () => {
       expect(res.success).toBe(true);
     });
 
-    it("Doit accepter une userAddress optionnelle", () => {
+    it("Doit rejeter un dossier sans userAddress (adresse du owner obligatoire)", () => {
+      const { userAddress: _ua, ...rest } = validData;
+      void _ua;
+      const res = RegisterAssociationSchema.safeParse(rest);
+      expect(res.success).toBe(false);
+    });
+
+    it("Doit rejeter un dossier sans RNA ni SIRET", () => {
+      const { rna: _rna, siret: _siret, ...rest } = validData;
+      void _rna;
+      void _siret;
+      const res = RegisterAssociationSchema.safeParse(rest);
+      expect(res.success).toBe(false);
+      if (!res.success) {
+        const msgs = res.error.issues.map((i) => i.message);
+        expect(
+          msgs.some((m) => m.includes("au moins le RNA ou le SIRET")),
+        ).toBe(true);
+      }
+    });
+
+    it("Doit rejeter une biographie contenant du HTML", () => {
       const res = RegisterAssociationSchema.safeParse({
         ...validData,
-        userAddress: validAddress,
+        biography: "Bio <script>bad</script>",
       });
-      expect(res.success).toBe(true);
+      expect(res.success).toBe(false);
     });
   });
 

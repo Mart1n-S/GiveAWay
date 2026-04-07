@@ -28,6 +28,13 @@ interface AddressAutocompleteProps {
   onSelect: (address: AddressResult | undefined) => void;
   value?: AddressResult;
   required?: boolean;
+  /**
+   * Préfixe optionnel pour les testID des trois inputs internes
+   * (rue / code postal / ville). Permet de différencier plusieurs
+   * AddressAutocomplete sur la même page.
+   * Si absent → testIDs historiques (`input-address`, `input-postalCode`, `input-city`).
+   */
+  testIDPrefix?: string;
 }
 
 export const AddressAutocomplete = ({
@@ -35,7 +42,12 @@ export const AddressAutocomplete = ({
   onSelect,
   value,
   required = false,
+  testIDPrefix,
 }: AddressAutocompleteProps) => {
+  const prefix = testIDPrefix ? `${testIDPrefix}-` : "";
+  const streetTestID = `${prefix}input-address`;
+  const postalCodeTestID = `${prefix}input-postalCode`;
+  const cityTestID = `${prefix}input-city`;
   const { searchAddress, getLocation, suggestions, setSuggestions, loading } =
     useAddress();
 
@@ -168,7 +180,7 @@ export const AddressAutocomplete = ({
       <View className="relative mb-4">
         <Input
           label="Numéro et libellé de voie"
-          testID="input-address"
+          testID={streetTestID}
           placeholder="Ex: 10 rue de la Paix"
           value={street}
           onChangeText={handleStreetChange}
@@ -232,7 +244,7 @@ export const AddressAutocomplete = ({
         <View className="flex-1">
           <Input
             label="Code Postal"
-            testID="input-postalCode"
+            testID={postalCodeTestID}
             value={postalCode}
             onChangeText={handlePostalCodeChange}
             errorMessage={postalCodeError}
@@ -246,7 +258,7 @@ export const AddressAutocomplete = ({
         <View className="flex-[2]">
           <Input
             label="Ville"
-            testID="input-city"
+            testID={cityTestID}
             value={city}
             onChangeText={handleCityChange}
             errorMessage={cityError}

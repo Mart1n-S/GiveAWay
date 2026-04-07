@@ -53,11 +53,11 @@ export const formatFirstName = (val: string) => {
 };
 
 /**
- * Regex pour les numéros de téléphone :
- * Autorise les chiffres, espaces, +, -, ., (, )
- * Longueur entre 6 et 20 caractères pour éviter les numéros trop courts ou trop longs
+ * Regex pour les numéros de téléphone français :
+ * 10 chiffres commençant par 0 suivi d'un chiffre de 1 à 9.
+ * Ex : 0606060606
  */
-export const PHONE_REGEX = /^[\d\s+\-.()/]{6,20}$/;
+export const PHONE_REGEX = /^0[1-9]\d{8}$/;
 
 /**
  * Regex pour les numéros RNA : Commence par W suivi de 9 chiffres
