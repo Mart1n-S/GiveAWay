@@ -51,3 +51,21 @@ export const formatFirstName = (val: string) => {
     return match.toUpperCase();
   });
 };
+
+/**
+ * Regex pour les numéros de téléphone français :
+ * 10 chiffres commençant par 0 suivi d'un chiffre de 1 à 9.
+ * Ex : 0606060606
+ */
+export const PHONE_REGEX = /^0[1-9]\d{8}$/;
+
+/**
+ * Regex pour les numéros RNA : Commence par W suivi de 9 chiffres
+ * Ex: W123456789
+ */
+export const RNA_REGEX = /^W\d{9}$/;
+
+/**
+ * Regex pour les numéros SIRET : Doit contenir exactement 14 chiffres
+ */
+export const SIRET_REGEX = /^\d{14}$/;

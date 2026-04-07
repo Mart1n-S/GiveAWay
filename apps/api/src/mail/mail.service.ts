@@ -144,6 +144,108 @@ export class MailService {
     return this.sendApiEmail(email, 'Bienvenue chez GiveAWay ! 🧡', html);
   }
 
+  private getAssociationVerificationTemplate(
+    associationName: string,
+    code: string,
+    time: string,
+  ): string {
+    const content = `
+      <h1 style="margin: 0 0 16px 0; color: #1e293b; font-size: 22px; font-weight: 700; text-align: center;">Bienvenue sur GiveAWay ! 🏢</h1>
+      <p style="text-align: center; margin-bottom: 16px;">
+        Nous avons bien reçu la demande d'inscription de l'association <b>${associationName}</b>.
+      </p>
+      <p style="text-align: center; margin-bottom: 32px;">
+        Pour activer votre compte et finaliser l'inscription, utilisez le code ci-dessous :
+      </p>
+
+      <div style="background-color: #fff7ed; border: 2px dashed #fb923c; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 32px;">
+        <span style="font-family: monospace; font-size: 36px; font-weight: 800; color: #cc460f; letter-spacing: 8px; margin-left: 8px;">${code}</span>
+      </div>
+
+      <p style="font-size: 14px; text-align: center; color: #64748b; margin-bottom: 24px;">
+        Ce code est valide jusqu'à <b style="color: #1e293b;">${time}</b> (15 minutes).
+      </p>
+
+      <div style="border-top: 1px solid #f1f5f9; padding-top: 24px; font-size: 13px; color: #94a3b8; text-align: center;">
+        Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet email en toute sécurité.
+      </div>
+    `;
+    return this.getEmailWrapper(content);
+  }
+
+  private getAssociationPendingReviewTemplate(associationName: string): string {
+    const content = `
+      <h1 style="margin: 0 0 16px 0; color: #1e293b; font-size: 22px; font-weight: 700; text-align: center;">Dossier reçu, en cours d'examen 🔍</h1>
+      <p style="text-align: center; margin-bottom: 24px;">
+        Nous avons bien reçu la demande d'inscription de l'association <b>${associationName}</b>.
+      </p>
+      <p style="text-align: center; margin-bottom: 32px;">
+        Votre dossier nécessite une vérification manuelle par notre équipe. Nous reviendrons vers vous sous quelques jours ouvrés.
+      </p>
+      <div style="border-top: 1px solid #f1f5f9; padding-top: 24px; font-size: 13px; color: #94a3b8; text-align: center;">
+        Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet email en toute sécurité.
+      </div>
+    `;
+    return this.getEmailWrapper(content);
+  }
+
+  async sendAssociationVerificationEmail(
+    email: string,
+    associationName: string,
+    code: string,
+  ) {
+    if (
+      this.config.get('NODE_ENV') === 'test' ||
+      this.config.get('USE_DETERMINISTIC_OTP') === 'true'
+    ) {
+      console.log(
+        `\n📨 [MAIL SERVICE] Vérification email association pour : ${email}`,
+      );
+      console.log(`🏢 Association : ${associationName}`);
+      console.log(`🔢 Code de validation : ${code}`);
+      console.log(`⏳ Expire dans : 15 minutes\n`);
+      return await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+
+    const expiresAt = new Date(Date.now() + 15 * 60000).toLocaleTimeString(
+      'fr-FR',
+      { hour: '2-digit', minute: '2-digit' },
+    );
+    const html = this.getAssociationVerificationTemplate(
+      associationName,
+      code,
+      expiresAt,
+    );
+    return this.sendApiEmail(
+      email,
+      'Activez le compte de votre association GiveAWay 🧡',
+      html,
+    );
+  }
+
+  async sendAssociationPendingReviewEmail(
+    email: string,
+    associationName: string,
+  ) {
+    if (
+      this.config.get('NODE_ENV') === 'test' ||
+      this.config.get('USE_DETERMINISTIC_OTP') === 'true'
+    ) {
+      console.log(
+        `\n📨 [MAIL SERVICE] Dossier association en revue manuelle pour : ${email}`,
+      );
+      console.log(`🏢 Association : ${associationName}\n`);
+      return await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+
+    const html = this.getAssociationPendingReviewTemplate(associationName);
+    return this.sendApiEmail(
+      email,
+      "Votre dossier GiveAWay est en cours d'examen 🔍",
+      html,
+    );
+  }
+
   async sendPasswordResetEmail(email: string, token: string) {
     if (
       this.config.get('NODE_ENV') === 'test' ||

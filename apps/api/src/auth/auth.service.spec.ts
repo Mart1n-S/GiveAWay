@@ -98,7 +98,7 @@ describe('AuthService (shared helpers)', () => {
       });
     });
 
-    it("❌ Doit lever ConflictException si l'email est pris", async () => {
+    it("❌ Doit lever ConflictException si l'email est pris par un user", async () => {
       mockPrisma.user.findUnique.mockResolvedValue({ id: 1 });
 
       await expect(
@@ -173,7 +173,11 @@ describe('AuthService (shared helpers)', () => {
       expect(mockPrisma.token.deleteMany).toHaveBeenCalledWith({
         where: { userId: 1, type: TokenType.EMAIL_VERIFICATION },
       });
-      expect(mockPrisma.token.create).toHaveBeenCalled();
+      expect(mockPrisma.token.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ userId: 1 }),
+        }),
+      );
       expect(typeof code).toBe('string');
       expect(code).toHaveLength(6);
     });

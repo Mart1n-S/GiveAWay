@@ -436,8 +436,13 @@ async function main() {
 
     interface AssociationSeed {
       name: string;
-      email: string;
       siret: string;
+      rna?: string;
+      phone?: string;
+      website?: string;
+      description?: string;
+      object: string;
+      legalStatus: string;
       categoryName: CategoryName;
       ownerIndex: number;
       street: string;
@@ -454,8 +459,13 @@ async function main() {
       // ------------------------------------------------------------------
       {
         name: 'Les Restos du Cœur Aix',
-        email: 'contact@restos-aix.fr',
         siret: '77568736901230',
+        rna: 'W133004794',
+        phone: '0442273388',
+        website: 'https://www.restosducoeur.org',
+        description: 'Association d\'aide alimentaire et d\'insertion sociale, antenne aixoise des Restaurants du Cœur fondés par Coluche en 1985.',
+        object: 'Aider et participer au reclassement social et économique des personnes en difficulté par la distribution de repas gratuits.',
+        legalStatus: 'Association loi 1901',
         categoryName: 'Humanitaire & Solidarité',
         ownerIndex: 0,
         street: '55 Avenue Sainte-Victoire',
@@ -537,8 +547,13 @@ async function main() {
       // ------------------------------------------------------------------
       {
         name: 'Aix Environnement',
-        email: 'contact@aix-environnement.fr',
         siret: '89234567890123',
+        rna: 'W132017845',
+        phone: '0442219900',
+        website: 'https://www.aix-environnement.fr',
+        description: 'Association de protection de l\'environnement et de sensibilisation à l\'écologie dans le bassin aixois.',
+        object: 'Protéger, valoriser et restaurer les espaces naturels et la biodiversité du territoire d\'Aix-en-Provence et de ses environs.',
+        legalStatus: 'Association loi 1901',
         categoryName: 'Environnement & Nature',
         ownerIndex: 1,
         street: '8 Chemin des Infirmeries',
@@ -627,8 +642,13 @@ async function main() {
       // ------------------------------------------------------------------
       {
         name: 'La Chance aux Jeunes Aix',
-        email: 'contact@chance-jeunes-aix.fr',
         siret: '43219876543210',
+        rna: 'W133008521',
+        phone: '0442271155',
+        website: 'https://www.lachanceauxjeunes-aix.fr',
+        description: 'Association de soutien scolaire, de mentorat et d\'insertion professionnelle pour les jeunes des quartiers prioritaires d\'Aix-en-Provence.',
+        object: 'Favoriser l\'égalité des chances en accompagnant les jeunes en difficulté scolaire et sociale vers la réussite et l\'insertion professionnelle.',
+        legalStatus: 'Association loi 1901',
         categoryName: 'Éducation & Jeunesse',
         ownerIndex: 5,
         street: '20 Rue des Écoles',
@@ -713,8 +733,13 @@ async function main() {
       // ------------------------------------------------------------------
       {
         name: 'Croix-Rouge Aix-en-Provence',
-        email: 'delegation@croixrouge-aix.fr',
         siret: '77567432100987',
+        rna: 'W133000128',
+        phone: '0442381200',
+        website: 'https://www.croix-rouge.fr',
+        description: 'Délégation locale de la Croix-Rouge française, engagée dans les secours d\'urgence, l\'aide sociale et la formation aux premiers secours.',
+        object: 'Prévenir et atténuer les souffrances humaines, protéger la vie, la santé et la dignité humaine, sans discrimination.',
+        legalStatus: 'Association reconnue d\'utilité publique',
         categoryName: 'Santé & Médical',
         ownerIndex: 5,
         street: '15 Boulevard du Roi René',
@@ -796,8 +821,13 @@ async function main() {
       // ------------------------------------------------------------------
       {
         name: 'Mémoires de Provence',
-        email: 'contact@memoires-provence.fr',
         siret: '55123456789012',
+        rna: 'W133012034',
+        phone: '0442263311',
+        website: 'https://www.memoires-provence.fr',
+        description: 'Association dédiée à la préservation, la transmission et la valorisation du patrimoine historique et culturel provençal.',
+        object: 'Collecter, conserver et diffuser le patrimoine culturel, mémoriel et historique de la Provence auprès du grand public.',
+        legalStatus: 'Association loi 1901',
         categoryName: 'Culture & Patrimoine',
         ownerIndex: 0,
         street: '2 Place des Cardeurs',
@@ -867,8 +897,13 @@ async function main() {
       // ------------------------------------------------------------------
       {
         name: 'SPA Aix-en-Provence',
-        email: 'refuge@spa-aix.fr',
         siret: '34567891234567',
+        rna: 'W133005667',
+        phone: '0442200044',
+        website: 'https://www.spa.asso.fr',
+        description: 'Refuge de la Société Protectrice des Animaux d\'Aix-en-Provence, accueillant chiens, chats et NAC abandonnés ou maltraités.',
+        object: 'Protéger les animaux contre toutes formes de mauvais traitements, recueillir les animaux abandonnés et favoriser leur adoption.',
+        legalStatus: 'Association loi 1901',
         categoryName: 'Défense des animaux',
         ownerIndex: 6,
         street: '480 Chemin de la Madeleine',
@@ -939,9 +974,15 @@ async function main() {
       const asso = await tx.association.create({
         data: {
           name: assoData.name,
-          email: assoData.email,
           siret: assoData.siret,
+          rna: assoData.rna,
+          phone: assoData.phone,
+          website: assoData.website,
+          description: assoData.description,
+          object: assoData.object,
+          legalStatus: assoData.legalStatus,
           status: 'VALIDATED',
+          requiresManualReview: false,
           category: { connect: { id: categoryId(assoData.categoryName) } },
           address: {
             create: {
@@ -1056,6 +1097,7 @@ async function main() {
 📊 Résumé :
   - 7 utilisateurs (1 admin, 2 bénévoles actifs, 1 pending, 1 suspendu, 1 supprimé)
   - 6 associations validées à Aix-en-Provence
+      (avec objet statutaire, statut juridique, RNA, téléphone, site web, email vérifié)
   - 20 missions (MISSION, EVENT, COLLECT, INFO — ACTIVE et ARCHIVED)
   - Skills, causes, publics et types bénévoles typés statiquement
   - 3 participations de démonstration

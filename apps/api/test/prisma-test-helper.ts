@@ -18,12 +18,14 @@ const adapter = new PrismaPg({
 export const prisma = new PrismaClient({ adapter });
 
 export async function cleanDatabase() {
-  // L'ordre suppression : Enfants (Tokens) puis Parents (Users)
-  // On utilise deleteMany pour éviter les erreurs si la table est déjà vide
+  // L'ordre suppression : Enfants (Tokens, AssociationUser via cascade) puis Parents (Users, Associations).
+  // Les Associations ne sont pas FK'd vers User : il faut les supprimer explicitement
+  // pour éviter les rangées orphelines entre tests (notamment d'inscription d'association).
   const deleteTokens = prisma.token.deleteMany();
+  const deleteAssociations = prisma.association.deleteMany();
   const deleteUsers = prisma.user.deleteMany();
 
-  await prisma.$transaction([deleteTokens, deleteUsers]);
+  await prisma.$transaction([deleteTokens, deleteAssociations, deleteUsers]);
 }
 
 /**

@@ -20,6 +20,7 @@ import { LoginController } from './login/login.controller';
 import { LoginService } from './login/login.service';
 import { RegisterController } from './register/register.controller';
 import { RegisterService } from './register/register.service';
+import { AssociationVerificationService } from './register/association-verification.service';
 
 @Module({
   imports: [ConfigModule, PassportModule, JwtModule.register({}), FilesModule],
@@ -43,6 +44,7 @@ import { RegisterService } from './register/register.service';
     PasswordService,
     LoginService,
     RegisterService,
+    AssociationVerificationService,
   ],
   exports: [AuthService],
 })
