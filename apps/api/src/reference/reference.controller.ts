@@ -1,5 +1,5 @@
 import { Controller, Get, HttpCode, HttpStatus } from '@nestjs/common';
-import { Skill, Cause } from '@repo/shared';
+import { AssociationCategory, Cause, Skill } from '@repo/shared';
 import { ReferenceService } from './reference.service';
 
 @Controller('reference')
@@ -26,5 +26,16 @@ export class ReferenceController {
   @HttpCode(HttpStatus.OK)
   async getCauses(): Promise<Cause[]> {
     return this.referenceService.getCauses();
+  }
+
+  /**
+   * GET /reference/association-categories
+   * Retourne la liste des catégories d'associations.
+   * Route publique — utilisée pour les filtres de la carte.
+   */
+  @Get('association-categories')
+  @HttpCode(HttpStatus.OK)
+  async getAssociationCategories(): Promise<AssociationCategory[]> {
+    return this.referenceService.getAssociationCategories();
   }
 }

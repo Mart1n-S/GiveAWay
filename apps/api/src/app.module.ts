@@ -11,6 +11,7 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'node:path';
 import { FilesModule } from './common/files/files.module';
 import { ReferenceModule } from './reference/reference.module';
+import { AssociationModule } from './association/association.module';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { ReferenceModule } from './reference/reference.module';
     FilesModule, // Gestion des fichiers (upload, stockage, suppression)
     ProfileModule, // Gestion du profil utilisateur
     ReferenceModule, // Endpoints de référence (compétences, causes, etc.)
+    AssociationModule, // Associations (recherche par géolocalisation)
   ],
   controllers: [],
   providers: [
