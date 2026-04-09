@@ -5,6 +5,13 @@ export enum UserStatus {
   DELETED = "DELETED",
 }
 
+export enum AssociationStatus {
+  PENDING = "PENDING",
+  VALIDATED = "VALIDATED",
+  REJECTED = "REJECTED",
+  SUSPENDED = "SUSPENDED",
+}
+
 export enum UserRole {
   USER = "USER",
   ADMIN = "ADMIN",
