@@ -11,6 +11,8 @@ import {
   Post,
   Req,
   UseGuards,
+  ParseFloatPipe,
+  Query,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import {
@@ -24,6 +26,7 @@ import {
   UpdateMemberRoleSchema,
   TransferOwnerDto,
   TransferOwnerSchema,
+  AssociationMapItem,
 } from '@repo/shared';
 import { AssociationRole } from '../generated/prisma/client';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -162,5 +165,46 @@ export class AssociationController {
       dto,
       req.user.id,
     );
+  }
+
+  /**
+   * GET /associations/nearby
+   *   ?lat=<float>&lng=<float>
+   *   &radius=10          (km, défaut 10, max 50)
+   *   &categoryIds=1,2,3  (optionnel, virgule-séparé)
+   *   &createdAfter=2024-01-01  (optionnel, ISO date)
+   *   &createdBefore=2025-01-01 (optionnel, ISO date)
+   *
+   * Retourne les associations validées dans un rayon donné autour d'un point.
+   * Route publique — aucune authentification requise.
+   */
+  @Get('nearby')
+  @HttpCode(HttpStatus.OK)
+  async getNearby(
+    @Query('lat', ParseFloatPipe) lat: number,
+    @Query('lng', ParseFloatPipe) lng: number,
+    @Query('radius') radius?: string,
+    @Query('categoryIds') categoryIds?: string,
+    @Query('createdAfter') createdAfter?: string,
+    @Query('createdBefore') createdBefore?: string,
+  ): Promise<AssociationMapItem[]> {
+    const radiusKm = radius ? parseFloat(radius) : 10;
+
+    const parsedCategoryIds = categoryIds
+      ? categoryIds.split(',').map(Number).filter(Boolean)
+      : undefined;
+
+    const parsedCreatedAfter = createdAfter
+      ? new Date(createdAfter)
+      : undefined;
+    const parsedCreatedBefore = createdBefore
+      ? new Date(createdBefore)
+      : undefined;
+
+    return this.associationService.findNearby(lat, lng, radiusKm, {
+      categoryIds: parsedCategoryIds,
+      createdAfter: parsedCreatedAfter,
+      createdBefore: parsedCreatedBefore,
+    });
   }
 }

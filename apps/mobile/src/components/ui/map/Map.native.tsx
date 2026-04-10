@@ -1,60 +1,85 @@
-import { View, Text, StyleSheet, Platform } from "react-native";
-import { SetStateAction, useState } from "react";
-import MapView, { Marker, Region } from "react-native-maps";
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "expo-router";
+import MapView, { Callout, Marker, Region } from "react-native-maps";
 import Constants, { ExecutionEnvironment } from "expo-constants";
+import { MissionService } from "@/services/mission.service";
+import { MapFilters } from "./MapFilters";
+import type { MapFiltersValue } from "./MapFilters";
+import type { MissionMapItem } from "@repo/shared";
 
-const MOCK_LISTINGS = [
-  {
-    id: "1",
-    title: "Appartement centre-ville",
-    price: 95,
-    latitude: 43.5297,
-    longitude: 5.4474,
-  },
-  {
-    id: "2",
-    title: "Studio cosy",
-    price: 72,
-    latitude: 43.5312,
-    longitude: 5.4413,
-  },
-  {
-    id: "3",
-    title: "Loft moderne",
-    price: 130,
-    latitude: 43.5268,
-    longitude: 5.4522,
-  },
-  {
-    id: "4",
-    title: "Maison avec terrasse",
-    price: 210,
-    latitude: 43.5335,
-    longitude: 5.4498,
-  },
-];
+const INITIAL_REGION: Region = {
+  latitude: 43.52916259033478,
+  longitude: 5.442325981514346,
+  latitudeDelta: 0.05,
+  longitudeDelta: 0.05,
+};
+const DEBOUNCE_MS = 1000;
+const MAX_DESC_LENGTH = 110;
 
-// ---- CUSTOM PRICE MARKER ----
-// TODO: refaire dans un composant
-function PriceMarker({ price }: { price: number }) {
-  return (
-    <View style={styles.markerContainer}>
-      <Text style={styles.markerText}>{price}€</Text>
-    </View>
-  );
-}
+// Badge couleur selon le type
+const TYPE_LABELS: Record<MissionMapItem["type"], string> = {
+  MISSION: "Mission",
+  EVENT: "Événement",
+  COLLECT: "Collecte",
+  INFO: "Info",
+};
 
 export default function Map() {
-  const [region, setRegion] = useState<Region>({
-    latitude: 43.5297,
-    longitude: 5.4474,
-    latitudeDelta: 0.02,
-    longitudeDelta: 0.02,
-  });
+  const router = useRouter();
+  const mapRef = useRef<MapView>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Placeholder si on est dans un Development Build ou APK
-  // (clé Google Maps non configurée)
-  // Sur Expo Go : la carte fonctionne sans clé
+  const [missions, setMissions] = useState<MissionMapItem[]>([]);
+
+  // ---------------------------------------------------------------- fetch ---
+
+  const fetchMissions = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const data = await MissionService.getMissionsForMap();
+        setMissions(data);
+      } catch (err) {
+        console.error("fetchMissions map error:", err);
+      }
+    }, DEBOUNCE_MS);
+  }, []);
+
+  useEffect(() => {
+    fetchMissions();
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [fetchMissions]);
+
+  // --------------------------------------------------------- filtres ---
+
+  const handleFiltersChange = useCallback(
+    ({ center }: MapFiltersValue) => {
+      if (center) {
+        mapRef.current?.animateToRegion(
+          {
+            latitude: center[0],
+            longitude: center[1],
+            latitudeDelta: 0.05,
+            longitudeDelta: 0.05,
+          },
+          800,
+        );
+      }
+    },
+    [],
+  );
+
+  // --------------------------------------------------------- placeholder Android dev build ---
+
   const isNativeBuild =
     Constants.executionEnvironment !== ExecutionEnvironment.StoreClient;
 
@@ -69,50 +94,87 @@ export default function Map() {
     );
   }
 
-  return (
-    <View style={{ flex: 1, height: "100%", width: "100%" }}>
-      <MapView
-        style={{ flex: 1 }}
-        initialRegion={region}
-        onRegionChangeComplete={(newRegion: SetStateAction<Region>) => {
-          setRegion(newRegion);
+  // ---------------------------------------------------------------- render ---
 
-          // 👉 ici tu brancheras ton appel API NestJS plus tard
-          console.log("Region changed:", newRegion);
-        }}
+  return (
+    <View style={styles.container}>
+      <MapView
+        ref={mapRef}
+        style={{ flex: 1 }}
+        initialRegion={INITIAL_REGION}
+        onRegionChangeComplete={() => fetchMissions()}
       >
-        {MOCK_LISTINGS.map((listing) => (
-          <Marker
-            key={listing.id}
-            coordinate={{
-              latitude: listing.latitude,
-              longitude: listing.longitude,
-            }}
-          >
-            <PriceMarker price={listing.price} />
-          </Marker>
-        ))}
+        {missions.map((mission) => {
+          const excerpt =
+            mission.description && mission.description.length > MAX_DESC_LENGTH
+              ? mission.description.slice(0, MAX_DESC_LENGTH).trimEnd() + "…"
+              : mission.description;
+
+          return (
+            <Marker
+              key={mission.id}
+              coordinate={{
+                latitude: mission.latitude,
+                longitude: mission.longitude,
+              }}
+              pinColor="#CC460F"
+            >
+              <Callout tooltip={false}>
+                <View style={styles.callout}>
+                  {/* Badge type */}
+                  <Text style={styles.calloutType}>
+                    {TYPE_LABELS[mission.type]}
+                  </Text>
+
+                  {/* Titre */}
+                  <Text style={styles.calloutName}>{mission.title}</Text>
+
+                  {/* Association */}
+                  <Text style={styles.calloutAssociation}>
+                    {mission.association.name}
+                  </Text>
+
+                  <View style={styles.divider} />
+
+                  {/* Lieu */}
+                  {mission.city && (
+                    <Text style={styles.calloutCity}>📍 {mission.city}</Text>
+                  )}
+
+                  {/* Description */}
+                  {excerpt ? (
+                    <Text style={styles.calloutDesc}>{excerpt}</Text>
+                  ) : null}
+
+                  {/* Lien vers la fiche */}
+                  <TouchableOpacity
+                    style={styles.calloutLink}
+                    onPress={() =>
+                      router.push(`/missions/${mission.id}` as never)
+                    }
+                  >
+                    <Text style={styles.calloutLinkText}>Voir la fiche →</Text>
+                  </TouchableOpacity>
+                </View>
+              </Callout>
+            </Marker>
+          );
+        })}
       </MapView>
+
+      <MapFilters onChange={handleFiltersChange} />
     </View>
   );
 }
 
+// ----------------------------------------------------------------- styles ---
+
 const styles = StyleSheet.create({
-  markerContainer: {
-    backgroundColor: "#fff",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  markerText: {
-    fontWeight: "600",
-    fontSize: 14,
+  container: {
+    flex: 1,
+    height: "100%",
+    width: "100%",
+    position: "relative",
   },
   placeholder: {
     flex: 1,
@@ -129,5 +191,53 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#999",
     marginTop: 8,
+  },
+  callout: {
+    minWidth: 200,
+    maxWidth: 260,
+    padding: 10,
+  },
+  calloutType: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#CC460F",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  calloutName: {
+    fontWeight: "700",
+    fontSize: 14,
+    color: "#111",
+    marginBottom: 2,
+  },
+  calloutAssociation: {
+    fontSize: 11,
+    color: "#666",
+    marginBottom: 2,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#EBEBEB",
+    marginVertical: 6,
+  },
+  calloutCity: {
+    fontSize: 12,
+    color: "#555",
+    marginBottom: 4,
+  },
+  calloutDesc: {
+    fontSize: 12,
+    color: "#666",
+    lineHeight: 17,
+    marginBottom: 6,
+  },
+  calloutLink: {
+    marginTop: 2,
+  },
+  calloutLinkText: {
+    fontSize: 12,
+    color: "#CC460F",
+    fontWeight: "600",
   },
 });

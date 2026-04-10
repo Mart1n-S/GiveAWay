@@ -28,3 +28,6 @@ export * from "./association/update-association.dto";
 export * from "./association/add-member.dto";
 export * from "./association/update-member-role.dto";
 export * from "./association/transfer-owner.dto";
+export * from "./mission/mission.dto";
+export * from "./association/association-map.dto";
+export * from "./association/association-category.dto";
