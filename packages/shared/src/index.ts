@@ -22,3 +22,4 @@ export * from "./profile/update-notifications.dto";
 export * from "./profile/availability.enums";
 export * from "./skill/skill.dto";
 export * from "./cause/cause.dto";
+export * from "./mission/mission.dto";

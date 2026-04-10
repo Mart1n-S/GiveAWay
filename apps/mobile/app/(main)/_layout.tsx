@@ -2,7 +2,7 @@ import { Tabs, usePathname } from "expo-router";
 import { Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "@/components/ui";
-import { AppShell, HomeIcon, UserIcon } from "@/components/layouts/AppShell";
+import { AppShell, HomeIcon, UserIcon, HandHeartIcon } from "@/components/layouts/AppShell";
 import { useAuthStore } from "@/stores/auth.store";
 
 const MOBILE_SUBPAGE_ROUTES = new Set([
@@ -54,6 +54,16 @@ export default function MainLayout() {
             title: "Accueil",
             tabBarIcon: ({ color }) => (
               <HomeIcon className="w-7 h-7" color={color} />
+            ),
+          }}
+        />
+
+        <Tabs.Screen
+          name="activites"
+          options={{
+            title: "Activités",
+            tabBarIcon: ({ color }) => (
+              <HandHeartIcon className="w-7 h-7" color={color} />
             ),
           }}
         />
