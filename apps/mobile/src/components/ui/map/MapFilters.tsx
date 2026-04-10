@@ -27,6 +27,11 @@ export interface MapFiltersValue {
 
 interface MapFiltersProps {
   onChange: (value: MapFiltersValue) => void;
+  /**
+   * `true` (défaut) : panneau positionné en absolu par-dessus la carte (usage natif).
+   * `false` : panneau en flux normal, rendu au-dessus de la carte dans une colonne.
+   */
+  floating?: boolean;
 }
 
 // --------------------------------------------------------------- geocoding ---
@@ -49,7 +54,7 @@ async function geocode(query: string): Promise<AddressSuggestion[]> {
 
 // --------------------------------------------------------------- component ---
 
-export function MapFilters({ onChange }: MapFiltersProps) {
+export function MapFilters({ onChange, floating = true }: MapFiltersProps) {
   const [addressQuery, setAddressQuery] = useState("");
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [loadingAddress, setLoadingAddress] = useState(false);
@@ -124,7 +129,7 @@ export function MapFilters({ onChange }: MapFiltersProps) {
     selectedIds.length > 0 || !!createdAfter || !!createdBefore || !!addressQuery;
 
   return (
-    <View style={styles.panel}>
+    <View style={floating ? styles.panel : styles.panelInline}>
       {/* Recherche adresse */}
       <View style={styles.row}>
         <View style={styles.inputWrap}>
@@ -224,12 +229,13 @@ export function MapFilters({ onChange }: MapFiltersProps) {
 // ----------------------------------------------------------------- styles ---
 
 const styles = StyleSheet.create({
+  // Flottant par-dessus la carte (usage natif)
   panel: {
     position: "absolute",
     top: 12,
     left: 12,
     right: 12,
-    zIndex: 1000, // au-dessus des tuiles Leaflet (max ~900) et des contrôles natifs
+    zIndex: 1000,
     backgroundColor: "#fff",
     borderRadius: 12,
     padding: 12,
@@ -238,6 +244,14 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
     elevation: 6,
+    gap: 8,
+  },
+  // En flux normal, au-dessus de la carte dans une colonne (usage web)
+  panelInline: {
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+    padding: 12,
     gap: 8,
   },
   row: {

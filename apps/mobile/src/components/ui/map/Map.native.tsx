@@ -9,11 +9,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "expo-router";
 import MapView, { Callout, Marker, Region } from "react-native-maps";
 import Constants, { ExecutionEnvironment } from "expo-constants";
-import { getNearbyAssociations } from "@/services/association.service";
-import type { NearbyFilters } from "@/services/association.service";
+import { MissionService } from "@/services/mission.service";
 import { MapFilters } from "./MapFilters";
 import type { MapFiltersValue } from "./MapFilters";
-import type { AssociationMapItem } from "@repo/shared";
+import type { MissionMapItem } from "@repo/shared";
 
 const INITIAL_REGION: Region = {
   latitude: 43.52916259033478,
@@ -24,49 +23,47 @@ const INITIAL_REGION: Region = {
 const DEBOUNCE_MS = 1000;
 const MAX_DESC_LENGTH = 110;
 
+// Badge couleur selon le type
+const TYPE_LABELS: Record<MissionMapItem["type"], string> = {
+  MISSION: "Mission",
+  EVENT: "Événement",
+  COLLECT: "Collecte",
+  INFO: "Info",
+};
+
 export default function Map() {
   const router = useRouter();
   const mapRef = useRef<MapView>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const centerRef = useRef<[number, number]>([
-    INITIAL_REGION.latitude,
-    INITIAL_REGION.longitude,
-  ]);
 
-  const [associations, setAssociations] = useState<AssociationMapItem[]>([]);
-  const [filters, setFilters] = useState<NearbyFilters>({});
+  const [missions, setMissions] = useState<MissionMapItem[]>([]);
 
   // ---------------------------------------------------------------- fetch ---
 
-  const fetchNearby = useCallback(
-    (lat: number, lng: number, activeFilters: NearbyFilters) => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(async () => {
-        try {
-          const data = await getNearbyAssociations(lat, lng, 10, activeFilters);
-          setAssociations(data);
-        } catch (err) {
-          console.error("fetchNearby error:", err);
-        }
-      }, DEBOUNCE_MS);
-    },
-    [],
-  );
+  const fetchMissions = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const data = await MissionService.getMissionsForMap();
+        setMissions(data);
+      } catch (err) {
+        console.error("fetchMissions map error:", err);
+      }
+    }, DEBOUNCE_MS);
+  }, []);
 
   useEffect(() => {
-    fetchNearby(INITIAL_REGION.latitude, INITIAL_REGION.longitude, {});
+    fetchMissions();
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [fetchNearby]);
+  }, [fetchMissions]);
 
   // --------------------------------------------------------- filtres ---
 
   const handleFiltersChange = useCallback(
-    ({ center, filters: newFilters }: MapFiltersValue) => {
-      setFilters(newFilters);
+    ({ center }: MapFiltersValue) => {
       if (center) {
-        // Déplace la caméra vers l'adresse sélectionnée
         mapRef.current?.animateToRegion(
           {
             latitude: center[0],
@@ -76,13 +73,9 @@ export default function Map() {
           },
           800,
         );
-        fetchNearby(center[0], center[1], newFilters);
-      } else {
-        const [lat, lng] = centerRef.current;
-        fetchNearby(lat, lng, newFilters);
       }
     },
-    [fetchNearby],
+    [],
   );
 
   // --------------------------------------------------------- placeholder Android dev build ---
@@ -107,50 +100,58 @@ export default function Map() {
     <View style={styles.container}>
       <MapView
         ref={mapRef}
-        style={{flex: 1}}
+        style={{ flex: 1 }}
         initialRegion={INITIAL_REGION}
-        onRegionChangeComplete={(newRegion: Region) => {
-          centerRef.current = [newRegion.latitude, newRegion.longitude];
-          fetchNearby(newRegion.latitude, newRegion.longitude, filters);
-        }}
+        onRegionChangeComplete={() => fetchMissions()}
       >
-        {associations.map((assoc) => {
+        {missions.map((mission) => {
           const excerpt =
-            assoc.description && assoc.description.length > MAX_DESC_LENGTH
-              ? assoc.description.slice(0, MAX_DESC_LENGTH).trimEnd() + "…"
-              : assoc.description;
+            mission.description && mission.description.length > MAX_DESC_LENGTH
+              ? mission.description.slice(0, MAX_DESC_LENGTH).trimEnd() + "…"
+              : mission.description;
 
           return (
             <Marker
-              key={assoc.id}
+              key={mission.id}
               coordinate={{
-                latitude: assoc.latitude,
-                longitude: assoc.longitude,
+                latitude: mission.latitude,
+                longitude: mission.longitude,
               }}
               pinColor="#CC460F"
             >
               <Callout tooltip={false}>
                 <View style={styles.callout}>
-                  {/* En-tête */}
-                  <Text style={styles.calloutName}>{assoc.name}</Text>
-                  {assoc.category && (
-                    <Text style={styles.calloutCategory}>{assoc.category}</Text>
-                  )}
+                  {/* Badge type */}
+                  <Text style={styles.calloutType}>
+                    {TYPE_LABELS[mission.type]}
+                  </Text>
+
+                  {/* Titre */}
+                  <Text style={styles.calloutName}>{mission.title}</Text>
+
+                  {/* Association */}
+                  <Text style={styles.calloutAssociation}>
+                    {mission.association.name}
+                  </Text>
 
                   <View style={styles.divider} />
 
                   {/* Lieu */}
-                  <Text style={styles.calloutCity}>📍 {assoc.city}</Text>
+                  {mission.city && (
+                    <Text style={styles.calloutCity}>📍 {mission.city}</Text>
+                  )}
 
                   {/* Description */}
                   {excerpt ? (
                     <Text style={styles.calloutDesc}>{excerpt}</Text>
                   ) : null}
 
-                  {/* Lien */}
+                  {/* Lien vers la fiche */}
                   <TouchableOpacity
                     style={styles.calloutLink}
-                    onPress={() => router.push(`/association/${assoc.id}` as never)}
+                    onPress={() =>
+                      router.push(`/missions/${mission.id}` as never)
+                    }
                   >
                     <Text style={styles.calloutLinkText}>Voir la fiche →</Text>
                   </TouchableOpacity>
@@ -171,7 +172,7 @@ export default function Map() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    height: "100%", 
+    height: "100%",
     width: "100%",
     position: "relative",
   },
@@ -196,18 +197,23 @@ const styles = StyleSheet.create({
     maxWidth: 260,
     padding: 10,
   },
+  calloutType: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#CC460F",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
   calloutName: {
     fontWeight: "700",
     fontSize: 14,
     color: "#111",
     marginBottom: 2,
   },
-  calloutCategory: {
+  calloutAssociation: {
     fontSize: 11,
-    fontWeight: "700",
-    color: "#CC460F",
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
+    color: "#666",
     marginBottom: 2,
   },
   divider: {
