@@ -12,6 +12,7 @@ import { join } from 'node:path';
 import { FilesModule } from './common/files/files.module';
 import { ReferenceModule } from './reference/reference.module';
 import { MissionModule } from './mission/mission.module';
+import { AssociationModule } from './association/association.module';
 
 @Module({
   imports: [
@@ -65,6 +66,7 @@ import { MissionModule } from './mission/mission.module';
     ProfileModule, // Gestion du profil utilisateur
     ReferenceModule, // Endpoints de référence (compétences, causes, etc.)
     MissionModule, // Listing des missions (route publique)
+    AssociationModule, // Associations (recherche par géolocalisation)
   ],
   controllers: [],
   providers: [
