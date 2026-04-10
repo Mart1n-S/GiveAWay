@@ -4,17 +4,16 @@ import {
   MissionListItem,
   MissionListResponse,
   MissionMapItem,
+  MissionListQueryDto,
 } from '@repo/shared';
+import {
+  Prisma,
+  ActivityType as PrismaActivityType,
+  MissionStatus,
+} from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
-interface FindAllOptions {
-  page?: number;
-  pageSize?: number;
-  type?: string;
-  causeId?: number;
-  city?: string;
-  search?: string;
-}
+const MAX_MAP_RESULTS = 500;
 
 @Injectable()
 export class MissionService {
@@ -23,28 +22,24 @@ export class MissionService {
   /**
    * Retourne la liste paginée des missions actives avec leurs relations.
    * Filtres optionnels : type d'activité, cause, ville, recherche textuelle.
+   *
+   * @param query — paramètres validés par MissionListQuerySchema
+   *                (page et pageSize ont des défauts Zod : 1 et 12)
    */
-  async findAll(options: FindAllOptions = {}): Promise<MissionListResponse> {
-    const {
-      page = 1,
-      pageSize = 12,
-      type,
-      causeId,
-      city,
-      search,
-    } = options;
+  async findAll(query: MissionListQueryDto): Promise<MissionListResponse> {
+    const { page, pageSize, type, causeId, city, search } = query;
 
-    const where: any = {
-      status: 'ACTIVE',
+    const where: Prisma.MissionWhereInput = {
+      status: MissionStatus.ACTIVE,
     };
 
     if (type) {
-      where.type = type;
+      where.type = type as PrismaActivityType;
     }
 
     if (causeId) {
       where.causes = {
-        some: { causeId: Number(causeId) },
+        some: { causeId },
       };
     }
 
@@ -164,18 +159,21 @@ export class MissionService {
   }
 
   /**
-   * Retourne toutes les missions actives ayant une adresse géolocalisée,
+   * Retourne les missions actives ayant une adresse géolocalisée,
    * pour affichage sur la carte interactive.
+   * Limité à MAX_MAP_RESULTS résultats pour éviter les surcharges.
    */
   async findForMap(): Promise<MissionMapItem[]> {
     const missions = await this.prisma.mission.findMany({
       where: {
-        status: 'ACTIVE',
+        status: MissionStatus.ACTIVE,
         address: {
           latitude: { not: null },
           longitude: { not: null },
         },
       },
+      take: MAX_MAP_RESULTS,
+      orderBy: { createdAt: 'desc' },
       select: {
         id: true,
         title: true,

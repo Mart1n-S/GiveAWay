@@ -16,6 +16,7 @@ import {
   AssociationRole,
   AssociationStatus,
   AssociationMapItem,
+  NearbyQueryDto,
 } from '@repo/shared';
 import {
   AssociationRole as PrismaAssociationRole,
@@ -57,14 +58,6 @@ type AssociationWithRelations = Awaited<
     createdAt: Date;
   }>;
 };
-
-const MAX_RADIUS_KM = 50;
-
-export interface NearbyFilters {
-  categoryIds?: number[];
-  createdAfter?: Date;
-  createdBefore?: Date;
-}
 
 @Injectable()
 export class AssociationService {
@@ -418,30 +411,30 @@ export class AssociationService {
    * autour d'un point géographique, en utilisant la formule de Haversine.
    * Supporte un filtre optionnel par catégorie et par date de création.
    *
-   * @param lat       - Latitude du centre (degrés décimaux)
-   * @param lng       - Longitude du centre (degrés décimaux)
-   * @param radiusKm  - Rayon de recherche en km (max 50, défaut 10)
-   * @param filters   - Filtres optionnels (catégories, dates)
+   * @param query - Paramètres validés par NearbyQuerySchema
    */
-  async findNearby(
-    lat: number,
-    lng: number,
-    radiusKm = 10,
-    filters: NearbyFilters = {},
-  ): Promise<AssociationMapItem[]> {
-    const clampedRadius = Math.min(radiusKm, MAX_RADIUS_KM);
+  async findNearby(query: NearbyQueryDto): Promise<AssociationMapItem[]> {
+    const {
+      lat,
+      lng,
+      radius,
+      limit,
+      categoryIds,
+      createdAfter,
+      createdBefore,
+    } = query;
 
     const categoryFilter =
-      filters.categoryIds && filters.categoryIds.length > 0
-        ? Prisma.sql`AND a.category_id = ANY(ARRAY[${Prisma.join(filters.categoryIds)}]::int[])`
+      categoryIds && categoryIds.length > 0
+        ? Prisma.sql`AND a.category_id = ANY(ARRAY[${Prisma.join(categoryIds)}]::int[])`
         : Prisma.empty;
 
-    const createdAfterFilter = filters.createdAfter
-      ? Prisma.sql`AND a.created_at >= ${filters.createdAfter}`
+    const createdAfterFilter = createdAfter
+      ? Prisma.sql`AND a.created_at >= ${createdAfter}`
       : Prisma.empty;
 
-    const createdBeforeFilter = filters.createdBefore
-      ? Prisma.sql`AND a.created_at <= ${filters.createdBefore}`
+    const createdBeforeFilter = createdBefore
+      ? Prisma.sql`AND a.created_at <= ${createdBefore}`
       : Prisma.empty;
 
     return this.prisma.$queryRaw<AssociationMapItem[]>`
@@ -485,8 +478,9 @@ export class AssociationService {
           ${createdAfterFilter}
           ${createdBeforeFilter}
       ) sub
-      WHERE sub.distance <= ${clampedRadius}
+      WHERE sub.distance <= ${radius}
       ORDER BY sub.distance
+      LIMIT ${limit}
     `;
   }
 

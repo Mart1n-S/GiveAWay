@@ -5,6 +5,7 @@ import { ReferenceService } from './reference.service';
 const mockReferenceService = {
   getSkills: jest.fn(),
   getCauses: jest.fn(),
+  getAssociationCategories: jest.fn(),
 };
 
 describe('ReferenceController', () => {
@@ -63,6 +64,29 @@ describe('ReferenceController', () => {
       mockReferenceService.getCauses.mockResolvedValue([]);
 
       const result = await controller.getCauses();
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getAssociationCategories', () => {
+    it('✅ Doit retourner la liste des catégories d\'associations', async () => {
+      const mockCategories = [
+        { id: 1, name: 'Aide alimentaire' },
+        { id: 2, name: 'Environnement' },
+      ];
+      mockReferenceService.getAssociationCategories.mockResolvedValue(mockCategories);
+
+      const result = await controller.getAssociationCategories();
+
+      expect(mockReferenceService.getAssociationCategories).toHaveBeenCalled();
+      expect(result).toEqual(mockCategories);
+    });
+
+    it('✅ Doit retourner un tableau vide si aucune catégorie', async () => {
+      mockReferenceService.getAssociationCategories.mockResolvedValue([]);
+
+      const result = await controller.getAssociationCategories();
 
       expect(result).toEqual([]);
     });

@@ -39,3 +39,4 @@ yarn-error.log*
 
 todo.md
 .claude
+.claude/*
