@@ -134,10 +134,12 @@ export default function Map() {
   const { MapContainer, TileLayer } = Leaflet;
 
   return (
-    <div style={{ position: "relative", height: "100%", width: "100%" }}>
-      {/* Panneau de filtres superposé à la carte */}
-      <MapFilters onChange={handleFiltersChange} />
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", width: "100%" }}>
+      {/* Filtres en flux normal, au-dessus de la carte */}
+      <MapFilters onChange={handleFiltersChange} floating={false} />
 
+      {/* Conteneur de la carte — prend toute la hauteur restante */}
+      <div style={{ flex: 1, position: "relative" }}>
       <MapContainer
         center={INITIAL_CENTER}
         zoom={13}
@@ -161,6 +163,7 @@ export default function Map() {
           />
         ))}
       </MapContainer>
+      </div>
     </div>
   );
 }
