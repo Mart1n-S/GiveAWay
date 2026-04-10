@@ -11,13 +11,20 @@ const MOBILE_SUBPAGE_ROUTES = new Set([
   "/profil/notifications",
 ]);
 
+function isMobileSubpageRoute(pathname: string): boolean {
+  if (MOBILE_SUBPAGE_ROUTES.has(pathname)) return true;
+  // Routes dynamiques : /missions/:id
+  if (/^\/missions\/\d+/.test(pathname)) return true;
+  return false;
+}
+
 export default function MainLayout() {
   const insets = useSafeAreaInsets();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const pathname = usePathname();
 
   const isMobileSubpage =
-    Platform.OS !== "web" && MOBILE_SUBPAGE_ROUTES.has(pathname);
+    Platform.OS !== "web" && isMobileSubpageRoute(pathname);
 
   return (
     <AppShell layoutType={isMobileSubpage ? "subpage" : "main"}>
@@ -59,9 +66,9 @@ export default function MainLayout() {
         />
 
         <Tabs.Screen
-          name="activites"
+          name="missions"
           options={{
-            title: "Activités",
+            title: "Missions",
             tabBarIcon: ({ color }) => (
               <HandHeartIcon className="w-7 h-7" color={color} />
             ),

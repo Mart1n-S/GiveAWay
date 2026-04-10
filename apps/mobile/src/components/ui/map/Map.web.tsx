@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "leaflet/dist/leaflet.css";
-import { getNearbyAssociations } from "@/services/association.service";
-import type { NearbyFilters } from "@/services/association.service";
-import { AssociationMarker } from "./AssociationMarker.web";
+import { MissionService } from "@/services/mission.service";
+import { MissionMarker } from "./MissionMarker.web";
 import { MapFilters } from "./MapFilters";
 import type { MapFiltersValue } from "./MapFilters";
 import { MARKER_SVG } from "./marker-icon.web";
-import type { AssociationMapItem } from "@repo/shared";
+import type { MissionMapItem } from "@repo/shared";
 
 type ReactLeaflet = typeof import("react-leaflet");
 type LeafletLib = typeof import("leaflet");
@@ -17,46 +16,37 @@ const DEBOUNCE_MS = 1000;
 export default function Map() {
   const [Leaflet, setLeaflet] = useState<ReactLeaflet | null>(null);
   const [L, setL] = useState<LeafletLib | null>(null);
-  const [associations, setAssociations] = useState<AssociationMapItem[]>([]);
-  const [filters, setFilters] = useState<NearbyFilters>({});
+  const [missions, setMissions] = useState<MissionMapItem[]>([]);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Centre courant de la carte — mis à jour par MapEvents et MapController
   const centerRef = useRef<[number, number]>(INITIAL_CENTER);
-  // Cible de déplacement demandée par le filtre adresse
   const [targetCenter, setTargetCenter] = useState<[number, number] | null>(
     null,
   );
 
   // ---------------------------------------------------------------- fetch ---
 
-  const fetchNearby = useCallback(
-    (lat: number, lng: number, activeFilters: NearbyFilters) => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(async () => {
-        try {
-          const data = await getNearbyAssociations(lat, lng, 10, activeFilters);
-          setAssociations(data);
-        } catch (err) {
-          console.error("fetchNearby error:", err);
-        }
-      }, DEBOUNCE_MS);
-    },
-    [],
-  );
+  const fetchMissions = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const data = await MissionService.getMissionsForMap();
+        setMissions(data);
+      } catch (err) {
+        console.error("fetchMissions map error:", err);
+      }
+    }, DEBOUNCE_MS);
+  }, []);
 
-  // ---------------------------------------------------------------- event listeners internes ---
+  // ---------------------------------------------------------------- event listeners ---
 
-  // Écoute les mouvements de carte via useMap() + Leaflet natif
   const MapEvents = useMemo(() => {
     if (!Leaflet) return null;
     const { useMap } = Leaflet;
     return function MapEvents({
-      onCenter,
-      activeFilters,
+      onMove,
     }: {
-      onCenter: (lat: number, lng: number, f: NearbyFilters) => void;
-      activeFilters: NearbyFilters;
+      onMove: () => void;
     }) {
       const map = useMap();
 
@@ -64,14 +54,14 @@ export default function Map() {
         const handler = () => {
           const c = map.getCenter();
           centerRef.current = [c.lat, c.lng];
-          onCenter(c.lat, c.lng, activeFilters);
+          onMove();
         };
         map.on("moveend", handler);
         handler();
         return () => {
           map.off("moveend", handler);
         };
-      }, [map, onCenter, activeFilters]);
+      }, [map, onMove]);
 
       return null;
     };
@@ -96,7 +86,7 @@ export default function Map() {
 
   // ---------------------------------------------------------------- icône custom ---
 
-  const associationIcon = useMemo(() => {
+  const missionIcon = useMemo(() => {
     if (!L) return undefined;
     return L.divIcon({
       html: MARKER_SVG,
@@ -107,7 +97,7 @@ export default function Map() {
     });
   }, [L]);
 
-  // ---------------------------------------------------------------- chargement Leaflet ---
+  // ---------------------------------------------------------------- chargement Leaflet + missions ---
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -120,31 +110,26 @@ export default function Map() {
     }
   }, []);
 
+  // Chargement initial des missions
   useEffect(() => {
+    fetchMissions();
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, []);
+  }, [fetchMissions]);
 
   // ---------------------------------------------------------------- handler filtres ---
 
   const handleFiltersChange = useCallback(
-    ({ center, filters: newFilters }: MapFiltersValue) => {
-      setFilters(newFilters);
-      if (center) {
-        setTargetCenter(center);
-        fetchNearby(center[0], center[1], newFilters);
-      } else {
-        const [lat, lng] = centerRef.current;
-        fetchNearby(lat, lng, newFilters);
-      }
+    ({ center }: MapFiltersValue) => {
+      if (center) setTargetCenter(center);
     },
-    [fetchNearby],
+    [],
   );
 
   // ---------------------------------------------------------------- render ---
 
-  if (!Leaflet || !associationIcon) return null;
+  if (!Leaflet || !missionIcon) return null;
 
   const { MapContainer, TileLayer } = Leaflet;
 
@@ -163,21 +148,16 @@ export default function Map() {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {MapEvents && (
-          <MapEvents
-            onCenter={fetchNearby}
-            activeFilters={filters}
-          />
-        )}
+        {MapEvents && <MapEvents onMove={fetchMissions} />}
         {MapController && <MapController target={targetCenter} />}
 
-        {associations.map((assoc) => (
-          <AssociationMarker
-            key={assoc.id}
-            assoc={assoc}
+        {missions.map((mission) => (
+          <MissionMarker
+            key={mission.id}
+            mission={mission}
             Marker={Leaflet.Marker}
             Popup={Leaflet.Popup}
-            icon={associationIcon}
+            icon={missionIcon}
           />
         ))}
       </MapContainer>

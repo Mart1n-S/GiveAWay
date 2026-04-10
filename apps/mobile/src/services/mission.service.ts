@@ -1,5 +1,10 @@
 import { api } from "../lib/axios";
-import { MissionListResponse, MissionListQuery } from "@repo/shared";
+import {
+  MissionDetail,
+  MissionListResponse,
+  MissionListQuery,
+  MissionMapItem,
+} from "@repo/shared";
 
 export const MissionService = {
   /**
@@ -22,6 +27,26 @@ export const MissionService = {
     const response = await api.get<MissionListResponse>("/missions", {
       params,
     });
+    return response.data;
+  },
+
+  /**
+   * GET /missions/:id
+   * Retourne le détail complet d'une mission.
+   * Route publique — pas d'authentification requise.
+   */
+  getMissionById: async (id: number): Promise<MissionDetail> => {
+    const response = await api.get<MissionDetail>(`/missions/${id}`);
+    return response.data;
+  },
+
+  /**
+   * GET /missions/map
+   * Retourne les missions géolocalisées pour affichage sur la carte.
+   * Route publique — pas d'authentification requise.
+   */
+  getMissionsForMap: async (): Promise<MissionMapItem[]> => {
+    const response = await api.get<MissionMapItem[]>("/missions/map");
     return response.data;
   },
 };

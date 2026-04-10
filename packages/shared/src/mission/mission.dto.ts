@@ -53,3 +53,52 @@ export interface MissionListQuery {
   city?: string;
   search?: string;
 }
+
+/**
+ * Représentation légère d'une mission pour l'affichage sur la carte.
+ * Uniquement les missions ayant une adresse géolocalisée (lat/lng non-null).
+ */
+export interface MissionMapItem {
+  id: number;
+  title: string;
+  description: string;
+  type: ActivityType;
+  latitude: number;
+  longitude: number;
+  city: string | null;
+
+  association: {
+    name: string;
+    logoUrl: string | null;
+  };
+}
+
+/** Détail complet d'une mission (page individuelle) */
+export interface MissionDetail {
+  id: number;
+  title: string;
+  description: string;
+  type: ActivityType;
+  status: MissionStatus;
+  hasRegistration: boolean;
+  volunteersNeeded: number | null;
+  durationInt: number | null;
+  frequency: MissionFrequency | null;
+  startDate: Date | string | null;
+  endDate: Date | string | null;
+  participantsCount: number;
+
+  association: {
+    id: number;
+    name: string;
+    logoUrl: string | null;
+    description: string | null;
+    website: string | null;
+  };
+
+  address: Address | null;
+  causes: Cause[];
+  skills: Skill[];
+  volunteerTypes: { id: number; label: string }[];
+  publicTypes: { id: number; label: string }[];
+}

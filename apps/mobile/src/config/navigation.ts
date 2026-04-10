@@ -18,9 +18,9 @@ export const PUBLIC_LINKS: NavLink[] = [
     hideInMobileDrawer: true,
   },
   {
-    id: "activites",
-    label: "Activités",
-    href: "/activites",
+    id: "missions",
+    label: "Missions",
+    href: "/missions",
     iconName: "hand-heart",
   },
 ];
