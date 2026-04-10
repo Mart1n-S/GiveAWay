@@ -83,11 +83,15 @@ describe('ReferenceService', () => {
         { id: 1, name: 'Aide alimentaire' },
         { id: 2, name: 'Environnement' },
       ];
-      mockPrismaService.associationCategory.findMany.mockResolvedValue(mockCategories);
+      mockPrismaService.associationCategory.findMany.mockResolvedValue(
+        mockCategories,
+      );
 
       const result = await service.getAssociationCategories();
 
-      expect(mockPrismaService.associationCategory.findMany).toHaveBeenCalledWith({
+      expect(
+        mockPrismaService.associationCategory.findMany,
+      ).toHaveBeenCalledWith({
         orderBy: { name: 'asc' },
         select: { id: true, name: true },
       });

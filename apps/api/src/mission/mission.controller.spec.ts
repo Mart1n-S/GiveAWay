@@ -27,9 +27,7 @@ describe('MissionController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [MissionController],
-      providers: [
-        { provide: MissionService, useValue: mockMissionService },
-      ],
+      providers: [{ provide: MissionService, useValue: mockMissionService }],
     }).compile();
 
     controller = module.get<MissionController>(MissionController);
@@ -69,7 +67,7 @@ describe('MissionController', () => {
       expect(result.pageSize).toBe(6);
     });
 
-    it('✅ Doit passer uniquement le type quand c\'est le seul filtre', async () => {
+    it("✅ Doit passer uniquement le type quand c'est le seul filtre", async () => {
       const query: MissionListQueryDto = {
         page: 1,
         pageSize: 12,
@@ -137,7 +135,7 @@ describe('MissionController', () => {
   // findById — Délégation au service
   // =========================================================================
   describe('findById', () => {
-    it('✅ Doit déléguer au service avec l\'ID parsé', async () => {
+    it("✅ Doit déléguer au service avec l'ID parsé", async () => {
       const mockDetail = { id: 42, title: 'Test' };
       mockMissionService.findById.mockResolvedValue(mockDetail);
 

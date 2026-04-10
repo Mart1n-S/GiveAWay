@@ -137,12 +137,8 @@ export class MissionService {
       address: m.address
         ? {
             ...m.address,
-            latitude: m.address.latitude
-              ? Number(m.address.latitude)
-              : null,
-            longitude: m.address.longitude
-              ? Number(m.address.longitude)
-              : null,
+            latitude: m.address.latitude ? Number(m.address.latitude) : null,
+            longitude: m.address.longitude ? Number(m.address.longitude) : null,
           }
         : null,
       causes: m.causes.map((c) => c.cause),
@@ -200,9 +196,9 @@ export class MissionService {
       title: m.title,
       description: m.description,
       type: m.type,
-      latitude: Number(m.address!.latitude),
-      longitude: Number(m.address!.longitude),
-      city: m.address!.city ?? null,
+      latitude: Number(m.address.latitude),
+      longitude: Number(m.address.longitude),
+      city: m.address.city ?? null,
       association: m.association,
     }));
   }

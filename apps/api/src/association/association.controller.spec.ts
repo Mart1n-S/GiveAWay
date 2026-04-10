@@ -147,7 +147,7 @@ describe('AssociationController', () => {
   // getAssociation
   // =========================================================================
   describe('getAssociation', () => {
-    it('✅ Doit déléguer au service avec l\'ID correct', async () => {
+    it("✅ Doit déléguer au service avec l'ID correct", async () => {
       mockAssociationService.getAssociation.mockResolvedValue(
         mockAssociationDto,
       );
@@ -158,7 +158,7 @@ describe('AssociationController', () => {
       expect(result).toEqual(mockAssociationDto);
     });
 
-    it('✅ Doit propager NotFoundException si l\'association n\'existe pas', async () => {
+    it("✅ Doit propager NotFoundException si l'association n'existe pas", async () => {
       mockAssociationService.getAssociation.mockRejectedValue(
         new NotFoundException('Association introuvable'),
       );
@@ -173,7 +173,7 @@ describe('AssociationController', () => {
   // updateAssociation
   // =========================================================================
   describe('updateAssociation', () => {
-    it('✅ Doit déléguer au service avec l\'ID et le DTO', async () => {
+    it("✅ Doit déléguer au service avec l'ID et le DTO", async () => {
       const dto: UpdateAssociationDto = { name: 'Nouveau nom' };
       mockAssociationService.updateAssociation.mockResolvedValue({
         ...mockAssociationDto,
@@ -227,7 +227,7 @@ describe('AssociationController', () => {
   // addMember
   // =========================================================================
   describe('addMember', () => {
-    it('✅ Doit déléguer au service avec l\'ID et le DTO', async () => {
+    it("✅ Doit déléguer au service avec l'ID et le DTO", async () => {
       const dto: AddMemberDto = { email: 'new@test.com' };
       mockAssociationService.addMember.mockResolvedValue(mockMemberDto);
 
@@ -248,7 +248,7 @@ describe('AssociationController', () => {
       ).rejects.toThrow(ConflictException);
     });
 
-    it('✅ Doit propager NotFoundException si l\'utilisateur est introuvable', async () => {
+    it("✅ Doit propager NotFoundException si l'utilisateur est introuvable", async () => {
       mockAssociationService.addMember.mockRejectedValue(
         new NotFoundException('Utilisateur introuvable'),
       );
@@ -280,9 +280,9 @@ describe('AssociationController', () => {
       expect(result.role).toBe('ADMIN');
     });
 
-    it('✅ Doit propager ForbiddenException si on tente de modifier l\'OWNER', async () => {
+    it("✅ Doit propager ForbiddenException si on tente de modifier l'OWNER", async () => {
       mockAssociationService.updateMemberRole.mockRejectedValue(
-        new ForbiddenException('Impossible de modifier le rôle de l\'OWNER'),
+        new ForbiddenException("Impossible de modifier le rôle de l'OWNER"),
       );
 
       await expect(
@@ -295,7 +295,7 @@ describe('AssociationController', () => {
   // removeMember
   // =========================================================================
   describe('removeMember', () => {
-    it('✅ Doit déléguer avec associationId, memberId et l\'ID de l\'utilisateur requérant', async () => {
+    it("✅ Doit déléguer avec associationId, memberId et l'ID de l'utilisateur requérant", async () => {
       mockAssociationService.removeMember.mockResolvedValue(undefined);
       const req = mockRequest(42);
 
@@ -308,9 +308,9 @@ describe('AssociationController', () => {
       );
     });
 
-    it('✅ Doit propager ForbiddenException si retrait d\'un OWNER', async () => {
+    it("✅ Doit propager ForbiddenException si retrait d'un OWNER", async () => {
       mockAssociationService.removeMember.mockRejectedValue(
-        new ForbiddenException('Impossible de retirer l\'OWNER'),
+        new ForbiddenException("Impossible de retirer l'OWNER"),
       );
 
       await expect(
@@ -323,7 +323,7 @@ describe('AssociationController', () => {
   // transferOwner
   // =========================================================================
   describe('transferOwner', () => {
-    it('✅ Doit déléguer avec associationId, DTO et l\'ID du requérant', async () => {
+    it("✅ Doit déléguer avec associationId, DTO et l'ID du requérant", async () => {
       mockAssociationService.transferOwner.mockResolvedValue(undefined);
       const dto: TransferOwnerDto = { newOwnerUserId: 99 };
       const req = mockRequest(42);
@@ -340,7 +340,9 @@ describe('AssociationController', () => {
     it('✅ Doit propager BadRequestException si transfert à soi-même', async () => {
       const { BadRequestException } = await import('@nestjs/common');
       mockAssociationService.transferOwner.mockRejectedValue(
-        new BadRequestException('Vous ne pouvez pas vous transférer à vous-même'),
+        new BadRequestException(
+          'Vous ne pouvez pas vous transférer à vous-même',
+        ),
       );
 
       await expect(

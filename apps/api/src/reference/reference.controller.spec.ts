@@ -70,12 +70,14 @@ describe('ReferenceController', () => {
   });
 
   describe('getAssociationCategories', () => {
-    it('✅ Doit retourner la liste des catégories d\'associations', async () => {
+    it("✅ Doit retourner la liste des catégories d'associations", async () => {
       const mockCategories = [
         { id: 1, name: 'Aide alimentaire' },
         { id: 2, name: 'Environnement' },
       ];
-      mockReferenceService.getAssociationCategories.mockResolvedValue(mockCategories);
+      mockReferenceService.getAssociationCategories.mockResolvedValue(
+        mockCategories,
+      );
 
       const result = await controller.getAssociationCategories();
 

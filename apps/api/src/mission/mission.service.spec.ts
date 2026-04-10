@@ -175,9 +175,7 @@ describe('MissionService', () => {
 
     it('✅ Doit aplatir les volunteerTypes depuis les pivots', async () => {
       const mission = makePrismaMission({
-        volunteerTypes: [
-          { volunteerType: { id: 1, label: 'Ouvert à tous' } },
-        ],
+        volunteerTypes: [{ volunteerType: { id: 1, label: 'Ouvert à tous' } }],
       });
       mockPrismaService.mission.findMany.mockResolvedValue([mission]);
       mockPrismaService.mission.count.mockResolvedValue(1);
@@ -423,7 +421,7 @@ describe('MissionService', () => {
       ]);
     });
 
-    it('❌ Doit lever NotFoundException si la mission n\'existe pas', async () => {
+    it("❌ Doit lever NotFoundException si la mission n'existe pas", async () => {
       mockPrismaService.mission.findUnique.mockResolvedValue(null);
 
       await expect(service.findById(999)).rejects.toThrow(NotFoundException);
