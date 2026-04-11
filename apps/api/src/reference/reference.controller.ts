@@ -1,5 +1,11 @@
 import { Controller, Get, HttpCode, HttpStatus } from '@nestjs/common';
-import { AssociationCategory, Cause, PublicType, Skill, VolunteerType } from '@repo/shared';
+import {
+  AssociationCategory,
+  Cause,
+  PublicType,
+  Skill,
+  VolunteerType,
+} from '@repo/shared';
 import { ReferenceService } from './reference.service';
 
 @Controller('reference')

@@ -260,7 +260,8 @@ describe('MissionService', () => {
 
       const whereArg =
         mockPrismaService.mission.findMany.mock.calls[0][0].where;
-      expect(whereArg.type).toBe('EVENT');
+      // Le service normalise toujours en { in: [...] } pour supporter types multiples
+      expect(whereArg.type).toEqual({ in: ['EVENT'] });
     });
 
     it('✅ Doit filtrer par causeId quand fourni', async () => {
@@ -271,7 +272,8 @@ describe('MissionService', () => {
 
       const whereArg =
         mockPrismaService.mission.findMany.mock.calls[0][0].where;
-      expect(whereArg.causes).toEqual({ some: { causeId: 5 } });
+      // causeId est normalisé en { in: [causeId] } pour supporter causeIds multiples
+      expect(whereArg.causes).toEqual({ some: { causeId: { in: [5] } } });
     });
 
     it('✅ Doit filtrer par ville (insensible à la casse)', async () => {
@@ -331,9 +333,9 @@ describe('MissionService', () => {
       const whereArg =
         mockPrismaService.mission.findMany.mock.calls[0][0].where;
       expect(whereArg.status).toBe('ACTIVE');
-      expect(whereArg.type).toBe('COLLECT');
+      expect(whereArg.type).toEqual({ in: ['COLLECT'] });
       expect(whereArg.address.city.contains).toBe('Aix');
-      expect(whereArg.causes.some.causeId).toBe(3);
+      expect(whereArg.causes.some.causeId).toEqual({ in: [3] });
     });
   });
 

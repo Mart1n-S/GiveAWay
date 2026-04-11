@@ -1,5 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { AssociationCategory, Cause, PublicType, Skill, VolunteerType } from '@repo/shared';
+import {
+  AssociationCategory,
+  Cause,
+  PublicType,
+  Skill,
+  VolunteerType,
+} from '@repo/shared';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()

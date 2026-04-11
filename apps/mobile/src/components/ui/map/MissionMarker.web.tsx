@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import { useState } from "react";
+import { useRouter } from "expo-router";
 import type { MissionMapItem } from "@repo/shared";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -85,12 +86,11 @@ const POPUP_CSS = `
   display: flex; align-items: center; justify-content: center; gap: 6px;
   margin-top: 8px; padding: 8px 14px; width: 100%;
   background: #CC460F; border: 1px solid #CC460F; border-radius: 6px;
-  color: #fff; font-size: 13px; font-weight: 700;
+  color: #fff; font-family: inherit; font-size: 13px; font-weight: 700;
   text-decoration: none; text-align: center; cursor: pointer;
   transition: background 120ms ease, border-color 120ms ease;
   outline: 2px solid transparent; outline-offset: 2px;
 }
-.leaflet-container a.mm-details-btn { color: #fff; }
 .mm-details-btn:hover {
   background: #A6390C; border-color: #A6390C;
 }
@@ -196,6 +196,7 @@ interface PopupContentProps {
 
 function PopupContent({ missions, currentIndex, setCurrentIndex, useMap }: PopupContentProps) {
   const map = useMap();
+  const router = useRouter();
   const current = missions[Math.min(currentIndex, missions.length - 1)];
 
   const excerpt =
@@ -276,15 +277,16 @@ function PopupContent({ missions, currentIndex, setCurrentIndex, useMap }: Popup
         </div>
       )}
 
-      {/* Bouton Détails */}
-      <a
+      {/* Bouton Détails — navigation client-side Expo Router
+          (pas de <a href> qui déclencherait un full page reload et casserait l'historique) */}
+      <button
         className="mm-details-btn"
-        href={`/missions/${current.id}`}
-        role="button"
+        type="button"
+        onClick={() => router.push(`/missions/${current.id}` as never)}
       >
         <span>Détails</span>
         <ArrowRightSvg />
-      </a>
+      </button>
     </div>
   );
 }

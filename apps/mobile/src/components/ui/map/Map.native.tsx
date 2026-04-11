@@ -8,14 +8,34 @@ import {
 } from "react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Button } from "@/components/ui";
 import MapView, { Marker, Region } from "react-native-maps";
 import Constants, { ExecutionEnvironment } from "expo-constants";
 import { MissionService } from "@/services/mission.service";
 import { MissionMarkerNative, TYPE_COLORS } from "./MissionMarker.native";
 import type { MissionListQuery, MissionMapItem } from "@repo/shared";
+import CloseIconSource from "@assets/icons/ic_close.svg";
+import ArrowRightIconSource from "@assets/icons/ic_arrow_right.svg";
+import ChevronLeftIconSource from "@assets/icons/ic_chevron_left.svg";
+import ChevronRightIconSource from "@assets/icons/ic_chevron_right.svg";
+import { cssInterop } from "react-native-css-interop";
+import clsx from "clsx";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const Supercluster = require("supercluster");
+
+const iconConfig = {
+  className: {
+    target: "style",
+    nativeStyleToProp: { width: true, height: true, color: true },
+  },
+} as const;
+
+const CloseIcon = cssInterop(CloseIconSource, iconConfig);
+const ArrowRightIcon = cssInterop(ArrowRightIconSource, iconConfig);
+const ChevronLeftIcon = cssInterop(ChevronLeftIconSource, iconConfig);
+const ChevronRightIcon = cssInterop(ChevronRightIconSource, iconConfig);
 
 const INITIAL_REGION: Region = {
   latitude: 43.52916259033478,
@@ -51,6 +71,9 @@ function groupByCoords(items: MissionMapItem[]): MissionMapItem[][] {
 // ─── Popup overlay ────────────────────────────────────────────────────────────
 // Rendu en dehors du contexte natif MapView → tous les composants RN fonctionnent.
 
+// Hauteur fixe de la bottom tab bar (voir apps/mobile/app/(main)/_layout.tsx)
+const TAB_BAR_BASE_HEIGHT = 60;
+
 interface MissionPopupProps {
   missions: MissionMapItem[];
   currentIndex: number;
@@ -65,8 +88,18 @@ function MissionPopup({
   onClose,
 }: MissionPopupProps) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const current = missions[Math.min(currentIndex, missions.length - 1)];
   const color = TYPE_COLORS[current.type];
+
+  // Dans MissionPopup
+  const handlePrev = useCallback(() => {
+    if (currentIndex > 0) onIndexChange(currentIndex - 1);
+  }, [currentIndex, onIndexChange]);
+
+  const handleNext = useCallback(() => {
+    if (currentIndex < missions.length - 1) onIndexChange(currentIndex + 1);
+  }, [currentIndex, missions.length, onIndexChange]);
 
   const excerpt =
     current.description && current.description.length > MAX_DESC
@@ -76,21 +109,22 @@ function MissionPopup({
   const isPrevDisabled = currentIndex === 0;
   const isNextDisabled = currentIndex === missions.length - 1;
 
+  const bottomOffset = TAB_BAR_BASE_HEIGHT + insets.bottom + 8;
+
   return (
-    <View style={popup.container}>
+    <View style={[popup.container, { bottom: bottomOffset }]}>
       {/* En-tête : badge type + bouton fermer */}
       <View style={popup.header}>
         <Text style={[popup.type, { color }]}>{TYPE_LABELS[current.type]}</Text>
-        <Pressable
+        <Button
+          variant="tertiary"
           onPress={onClose}
           accessibilityLabel="Fermer"
-          style={({ pressed }) => [
-            popup.closeBtn,
-            pressed && popup.closeBtnPressed,
-          ]}
-        >
-          <Text style={popup.closeBtnText}>✕</Text>
-        </Pressable>
+          className="px-0 rounded-full h-7 w-7"
+          icon={
+            <CloseIcon className="w-5 h-5 text-primary group-hover:text-primary-hover group-active:text-primary-active" />
+          }
+        ></Button>
       </View>
 
       {/* Titre + association */}
@@ -99,9 +133,7 @@ function MissionPopup({
       </Text>
       <Text style={popup.association}>{current.association.name}</Text>
 
-      {current.city ? (
-        <Text style={popup.city}>📍 {current.city}</Text>
-      ) : null}
+      {current.city ? <Text style={popup.city}>📍 {current.city}</Text> : null}
 
       {excerpt ? (
         <Text style={popup.desc} numberOfLines={3}>
@@ -112,50 +144,62 @@ function MissionPopup({
       {/* Navigation multi-missions (même coordonnées) */}
       {missions.length > 1 && (
         <View style={popup.nav}>
+          {/* Bouton Précédent */}
           <Pressable
-            onPress={() => onIndexChange(Math.max(0, currentIndex - 1))}
+            onPress={handlePrev}
             disabled={isPrevDisabled}
-            style={({ pressed }) => [
-              popup.navBtn,
-              pressed && !isPrevDisabled && popup.navBtnPressed,
-              isPrevDisabled && popup.navBtnDisabled,
-            ]}
-            accessibilityLabel="Mission précédente"
+            className={clsx(
+              "w-[44px] h-[44px] items-center justify-center rounded-lg border transition-colors",
+              isPrevDisabled
+                ? "bg-grey-100 border-grey-100"
+                : "bg-white border-primary active:bg-white-active",
+            )}
           >
-            <Text style={popup.navBtnText}>‹</Text>
+            <ChevronLeftIcon
+              className={clsx(
+                "w-5 h-5",
+                isPrevDisabled ? "text-grey-400" : "text-primary",
+              )}
+            />
           </Pressable>
 
-          <Text style={popup.navCounter} accessibilityLiveRegion="polite">
+          <Text style={popup.navCounter}>
             {currentIndex + 1} / {missions.length}
           </Text>
 
+          {/* Bouton Suivant */}
           <Pressable
-            onPress={() =>
-              onIndexChange(Math.min(missions.length - 1, currentIndex + 1))
-            }
+            onPress={handleNext}
             disabled={isNextDisabled}
-            style={({ pressed }) => [
-              popup.navBtn,
-              pressed && !isNextDisabled && popup.navBtnPressed,
-              isNextDisabled && popup.navBtnDisabled,
-            ]}
-            accessibilityLabel="Mission suivante"
+            className={clsx(
+              "w-[44px] h-[44px] items-center justify-center rounded-lg group border transition-colors",
+              isNextDisabled
+                ? "bg-grey-100 border-grey-100"
+                : "bg-white border-primary active:bg-white-active active:border-primary-active",
+            )}
           >
-            <Text style={popup.navBtnText}>›</Text>
+            <ChevronRightIcon
+              className={clsx(
+                "w-5 h-5",
+                isNextDisabled
+                  ? "text-grey-400"
+                  : "text-primary group-active:text-primary-active",
+              )}
+            />
           </Pressable>
         </View>
       )}
-
       {/* CTA Détails */}
-      <Pressable
+      <Button
+        variant="primary"
         onPress={() => router.push(`/missions/${current.id}` as never)}
-        style={({ pressed }) => [
-          popup.detailBtn,
-          pressed && popup.detailBtnPressed,
-        ]}
+        className="w-full mt-3"
+        icon={
+          <ArrowRightIcon className="w-5 h-5 text-white" />
+        }
       >
-        <Text style={popup.detailBtnText}>Voir les détails →</Text>
-      </Pressable>
+        Voir les détails
+      </Button>
     </View>
   );
 }
@@ -169,6 +213,8 @@ interface MapProps {
   selectedMissionId?: number;
   onMissionSelect?: (id: number) => void;
   onVisibleMissionsChange?: (ids: number[]) => void;
+  /** Centre demandé par le parent (ex. géocodage d'une adresse saisie). */
+  center?: { lat: number; lon: number };
 }
 
 export default function Map({
@@ -177,6 +223,7 @@ export default function Map({
   filters,
   onMissionSelect,
   onVisibleMissionsChange,
+  center,
 }: MapProps) {
   const mapRef = useRef<MapView>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -225,6 +272,20 @@ export default function Map({
   useEffect(() => {
     setSelectedGroup(null);
   }, [missions]);
+
+  // Déplace la carte vers le centre demandé par le parent (géocodage adresse).
+  useEffect(() => {
+    if (!center) return;
+    mapRef.current?.animateToRegion(
+      {
+        latitude: center.lat,
+        longitude: center.lon,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      },
+      500,
+    );
+  }, [center]);
 
   // --------------------------------------------------------- clustering ---
 
@@ -487,9 +548,9 @@ const styles = StyleSheet.create({
 const popup = StyleSheet.create({
   container: {
     position: "absolute",
-    bottom: 16,
     left: 16,
     right: 16,
+    zIndex: 999,
     backgroundColor: "#fff",
     borderRadius: 16,
     padding: 16,
@@ -497,7 +558,7 @@ const popup = StyleSheet.create({
     shadowOpacity: 0.18,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 6 },
-    elevation: 10,
+    elevation: 999,
   },
   header: {
     flexDirection: "row",
@@ -510,22 +571,6 @@ const popup = StyleSheet.create({
     fontWeight: "700",
     textTransform: "uppercase",
     letterSpacing: 0.5,
-  },
-  closeBtn: {
-    width: 28,
-    height: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 14,
-    backgroundColor: "#F3F4F6",
-  },
-  closeBtnPressed: {
-    backgroundColor: "#E5E7EB",
-  },
-  closeBtnText: {
-    fontSize: 14,
-    color: "#6B7280",
-    lineHeight: 18,
   },
   title: {
     fontSize: 15,
@@ -553,49 +598,35 @@ const popup = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 10,
+    marginTop: 10,
     paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: "#F3F4F6",
   },
-  navBtn: {
-    width: 36,
-    height: 36,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    backgroundColor: "#FAFAFA",
-  },
-  navBtnPressed: {
-    backgroundColor: "#FEF2EB",
-    borderColor: "#CC460F",
-  },
-  navBtnDisabled: {
-    opacity: 0.35,
-  },
-  navBtnText: {
-    fontSize: 22,
-    color: "#374151",
-    lineHeight: 26,
-  },
+  // navBtn: {
+  //   width: 44,
+  //   height: 44,
+  //   alignItems: "center",
+  //   justifyContent: "center",
+  //   borderRadius: 8,
+  //   borderWidth: 1,
+  //   borderColor: "#E5E7EB",
+  //   backgroundColor: "#FAFAFA",
+  // },
+  // navBtnPressed: {
+  //   backgroundColor: "#FEF2EB",
+  //   borderColor: "#CC460F",
+  // },
+  // navBtnDisabled: {
+  //   opacity: 0.35,
+  // },
+  // navBtnText: {
+  //   fontSize: 22,
+  //   color: "#374151",
+  //   lineHeight: 26,
+  // },
   navCounter: {
     fontSize: 12,
     color: "#9CA3AF",
-  },
-  detailBtn: {
-    backgroundColor: "#CC460F",
-    borderRadius: 10,
-    paddingVertical: 11,
-    alignItems: "center",
-  },
-  detailBtnPressed: {
-    backgroundColor: "#A83509",
-  },
-  detailBtnText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "600",
   },
 });

@@ -46,7 +46,30 @@ async function reverseGeocodeCity(
   }
 }
 
-async function getCurrentCity(): Promise<string | null> {
+/** Géocodage direct : adresse/ville → coordonnées GPS (API adresse.data.gouv.fr). */
+async function geocodeAddress(
+  query: string,
+): Promise<{ lat: number; lon: number } | null> {
+  try {
+    const res = await fetch(
+      `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&limit=1`,
+    );
+    const json = await res.json();
+    const coords = json?.features?.[0]?.geometry?.coordinates;
+    if (!coords) return null;
+    const [lon, lat] = coords as [number, number];
+    return { lat, lon };
+  } catch {
+    return null;
+  }
+}
+
+/** Retourne la position GPS actuelle avec ville et coordonnées. */
+async function getCurrentLocation(): Promise<{
+  city: string | null;
+  lat: number;
+  lon: number;
+} | null> {
   if (Platform.OS === "web") {
     return new Promise((resolve) => {
       if (!navigator.geolocation) {
@@ -55,11 +78,9 @@ async function getCurrentCity(): Promise<string | null> {
       }
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
-          const city = await reverseGeocodeCity(
-            pos.coords.latitude,
-            pos.coords.longitude,
-          );
-          resolve(city);
+          const { latitude: lat, longitude: lon } = pos.coords;
+          const city = await reverseGeocodeCity(lat, lon);
+          resolve({ city, lat, lon });
         },
         () => resolve(null),
         { timeout: 8000 },
@@ -73,9 +94,36 @@ async function getCurrentCity(): Promise<string | null> {
     const pos = await Location.getCurrentPositionAsync({
       accuracy: Location.Accuracy.Balanced,
     });
-    return reverseGeocodeCity(pos.coords.latitude, pos.coords.longitude);
+    const { latitude: lat, longitude: lon } = pos.coords;
+    const city = await reverseGeocodeCity(lat, lon);
+    return { city, lat, lon };
   } catch {
     return null;
+  }
+}
+
+/**
+ * Vérifie si la permission de géolocalisation est déjà accordée
+ * sans déclencher de dialogue système.
+ */
+async function hasGeolocationPermission(): Promise<boolean> {
+  if (Platform.OS === "web") {
+    try {
+      if (!navigator.geolocation || !navigator.permissions) return false;
+      const result = await navigator.permissions.query({
+        name: "geolocation" as PermissionName,
+      });
+      return result.state === "granted";
+    } catch {
+      return false;
+    }
+  }
+  try {
+    const Location = await import("expo-location");
+    const { status } = await Location.getForegroundPermissionsAsync();
+    return status === "granted";
+  } catch {
+    return false;
   }
 }
 
@@ -454,6 +502,7 @@ export function MissionFilters({
   value,
   onChange,
   onReset,
+  onCenterChange,
   variant = "list",
   causes = [],
   skills = [],
@@ -468,14 +517,35 @@ export function MissionFilters({
   const cityDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const valueRef = useRef(value);
   const onChangeRef = useRef(onChange);
+  const onCenterChangeRef = useRef(onCenterChange);
   valueRef.current = value;
   onChangeRef.current = onChange;
+  onCenterChangeRef.current = onCenterChange;
 
   // Sync city input avec réinitialisation externe
   useEffect(() => {
     if (cityDebounceRef.current) clearTimeout(cityDebounceRef.current);
     setCityInput(value.city ?? "");
   }, [value.city]);
+
+  // Auto-géolocalisation silencieuse au montage :
+  // si la permission est déjà accordée, pré-remplir la ville et centrer la carte.
+  useEffect(() => {
+    (async () => {
+      const permitted = await hasGeolocationPermission();
+      if (!permitted) return;
+      // Ne pas écraser une ville déjà renseignée
+      if (valueRef.current.city) return;
+      const loc = await getCurrentLocation();
+      if (!loc) return;
+      const city = loc.city ?? "";
+      setCityInput(city);
+      onChangeRef.current({ ...valueRef.current, city: city || undefined });
+      onCenterChangeRef.current?.(loc.lat, loc.lon);
+    })();
+    // Doit s'exécuter une seule fois au montage.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -497,21 +567,26 @@ export function MissionFilters({
   const handleCityChange = (text: string) => {
     setCityInput(text);
     if (cityDebounceRef.current) clearTimeout(cityDebounceRef.current);
-    cityDebounceRef.current = setTimeout(() => {
-      onChangeRef.current({
-        ...valueRef.current,
-        city: text.trim() || undefined,
-      });
-    }, 300);
+    cityDebounceRef.current = setTimeout(async () => {
+      const trimmed = text.trim();
+      onChangeRef.current({ ...valueRef.current, city: trimmed || undefined });
+      // Géocodage de l'adresse saisie → centrage de la carte
+      if (trimmed.length >= 2) {
+        const coords = await geocodeAddress(trimmed);
+        if (coords) onCenterChangeRef.current?.(coords.lat, coords.lon);
+      }
+    }, 500);
   };
 
   const handleGeolocate = async () => {
     setIsGeolocating(true);
     try {
-      const city = await getCurrentCity();
-      if (city) {
+      const loc = await getCurrentLocation();
+      if (loc) {
+        const city = loc.city ?? "";
         setCityInput(city);
-        onChangeRef.current({ ...valueRef.current, city });
+        onChangeRef.current({ ...valueRef.current, city: city || undefined });
+        onCenterChangeRef.current?.(loc.lat, loc.lon);
       }
     } finally {
       setIsGeolocating(false);

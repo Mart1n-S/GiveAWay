@@ -113,12 +113,12 @@ describe('MissionController', () => {
   // findForMap — Délégation au service
   // =========================================================================
   describe('findForMap', () => {
-    it('✅ Doit déléguer au service sans paramètre', async () => {
+    it('✅ Doit déléguer au service avec le query fourni', async () => {
       mockMissionService.findForMap.mockResolvedValue([]);
 
-      const result = await controller.findForMap();
+      const result = await controller.findForMap(defaultQuery);
 
-      expect(mockMissionService.findForMap).toHaveBeenCalled();
+      expect(mockMissionService.findForMap).toHaveBeenCalledWith(defaultQuery);
       expect(result).toEqual([]);
     });
 
@@ -127,7 +127,9 @@ describe('MissionController', () => {
         new Error('Database error'),
       );
 
-      await expect(controller.findForMap()).rejects.toThrow('Database error');
+      await expect(controller.findForMap(defaultQuery)).rejects.toThrow(
+        'Database error',
+      );
     });
   });
 

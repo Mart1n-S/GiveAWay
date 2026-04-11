@@ -154,6 +154,10 @@ interface MapSectionProps {
   skills: { id: number; label: string }[];
   publicTypes: { id: number; label: string }[];
   volunteerTypes: { id: number; label: string }[];
+  /** Centre de carte imposé par le parent (géocodage hors MapSection). */
+  center?: { lat: number; lon: number };
+  /** Remonte un nouveau centre vers le parent (utilisé quand showFilters=true). */
+  onCenterChange?: (lat: number, lon: number) => void;
 }
 
 function MapSection({
@@ -165,6 +169,8 @@ function MapSection({
   skills,
   publicTypes,
   volunteerTypes,
+  center: centerProp,
+  onCenterChange,
 }: MapSectionProps) {
   const router = useRouter();
 
@@ -174,6 +180,14 @@ function MapSection({
   const [isListLoading, setIsListLoading] = useState(false);
   const [visibleIds, setVisibleIds] = useState<number[]>([]);
   const [visibleCount, setVisibleCount] = useState(CARDS_INITIAL);
+  // Centre local : utilisé quand les filtres sont à l'intérieur de MapSection
+  // (showFilters=true, cas MarketingView). Sinon centerProp prime.
+  const [localCenter, setLocalCenter] = useState<{ lat: number; lon: number } | undefined>();
+  const mapCenter = centerProp ?? localCenter;
+  const handleInternalCenterChange = (lat: number, lon: number) => {
+    setLocalCenter({ lat, lon });
+    onCenterChange?.(lat, lon);
+  };
 
   const fetchMapMissions = useCallback(async (q: MissionListQuery) => {
     setIsMapLoading(true);
@@ -232,6 +246,7 @@ function MapSection({
             skills={skills}
             publicTypes={publicTypes}
             volunteerTypes={volunteerTypes}
+            onCenterChange={handleInternalCenterChange}
           />
         </View>
       )}
@@ -246,6 +261,7 @@ function MapSection({
           isLoading={isMapLoading}
           onMissionSelect={handleMissionSelect}
           onVisibleMissionsChange={setVisibleIds}
+          center={mapCenter}
         />
       </View>
 
@@ -435,6 +451,7 @@ function DiscoveryView() {
   const { publicTypes, volunteerTypes, fetchFilterReferences } = useFilterReferencesStore();
 
   const [filters, setFilters] = useState<MissionListQuery>(EMPTY_FILTERS);
+  const [mapCenter, setMapCenter] = useState<{ lat: number; lon: number } | undefined>();
 
   // Missions mode remote (liste verticale)
   const [remoteMissions, setRemoteMissions] = useState<MissionListItem[]>([]);
@@ -467,7 +484,10 @@ function DiscoveryView() {
   }, [filters, isRemote, fetchRemoteMissions]);
 
   const handleFiltersChange = (newFilters: MissionListQuery) => setFilters(newFilters);
-  const handleReset = () => setFilters(EMPTY_FILTERS);
+  const handleReset = () => {
+    setFilters(EMPTY_FILTERS);
+    setMapCenter(undefined);
+  };
 
   // Mode distanciel : afficher MissionGrid sans carte
   if (isRemote) {
@@ -486,6 +506,7 @@ function DiscoveryView() {
             skills={skills}
             publicTypes={publicTypes}
             volunteerTypes={volunteerTypes}
+            onCenterChange={(lat, lon) => setMapCenter({ lat, lon })}
           />
 
           <View className="mt-4">
@@ -520,6 +541,7 @@ function DiscoveryView() {
             skills={skills}
             publicTypes={publicTypes}
             volunteerTypes={volunteerTypes}
+            onCenterChange={(lat, lon) => setMapCenter({ lat, lon })}
           />
         </View>
         {/* mt-4 : espace entre les filtres et la carte (bug 1) */}
@@ -533,6 +555,7 @@ function DiscoveryView() {
             skills={skills}
             publicTypes={publicTypes}
             volunteerTypes={volunteerTypes}
+            center={mapCenter}
           />
         </View>
       </View>

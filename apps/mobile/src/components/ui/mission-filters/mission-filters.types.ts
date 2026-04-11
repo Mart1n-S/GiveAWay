@@ -30,4 +30,10 @@ export interface MissionFiltersProps {
 
   /** Classes additionnelles (NativeWind) */
   className?: string;
+
+  /**
+   * Appelé quand une position géographique est déterminée (géoloc GPS ou
+   * géocodage de l'adresse saisie). Permet au parent de centrer la carte.
+   */
+  onCenterChange?: (lat: number, lon: number) => void;
 }

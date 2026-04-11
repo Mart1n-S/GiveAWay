@@ -50,6 +50,8 @@ interface MapProps {
   onMissionSelect?: (id: number) => void;
   /** Appelé après chaque changement de viewport avec les IDs visibles */
   onVisibleMissionsChange?: (ids: number[]) => void;
+  /** Centre demandé par le parent (ex. géocodage d'une adresse saisie). */
+  center?: { lat: number; lon: number };
 }
 
 export default function Map({
@@ -57,6 +59,7 @@ export default function Map({
   isLoading: isLoadingProp = false,
   filters,
   onVisibleMissionsChange,
+  center,
 }: MapProps) {
   const [Leaflet, setLeaflet] = useState<ReactLeaflet | null>(null);
   const [L, setL] = useState<LeafletLib | null>(null);
@@ -196,6 +199,37 @@ export default function Map({
     };
   }, [Leaflet]);
 
+  // ---------------------------------------------------------------- center controller ---
+
+  /**
+   * Composant interne qui déplace la carte vers `center` via flyTo.
+   * Doit être rendu à l'intérieur de MapContainer pour accéder à useMap().
+   */
+  const CenterController = useMemo(() => {
+    if (!Leaflet) return null;
+    const { useMap } = Leaflet;
+    return function CenterController({
+      target,
+    }: {
+      target?: { lat: number; lon: number };
+    }) {
+      const map = useMap();
+      // Mémorise le dernier centre pour éviter les flyTo répétés à mêmes coords.
+      const prevRef = useRef<{ lat: number; lon: number } | undefined>(undefined);
+      useEffect(() => {
+        if (!target) return;
+        if (
+          prevRef.current?.lat === target.lat &&
+          prevRef.current?.lon === target.lon
+        )
+          return;
+        prevRef.current = target;
+        map.flyTo([target.lat, target.lon], Math.max(map.getZoom(), 13));
+      }, [map, target]);
+      return null;
+    };
+  }, [Leaflet]);
+
   // ---------------------------------------------------------------- cluster click handler ---
 
   const ClusterMarker = useMemo(() => {
@@ -302,6 +336,8 @@ export default function Map({
           {MapEvents && (
             <MapEvents onBoundsChange={setMapBounds} />
           )}
+
+          {CenterController && <CenterController target={center} />}
 
           {/* Clusters géographiques */}
           {clusterItems.map((item: SC) => (

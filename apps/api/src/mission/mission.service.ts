@@ -63,11 +63,7 @@ export class MissionService {
 
     // ── Types d'activités ───────────────────────────────────────────────────
     // Préfère le tableau (types) sur la valeur unique (type)
-    const activeTypes = types?.length
-      ? types
-      : type
-        ? [type]
-        : undefined;
+    const activeTypes = types?.length ? types : type ? [type] : undefined;
     if (activeTypes?.length) {
       where.type = { in: activeTypes as PrismaActivityType[] };
     }
@@ -237,9 +233,7 @@ export class MissionService {
         ? {
             ...m.address,
             latitude: m.address.latitude ? Number(m.address.latitude) : null,
-            longitude: m.address.longitude
-              ? Number(m.address.longitude)
-              : null,
+            longitude: m.address.longitude ? Number(m.address.longitude) : null,
           }
         : null,
       causes: m.causes.map((c) => c.cause),
@@ -261,7 +255,9 @@ export class MissionService {
    * Supporte les mêmes filtres que findAll (sauf pagination).
    * Limité à MAX_MAP_RESULTS résultats.
    */
-  async findForMap(query?: Partial<MissionListQueryDto>): Promise<MissionMapItem[]> {
+  async findForMap(
+    query?: Partial<MissionListQueryDto>,
+  ): Promise<MissionMapItem[]> {
     const where: Prisma.MissionWhereInput = {
       status: MissionStatus.ACTIVE,
       address: {
@@ -299,11 +295,7 @@ export class MissionService {
       }
 
       // Types
-      const activeTypes = types?.length
-        ? types
-        : type
-          ? [type]
-          : undefined;
+      const activeTypes = types?.length ? types : type ? [type] : undefined;
       if (activeTypes?.length) {
         where.type = { in: activeTypes as PrismaActivityType[] };
       }
@@ -393,14 +385,13 @@ export class MissionService {
     });
 
     // Filtre JS post-fetch pour hasAvailableSpots
-    const filtered =
-      query?.hasAvailableSpots
-        ? missions.filter(
-            (m) =>
-              m.volunteersNeeded !== null &&
-              m._count.participants < m.volunteersNeeded,
-          )
-        : missions;
+    const filtered = query?.hasAvailableSpots
+      ? missions.filter(
+          (m) =>
+            m.volunteersNeeded !== null &&
+            m._count.participants < m.volunteersNeeded,
+        )
+      : missions;
 
     return filtered.map((m) => ({
       id: m.id,
@@ -408,9 +399,9 @@ export class MissionService {
       description: m.description,
       type: m.type,
       availabilityType: m.availabilityType,
-      latitude: Number(m.address!.latitude),
-      longitude: Number(m.address!.longitude),
-      city: m.address!.city ?? null,
+      latitude: Number(m.address.latitude),
+      longitude: Number(m.address.longitude),
+      city: m.address.city ?? null,
       association: m.association,
     }));
   }
