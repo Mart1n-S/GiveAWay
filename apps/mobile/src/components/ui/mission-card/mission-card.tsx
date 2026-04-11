@@ -4,6 +4,7 @@ import { cssInterop } from "nativewind";
 import { Text } from "../text/text";
 import { TagBadge } from "../tag-badge/tag-badge";
 import { MissionCardProps } from "./mission-card.types";
+import type { MissionFrequency } from "@repo/shared";
 
 import HandHeartIconSource from "@assets/icons/ic_hand_heart.svg";
 import CalendarIconSource from "@assets/icons/ic_calendar.svg";
@@ -57,7 +58,7 @@ const typeConfig = {
   },
 };
 
-const frequencyLabels: Record<string, string> = {
+const frequencyLabels: Record<MissionFrequency, string> = {
   ONCE: "Ponctuel",
   DAILY: "Quotidien",
   WEEKLY: "Hebdomadaire",
@@ -112,7 +113,9 @@ export function MissionCard({
       onPress={onPress}
       disabled={!onPress}
       className={clsx(
-        "bg-white border border-grey-200 rounded-2xl overflow-hidden",
+        // flex-1 : remplit la hauteur du wrapper étiré par la grille (égalise les
+        // cards d'une même ligne) ; flex-col pour empiler header + footer.
+        "flex-1 flex-col bg-white border border-grey-200 rounded-2xl overflow-hidden",
         onPress && [
           "hover:border-primary hover:shadow-md",
           "active:bg-grey-50",
@@ -123,8 +126,8 @@ export function MissionCard({
         className,
       )}
     >
-      {/* Header avec icône de type */}
-      <View className="p-4 pb-0">
+      {/* Header avec icône de type — flex-1 pour pousser le footer en bas */}
+      <View className="flex-1 p-4 pb-0">
         <View className="flex-row items-center gap-3 mb-3">
           <View
             className={clsx(
@@ -190,7 +193,7 @@ export function MissionCard({
           {/* Fréquence */}
           {frequency && (
             <Text className="text-xs text-grey-600">
-              {frequencyLabels[frequency] ?? frequency}
+              {frequencyLabels[frequency]}
             </Text>
           )}
 

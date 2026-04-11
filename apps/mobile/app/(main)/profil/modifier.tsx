@@ -39,6 +39,7 @@ import { useReferenceStore } from "@/stores/reference.store";
 
 import AddIconSource from "@assets/icons/ic_add.svg";
 import TrashIconSource from "@assets/icons/ic_trash.svg";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const iconConfig = {
   className: {
@@ -75,6 +76,8 @@ export default function EditProfileScreen() {
     type: user?.availability?.type as AvailabilityType | undefined,
   });
 
+  usePageTitle("Modifier mon profil");
+  
   const {
     control,
     handleSubmit,

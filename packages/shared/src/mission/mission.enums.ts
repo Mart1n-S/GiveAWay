@@ -25,6 +25,12 @@ export const MISSION_STATUSES = [
 ] as const;
 export type MissionStatus = (typeof MISSION_STATUSES)[number];
 
+export const MISSION_AVAILABILITY_TYPES = [
+  "REMOTE",
+  "ON_SITE",
+  "HYBRID",
+] as const;
+export type MissionAvailabilityType = (typeof MISSION_AVAILABILITY_TYPES)[number];
 // ─── Interface de base ─────────────────────────────────────────────
 
 /** Champs communs à toutes les représentations d'une mission */
@@ -33,4 +39,5 @@ export interface MissionBase {
   title: string;
   description: string;
   type: ActivityType;
+  availabilityType: MissionAvailabilityType;
 }

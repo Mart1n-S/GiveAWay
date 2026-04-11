@@ -36,3 +36,5 @@ export * from "./mission/mission-query.dto";
 export * from "./association/association-map.dto";
 export * from "./association/association-category.dto";
 export * from "./association/nearby-query.dto";
+export * from "./public-type/public-type.dto";
+export * from "./volunteer-type/volunteer-type.dto";

@@ -7,6 +7,7 @@ import { Text, colors } from "@/components/ui";
 import { MissionDetailHeader } from "@/components/ui/mission-detail/mission-detail-header";
 import { MissionDetailContent } from "@/components/ui/mission-detail/mission-detail-content";
 import { MissionDetailSidebar } from "@/components/ui/mission-detail/mission-detail-sidebar";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function MissionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -15,6 +16,8 @@ export default function MissionDetailScreen() {
   const [mission, setMission] = useState<MissionDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  usePageTitle("Détail mission");
 
   useEffect(() => {
     if (!id) return;
@@ -37,7 +40,7 @@ export default function MissionDetailScreen() {
   // --- Chargement ---
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-white">
+      <View className="items-center justify-center flex-1 bg-white">
         <ActivityIndicator size="large" color={colors.primary.default} />
       </View>
     );
@@ -46,8 +49,8 @@ export default function MissionDetailScreen() {
   // --- Erreur ---
   if (error || !mission) {
     return (
-      <View className="flex-1 items-center justify-center bg-white px-6">
-        <Text className="text-base text-red-600 text-center">
+      <View className="items-center justify-center flex-1 px-6 bg-white">
+        <Text className="text-base text-center text-red-600">
           {error ?? "Mission introuvable."}
         </Text>
       </View>
@@ -63,7 +66,7 @@ export default function MissionDetailScreen() {
         className="flex-1 bg-white"
         contentContainerStyle={{ flexGrow: 1 }}
       >
-        <View className="w-full max-w-4xl mx-auto px-4 py-6 md:px-8 md:py-10">
+        <View className="w-full max-w-4xl px-4 py-6 mx-auto md:px-8 md:py-10">
 
           {/* En-tête : bouton retour (web) + badge type + titre */}
           <MissionDetailHeader
@@ -73,7 +76,7 @@ export default function MissionDetailScreen() {
           />
 
           {/* Nom de l'association */}
-          <Text className="text-base text-grey-600 mb-6">
+          <Text className="mb-6 text-base text-grey-600">
             par{" "}
             <Text className="font-semibold text-grey-800">
               {mission.association.name}
@@ -83,7 +86,7 @@ export default function MissionDetailScreen() {
           {/* Mise en page : sidebar à gauche + contenu à droite (desktop) */}
           <View className="flex-col md:flex-row md:gap-8">
             {/* Sidebar : métadonnées, CTA, bloc association */}
-            <View className="md:w-80 md:flex-shrink-0 mb-8 md:mb-0">
+            <View className="mb-8 md:w-80 md:flex-shrink-0 md:mb-0">
               <MissionDetailSidebar
                 association={mission.association}
                 city={mission.address?.city ?? null}

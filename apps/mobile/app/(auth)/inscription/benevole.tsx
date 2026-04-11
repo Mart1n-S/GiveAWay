@@ -40,6 +40,7 @@ import EmailIconSource from "@assets/icons/ic_email.svg";
 import LockIconSource from "@assets/icons/ic_lock.svg";
 import UnlockIconSource from "@assets/icons/ic_unlock.svg";
 import { isAxiosError } from "axios";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const CameraPlaceholder = () => <Text className="text-4xl">📷</Text>;
 
@@ -63,6 +64,7 @@ type Step = "REGISTER" | "VERIFY";
 export default function RegisterBenevoleScreen() {
   const router = useRouter();
   const scrollViewRef = useRef<ScrollView>(null);
+  usePageTitle("Inscription bénévole");
 
   // --- LOGIQUE GOOGLE ---
   const handleGoogleSuccess = useCallback(

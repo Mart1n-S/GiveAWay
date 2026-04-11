@@ -26,11 +26,16 @@ export class MissionController {
    * Retourne les missions géolocalisées pour affichage sur la carte.
    * Route publique — pas d'authentification requise.
    * Doit être déclaré AVANT :id pour éviter que NestJS l'interprète comme un paramètre.
+   *
+   * Accepte les mêmes filtres que GET /missions (sauf page/pageSize).
    */
   @Get('map')
   @HttpCode(HttpStatus.OK)
-  async findForMap(): Promise<MissionMapItem[]> {
-    return this.missionService.findForMap();
+  async findForMap(
+    @Query(new ZodValidationPipe(MissionListQuerySchema))
+    query: MissionListQueryDto,
+  ): Promise<MissionMapItem[]> {
+    return this.missionService.findForMap(query);
   }
 
   /**

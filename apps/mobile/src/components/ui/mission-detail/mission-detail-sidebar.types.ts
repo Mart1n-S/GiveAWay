@@ -1,3 +1,5 @@
+import { MissionFrequency } from "@repo/shared";
+
 export interface MissionDetailSidebarProps {
   /** Informations sur l'association organisatrice */
   association: {
@@ -17,7 +19,7 @@ export interface MissionDetailSidebarProps {
   durationInt: number | null;
 
   /** Fréquence */
-  frequency: string | null;
+  frequency: MissionFrequency | null;
 
   /** Date de début */
   startDate: Date | string | null;

@@ -11,10 +11,25 @@ import {
 export interface MissionListQuery {
   page?: number;
   pageSize?: number;
+  /** Filtre par type unique (rétro-compatibilité) */
   type?: ActivityType;
+  /** Filtre par types multiples */
+  types?: ActivityType[];
+  /** Filtre par cause unique (rétro-compatibilité) */
   causeId?: number;
+  /** Filtre par causes multiples */
+  causeIds?: number[];
+  skillIds?: number[];
+  publicTypeIds?: number[];
+  volunteerTypeIds?: number[];
   city?: string;
   search?: string;
+  frequency?: MissionFrequency;
+  startDateFrom?: string; // ISO date yyyy-mm-dd
+  startDateTo?: string;   // ISO date yyyy-mm-dd
+  hasAvailableSpots?: boolean;
+  /** nearby = ON_SITE + HYBRID, remote = REMOTE uniquement */
+  locationMode?: 'nearby' | 'remote';
 }
 
 /** Résumé d'une mission pour le listing */

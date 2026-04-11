@@ -1,6 +1,8 @@
+import Toast from "react-native-toast-message";
 import { api } from "@/lib/axios";
 import type { AssociationCategory, AssociationMapItem } from "@repo/shared";
 
+/** Filtres optionnels pour la recherche d'associations proches */
 export interface NearbyFilters {
   categoryIds?: number[];
   createdAfter?: string; // ISO date yyyy-mm-dd
@@ -33,11 +35,22 @@ export async function getNearbyAssociations(
     params.createdBefore = filters.createdBefore;
   }
 
-  const { data } = await api.get<AssociationMapItem[]>(
-    "/associations/nearby",
-    { params },
-  );
-  return data;
+  try {
+    const { data } = await api.get<AssociationMapItem[]>(
+      "/associations/nearby",
+      { params },
+    );
+    return data;
+  } catch (err) {
+    Toast.show({
+      type: "error",
+      text1: "Impossible de charger les associations",
+      text2: "Vérifiez votre connexion et réessayez.",
+      visibilityTime: 10000,
+      onPress: () => Toast.hide(),
+    });
+    throw err;
+  }
 }
 
 /**
@@ -47,8 +60,19 @@ export async function getNearbyAssociations(
 export async function getAssociationCategories(): Promise<
   AssociationCategory[]
 > {
-  const { data } = await api.get<AssociationCategory[]>(
-    "/reference/association-categories",
-  );
-  return data;
+  try {
+    const { data } = await api.get<AssociationCategory[]>(
+      "/reference/association-categories",
+    );
+    return data;
+  } catch (err) {
+    Toast.show({
+      type: "error",
+      text1: "Impossible de charger les catégories",
+      text2: "Vérifiez votre connexion et réessayez.",
+      visibilityTime: 10000,
+      onPress: () => Toast.hide(),
+    });
+    throw err;
+  }
 }
