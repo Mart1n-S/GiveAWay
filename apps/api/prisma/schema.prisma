@@ -153,6 +153,7 @@ model Mission {
   volunteersNeeded Int?          @map("volunteers_needed")
   durationInt      Int?              @map("duration_minutes") // ex: 60, 120...
   frequency        MissionFrequency? @default(ONCE)
+  availabilityType AvailabilityType @default(ON_SITE) @map("availability_type")
 
   startDate DateTime? @map("start_date")
   endDate   DateTime? @map("end_date")
@@ -353,6 +354,7 @@ model Association {
   legalStatus          String?           @map("legal_status") // Ex: "Association loi 1901", "Loi 1908"
   logoUrl              String?           @map("logo_url")
   requiresManualReview Boolean           @default(false) @map("requires_manual_review")
+  rejectionReason      String?           @map("rejection_reason") @db.Text
   status               AssociationStatus @default(PENDING)
   createdAt            DateTime          @default(now()) @map("created_at")
   updatedAt            DateTime          @updatedAt @map("updated_at")

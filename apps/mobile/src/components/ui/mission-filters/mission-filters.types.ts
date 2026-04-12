@@ -1,18 +1,39 @@
-import { ActivityType } from "@repo/shared";
+import type { MissionListQuery } from "@repo/shared";
+
+/** Item générique pour les listes déroulantes (causes, compétences, etc.) */
+export interface FilterRefItem {
+  id: number;
+  label: string;
+}
 
 export interface MissionFiltersProps {
-  /** Type d'activité sélectionné (ou null pour "Tous") */
-  selectedType: ActivityType | null;
+  /** Valeur courante des filtres */
+  value: MissionListQuery;
 
-  /** Callback quand le type change */
-  onTypeChange: (type: ActivityType | null) => void;
+  /** Callback déclenché à chaque changement de filtre */
+  onChange: (value: MissionListQuery) => void;
 
-  /** Texte de recherche */
-  searchText: string;
+  /** Réinitialise tous les filtres */
+  onReset: () => void;
 
-  /** Callback quand le texte de recherche change */
-  onSearchChange: (text: string) => void;
+  /**
+   * 'list' (défaut) : barre complète avec champ de recherche.
+   * 'map' : version sans champ de recherche.
+   */
+  variant?: "list" | "map";
 
-  /** Classes additionnelles */
+  /** Données référentielles — fournies par le parent */
+  causes?: FilterRefItem[];
+  skills?: FilterRefItem[];
+  publicTypes?: FilterRefItem[];
+  volunteerTypes?: FilterRefItem[];
+
+  /** Classes additionnelles (NativeWind) */
   className?: string;
+
+  /**
+   * Appelé quand une position géographique est déterminée (géoloc GPS ou
+   * géocodage de l'adresse saisie). Permet au parent de centrer la carte.
+   */
+  onCenterChange?: (lat: number, lon: number) => void;
 }

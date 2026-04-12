@@ -10,6 +10,7 @@ import { AuthService } from "@/services/auth.service";
 import EmailIconSource from "@assets/icons/ic_email.svg";
 import { cssInterop } from "nativewind";
 import Toast from "react-native-toast-message";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const EmailIcon = cssInterop(EmailIconSource, {
   className: {
@@ -21,7 +22,7 @@ const EmailIcon = cssInterop(EmailIconSource, {
 export default function ForgotPasswordScreen() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-
+  usePageTitle("Mot de passe oublié");
   const { control, handleSubmit } = useForm<ForgotPasswordDto>({
     resolver: zodResolver(ForgotPasswordSchema),
     defaultValues: { email: "" },

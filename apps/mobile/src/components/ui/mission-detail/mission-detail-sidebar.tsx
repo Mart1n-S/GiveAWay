@@ -3,6 +3,7 @@ import { cssInterop } from "nativewind";
 import { Text } from "../text/text";
 import { Button } from "../button/button";
 import { MissionDetailSidebarProps } from "./mission-detail-sidebar.types";
+import type { MissionFrequency } from "@repo/shared";
 
 import LocalisationIconSource from "@assets/icons/ic_localisation.svg";
 import ClockIconSource from "@assets/icons/ic_clock.svg";
@@ -21,7 +22,7 @@ const ClockIcon = cssInterop(ClockIconSource, iconConfig);
 const CalendarIcon = cssInterop(CalendarIconSource, iconConfig);
 const HandHeartIcon = cssInterop(HandHeartIconSource, iconConfig);
 
-const FREQUENCY_LABELS: Record<string, string> = {
+const FREQUENCY_LABELS: Record<MissionFrequency, string> = {
   ONCE: "Ponctuel",
   DAILY: "Quotidien",
   WEEKLY: "Hebdomadaire",
@@ -93,7 +94,7 @@ export function MissionDetailSidebar({
             <Text className="text-sm text-grey-700">
               {formatDuration(durationInt)}
               {frequency
-                ? ` · ${FREQUENCY_LABELS[frequency] ?? frequency}`
+                ? ` · ${FREQUENCY_LABELS[frequency]}`
                 : ""}
             </Text>
           </MetaRow>

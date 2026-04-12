@@ -1,19 +1,22 @@
 import { useState, useEffect, useCallback } from "react";
 import { View, ScrollView, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
-import { ActivityType, MissionListItem } from "@repo/shared";
+import { MissionListItem, MissionListQuery } from "@repo/shared";
 import { MissionService } from "@/services/mission.service";
-import { MissionFilters } from "@/components/ui/mission-filters/mission-filters";
+import { MissionFilters } from "@/components/ui/mission-filters";
 import { MissionCounter } from "@/components/ui/mission-counter/mission-counter";
 import { MissionGrid } from "@/components/ui/mission-grid/mission-grid";
 import { Text, Button, colors } from "@/components/ui";
+import { useReferenceStore } from "@/stores/reference.store";
+import { useFilterReferencesStore } from "@/stores/filter-references.store";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const PAGE_SIZE = 12;
+const EMPTY_FILTERS: MissionListQuery = {};
 
 export default function MissionsScreen() {
   const router = useRouter();
-
-  // --- État ---
+  usePageTitle("Missions");
   const [missions, setMissions] = useState<MissionListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -21,18 +24,27 @@ export default function MissionsScreen() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // --- Filtres ---
-  const [selectedType, setSelectedType] = useState<ActivityType | null>(null);
-  const [searchText, setSearchText] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [filters, setFilters] = useState<MissionListQuery>(EMPTY_FILTERS);
+  const [debouncedSearch, setDebouncedSearch] = useState<string | undefined>();
 
-  // --- Debounce de la recherche ---
+  // Référentiels pour les chips de filtres
+  const { causes, skills, fetchReferences } = useReferenceStore();
+  const { publicTypes, volunteerTypes, fetchFilterReferences } = useFilterReferencesStore();
+
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(searchText), 400);
-    return () => clearTimeout(timer);
-  }, [searchText]);
+    fetchReferences();
+    fetchFilterReferences();
+  }, [fetchReferences, fetchFilterReferences]);
 
-  // --- Chargement des missions ---
+  // Debounce du champ de recherche (400 ms)
+  useEffect(() => {
+    const timer = setTimeout(
+      () => setDebouncedSearch(filters.search),
+      400,
+    );
+    return () => clearTimeout(timer);
+  }, [filters.search]);
+
   const fetchMissions = useCallback(
     async (pageToLoad: number, append: boolean) => {
       try {
@@ -40,10 +52,10 @@ export default function MissionsScreen() {
         setError(null);
 
         const result = await MissionService.getMissions({
+          ...filters,
+          search: debouncedSearch,
           page: pageToLoad,
           pageSize: PAGE_SIZE,
-          type: selectedType ?? undefined,
-          search: debouncedSearch || undefined,
         });
 
         setMissions((prev) =>
@@ -58,22 +70,26 @@ export default function MissionsScreen() {
         setIsLoadingMore(false);
       }
     },
-    [selectedType, debouncedSearch],
+    [filters, debouncedSearch],
   );
 
   useEffect(() => {
     fetchMissions(1, false);
   }, [fetchMissions]);
 
-  // --- Pagination ---
   const hasMore = missions.length < total;
 
   const handleLoadMore = () => {
     if (!isLoadingMore && hasMore) fetchMissions(page + 1, true);
   };
 
-  const handleTypeChange = (type: ActivityType | null) => {
-    setSelectedType(type);
+  const handleFiltersChange = (newFilters: MissionListQuery) => {
+    setFilters(newFilters);
+    setPage(1);
+  };
+
+  const handleReset = () => {
+    setFilters(EMPTY_FILTERS);
     setPage(1);
   };
 
@@ -86,10 +102,10 @@ export default function MissionsScreen() {
       className="flex-1 bg-white"
       contentContainerStyle={{ flexGrow: 1 }}
     >
-      <View className="w-full max-w-7xl mx-auto px-4 py-6 md:px-8 md:py-8">
+      <View className="w-full px-4 py-6 mx-auto max-w-7xl md:px-8 md:py-8">
         {/* En-tête */}
         <View className="mb-6">
-          <Text className="text-3xl font-bold text-grey-900 mb-2">
+          <Text className="mb-2 text-3xl font-bold text-grey-900">
             Missions
           </Text>
           <Text className="text-base text-grey-600">
@@ -99,10 +115,14 @@ export default function MissionsScreen() {
 
         {/* Filtres */}
         <MissionFilters
-          selectedType={selectedType}
-          onTypeChange={handleTypeChange}
-          searchText={searchText}
-          onSearchChange={setSearchText}
+          value={filters}
+          onChange={handleFiltersChange}
+          onReset={handleReset}
+          variant="list"
+          causes={causes}
+          skills={skills}
+          publicTypes={publicTypes}
+          volunteerTypes={volunteerTypes}
           className="mb-6"
         />
 
@@ -112,7 +132,7 @@ export default function MissionsScreen() {
         {/* Grille ou erreur */}
         {error ? (
           <View className="items-center justify-center py-16">
-            <Text className="text-base text-red-600 mb-4">{error}</Text>
+            <Text className="mb-4 text-base text-red-600">{error}</Text>
             <Button variant="secondary" onPress={() => fetchMissions(1, false)}>
               Réessayer
             </Button>

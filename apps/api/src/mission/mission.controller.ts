@@ -7,7 +7,14 @@ import {
   ParseIntPipe,
   Query,
 } from '@nestjs/common';
-import { MissionDetail, MissionListResponse, MissionMapItem } from '@repo/shared';
+import {
+  MissionDetail,
+  MissionListResponse,
+  MissionMapItem,
+  MissionListQueryDto,
+  MissionListQuerySchema,
+} from '@repo/shared';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { MissionService } from './mission.service';
 
 @Controller('missions')
@@ -19,11 +26,16 @@ export class MissionController {
    * Retourne les missions géolocalisées pour affichage sur la carte.
    * Route publique — pas d'authentification requise.
    * Doit être déclaré AVANT :id pour éviter que NestJS l'interprète comme un paramètre.
+   *
+   * Accepte les mêmes filtres que GET /missions (sauf page/pageSize).
    */
   @Get('map')
   @HttpCode(HttpStatus.OK)
-  async findForMap(): Promise<MissionMapItem[]> {
-    return this.missionService.findForMap();
+  async findForMap(
+    @Query(new ZodValidationPipe(MissionListQuerySchema))
+    query: MissionListQueryDto,
+  ): Promise<MissionMapItem[]> {
+    return this.missionService.findForMap(query);
   }
 
   /**
@@ -44,25 +56,16 @@ export class MissionController {
    * Retourne la liste paginée des missions actives.
    * Route publique — pas d'authentification requise.
    *
-   * Query params optionnels : page, pageSize, type, causeId, city, search
+   * Query params validés par MissionListQuerySchema :
+   *   page (défaut 1), pageSize (défaut 12, max 100),
+   *   type (MISSION|EVENT|COLLECT|INFO), causeId, city, search
    */
   @Get()
   @HttpCode(HttpStatus.OK)
   async findAll(
-    @Query('page') page?: string,
-    @Query('pageSize') pageSize?: string,
-    @Query('type') type?: string,
-    @Query('causeId') causeId?: string,
-    @Query('city') city?: string,
-    @Query('search') search?: string,
+    @Query(new ZodValidationPipe(MissionListQuerySchema))
+    query: MissionListQueryDto,
   ): Promise<MissionListResponse> {
-    return this.missionService.findAll({
-      page: page ? Number(page) : undefined,
-      pageSize: pageSize ? Number(pageSize) : undefined,
-      type,
-      causeId: causeId ? Number(causeId) : undefined,
-      city,
-      search,
-    });
+    return this.missionService.findAll(query);
   }
 }

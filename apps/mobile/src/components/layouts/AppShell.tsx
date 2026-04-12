@@ -22,6 +22,7 @@ import UserIconSource from "../../../assets/icons/ic_user.svg";
 import SettingsIconSource from "../../../assets/icons/ic_settings.svg";
 import InfoIconSource from "../../../assets/icons/ic_info.svg";
 import HandHeartIconSource from "../../../assets/icons/ic_hand_heart.svg";
+import BuildingIconSource from "../../../assets/icons/ic_building.svg";
 
 // --- CONFIGURATION ICONES ---
 const iconConfig = {
@@ -41,6 +42,7 @@ export const UserIcon = cssInterop(UserIconSource, iconConfig);
 export const SettingsIcon = cssInterop(SettingsIconSource, iconConfig);
 export const InfoIcon = cssInterop(InfoIconSource, iconConfig);
 export const HandHeartIcon = cssInterop(HandHeartIconSource, iconConfig);
+export const BuildingIcon = cssInterop(BuildingIconSource, iconConfig);
 
 const getIcon = (name: string | undefined, className = "w-5 h-5") => {
   switch (name) {
@@ -56,6 +58,8 @@ const getIcon = (name: string | undefined, className = "w-5 h-5") => {
       return <InfoIcon className={className} />;
     case "hand-heart":
       return <HandHeartIcon className={className} />;
+    case "building":
+      return <BuildingIcon className={className} />;
     default:
       return <InfoIcon className={className} />;
   }

@@ -19,10 +19,6 @@ export default function MissionsLayout() {
         name="index"
         options={{ title: "Missions" }}
       />
-      <Stack.Screen
-        name="[id]"
-        options={{ title: "Détail de la mission" }}
-      />
     </Stack>
   );
 }

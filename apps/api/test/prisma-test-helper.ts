@@ -1,6 +1,10 @@
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '../src/generated/prisma/client';
-import { UserStatus } from '../src/generated/prisma/client';
+import {
+  PrismaClient,
+  UserStatus,
+  AssociationStatus,
+  AssociationRole,
+} from '../src/generated/prisma/client';
 
 // 1. On récupère l'URL de test
 const connectionString = process.env.DATABASE_URL;
@@ -26,6 +30,40 @@ export async function cleanDatabase() {
   const deleteUsers = prisma.user.deleteMany();
 
   await prisma.$transaction([deleteTokens, deleteAssociations, deleteUsers]);
+}
+
+/**
+ * Crée une association de test avec son OWNER.
+ */
+export async function createTestAssociation(ownerId: number) {
+  return prisma.association.create({
+    data: {
+      name: 'Association E2E Test',
+      object: 'Objet de test E2E',
+      legalStatus: 'Association loi 1901',
+      rna: 'W999999999',
+      status: AssociationStatus.VALIDATED,
+      members: {
+        create: {
+          userId: ownerId,
+          role: AssociationRole.OWNER,
+        },
+      },
+    },
+  });
+}
+
+/**
+ * Ajoute un membre à une association existante.
+ */
+export async function addAssociationMember(
+  associationId: number,
+  userId: number,
+  role: AssociationRole,
+) {
+  return prisma.associationUser.create({
+    data: { associationId, userId, role },
+  });
 }
 
 /**

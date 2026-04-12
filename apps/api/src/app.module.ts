@@ -65,8 +65,8 @@ import { AssociationModule } from './association/association.module';
     FilesModule, // Gestion des fichiers (upload, stockage, suppression)
     ProfileModule, // Gestion du profil utilisateur
     ReferenceModule, // Endpoints de référence (compétences, causes, etc.)
+    AssociationModule, // Gestion des associations (profil, membres, transfert, recherche par géolocalisation)
     MissionModule, // Listing des missions (route publique)
-    AssociationModule, // Associations (recherche par géolocalisation)
   ],
   controllers: [],
   providers: [

@@ -1,14 +1,28 @@
 import { Tabs, usePathname } from "expo-router";
 import { Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { cssInterop } from "nativewind";
 import { colors } from "@/components/ui";
 import { AppShell, HomeIcon, UserIcon, HandHeartIcon } from "@/components/layouts/AppShell";
 import { useAuthStore } from "@/stores/auth.store";
+
+import BuildingIconSource from "@assets/icons/ic_building.svg";
+
+const iconConfig = {
+  className: {
+    target: "style",
+    nativeStyleToProp: { width: true, height: true, color: true },
+  },
+} as const;
+
+const BuildingIcon = cssInterop(BuildingIconSource, iconConfig);
 
 const MOBILE_SUBPAGE_ROUTES = new Set([
   "/profil/modifier",
   "/profil/mot-de-passe",
   "/profil/notifications",
+  "/association/modifier",
+  "/association/membres",
 ]);
 
 function isMobileSubpageRoute(pathname: string): boolean {
@@ -21,10 +35,16 @@ function isMobileSubpageRoute(pathname: string): boolean {
 export default function MainLayout() {
   const insets = useSafeAreaInsets();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const user = useAuthStore((state) => state.user);
   const pathname = usePathname();
 
   const isMobileSubpage =
     Platform.OS !== "web" && isMobileSubpageRoute(pathname);
+
+  const hasAssociation =
+    isAuthenticated &&
+    Array.isArray(user?.associations) &&
+    user.associations.length > 0;
 
   return (
     <AppShell layoutType={isMobileSubpage ? "subpage" : "main"}>
@@ -40,7 +60,7 @@ export default function MainLayout() {
           tabBarActiveTintColor: colors.primary.default,
           tabBarInactiveTintColor: colors.grey[400],
           headerShadowVisible: false,
-          //   Si on veuxait masquer les labels sous les icônes, on peut décommenter cette ligne :
+          //   Si on veux masquer les labels sous les icônes, on peut décommenter cette ligne :
           //   tabBarShowLabel: false,
           tabBarStyle:
             Platform.OS === "web"
@@ -75,7 +95,7 @@ export default function MainLayout() {
           }}
         />
 
-        {/* On ne rend le Screen que si on est connecté */}
+        {/* Onglet Profil (connecté uniquement) */}
         {isAuthenticated ? (
           <Tabs.Screen
             name="profil"
@@ -92,7 +112,27 @@ export default function MainLayout() {
           <Tabs.Screen
             name="profil"
             options={{
-              href: null, // Cette ligne cache l'onglet physiquement de la barre
+              href: null, // Cache l'onglet si non connecté
+            }}
+          />
+        )}
+
+        {/* Onglet Association (connecté + membre d'une association) */}
+        {hasAssociation ? (
+          <Tabs.Screen
+            name="association"
+            options={{
+              title: "Association",
+              tabBarIcon: ({ color }) => (
+                <BuildingIcon className="w-7 h-7" color={color} />
+              ),
+            }}
+          />
+        ) : (
+          <Tabs.Screen
+            name="association"
+            options={{
+              href: null, // Cache l'onglet si pas d'association
             }}
           />
         )}

@@ -1,8 +1,16 @@
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import clsx from "clsx";
 import { Text } from "../text/text";
 import { MissionCard } from "../mission-card/mission-card";
 import { MissionGridProps } from "./mission-grid.types";
+
+// Sur native : 2 colonnes fixes (48% + gap-3 = 12px → tient dans tous les écrans ≥ 300px).
+// Sur web : responsive via classes Tailwind (1 → 2 → 3 colonnes).
+const ITEM_CLASS =
+  Platform.OS === "web"
+    ? "w-full md:w-[calc(50%-8px)] lg:w-[calc(33.333%-11px)]"
+    : "w-[48%]";
+const CONTAINER_GAP = Platform.OS === "web" ? "gap-4" : "gap-3";
 
 /**
  * Grille responsive de MissionCards.
@@ -23,7 +31,8 @@ export function MissionGrid({
     return (
       <View
         className={clsx(
-          "flex-row flex-wrap gap-4",
+          "flex-row flex-wrap",
+          CONTAINER_GAP,
           className,
         )}
       >
@@ -32,8 +41,7 @@ export function MissionGrid({
             key={i}
             className={clsx(
               "bg-grey-100 rounded-2xl h-64 animate-pulse",
-              // Responsive widths via NativeWind
-              "w-full md:w-[calc(50%-8px)] lg:w-[calc(33.333%-11px)]",
+              ITEM_CLASS,
             )}
           />
         ))}
@@ -60,14 +68,15 @@ export function MissionGrid({
   return (
     <View
       className={clsx(
-        "flex-row flex-wrap gap-4",
+        "flex-row flex-wrap",
+        CONTAINER_GAP,
         className,
       )}
     >
       {missions.map((mission) => (
         <View
           key={mission.id}
-          className="w-full md:w-[calc(50%-8px)] lg:w-[calc(33.333%-11px)]"
+          className={ITEM_CLASS}
         >
           <MissionCard
             title={mission.title}

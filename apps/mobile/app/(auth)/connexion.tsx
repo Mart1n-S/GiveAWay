@@ -25,10 +25,12 @@ import EmailIcon from "@assets/icons/ic_email.svg";
 import LockIcon from "@assets/icons/ic_lock.svg";
 import UnlockIcon from "@assets/icons/ic_unlock.svg";
 
+import { usePageTitle } from "@/hooks/usePageTitle";
+
 export default function LoginScreen() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
-
+  usePageTitle("Connexion");
   const {
     control,
     handleSubmit,
