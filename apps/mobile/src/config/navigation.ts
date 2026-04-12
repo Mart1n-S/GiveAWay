@@ -34,20 +34,21 @@ export const PUBLIC_LINKS: NavLink[] = [
 
 // --- AJOUT SPÉCIFIQUE DÉVELOPPEMENT ---
 // TODO: Supprimer ces liens avant la production, ils sont là pour faciliter le développement et les tests de certaines fonctionnalités (ex: notifications push)
-if (__DEV__) {
-  PUBLIC_LINKS.push({
-    id: "design-system",
-    label: "Design System 🎨",
-    href: "/design-system",
-    iconName: "settings",
-  },
-  {
-    id: "notifications",
-    label: "Notifications 🔔",
-    href: "/notifications",
-    iconName: "settings",
-  });
-}
+// TODO: Activer pour le dev
+// if (__DEV__) {
+//   PUBLIC_LINKS.push({
+//     id: "design-system",
+//     label: "Design System 🎨",
+//     href: "/design-system",
+//     iconName: "settings",
+//   },
+//   {
+//     id: "notifications",
+//     label: "Notifications 🔔",
+//     href: "/notifications",
+//     iconName: "settings",
+//   });
+// }
 
 // 2. LIENS UTILISATEUR (Visibles uniquement si connecté)
 export const USER_LINKS: NavLink[] = [

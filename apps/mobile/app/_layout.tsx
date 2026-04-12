@@ -67,14 +67,15 @@ export default function RootLayout() {
         {/* Groupe DEV (Design System...) 
            On pointe vers le dossier (dev) et on dit que tout ce qui est dedans
            s'ouvrira comme une Modale par-dessus le reste.
+           TODO: Activer pour le dev
         */}
-        <Stack.Screen
+        {/* <Stack.Screen
           name="(dev)"
           options={{
             headerShown: false,
             presentation: "modal",
           }}
-        />
+        /> */}
         <Stack.Screen name="(main)" options={{ headerShown: false }} />
       </Stack>
       <Toast config={toastConfig} />

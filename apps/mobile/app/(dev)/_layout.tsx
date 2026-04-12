@@ -20,14 +20,15 @@ export default function DevLayout() {
         }}
       >
         {/* TODO: Supprimer pour la production */}
-        <Stack.Screen
+        {/* TODO: Activer pour le dev */}
+        {/* <Stack.Screen
           name="design-system"
           options={{ headerTitle: "Design System 🎨" }}
         />
         <Stack.Screen
           name="notifications"
           options={{ headerTitle: "Notifications 🔔" }}
-        />
+        /> */}
       </Stack>
     </AppShell>
   );
