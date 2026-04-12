@@ -101,6 +101,59 @@ export class AssociationService {
   }
 
   // ----------------------------------------------------------------
+  // GET — liste des missions de l'association
+  // ----------------------------------------------------------------
+  async getAssociationMissions(
+    associationId: number,
+    page: number,
+    pageSize: number,
+  ) {
+    const skip = (page - 1) * pageSize;
+
+    // Récupère les missions et le total en parallèle
+    const [rawMissions, total] = await this.prisma.$transaction([
+      this.prisma.mission.findMany({
+        where: { associationId },
+        orderBy: { createdAt: 'desc' }, // Les plus récentes en premier
+        skip,
+        take: pageSize,
+        include: {
+          association: {
+            select: { name: true },
+          },
+          address: true,
+          // Navigation à travers les tables de liaison (pivot)
+          causes: {
+            include: { cause: true },
+          },
+          volunteerTypes: {
+            include: { volunteerType: true },
+          },
+        },
+      }),
+      this.prisma.mission.count({
+        where: { associationId },
+      }),
+    ]);
+
+    // Formatage pour que les causes et volunteerTypes correspondent
+    // à ce que le frontend attend (on "saute" la table pivot)
+    const missions = rawMissions.map((mission) => ({
+      ...mission,
+      causes: mission.causes.map((mc) => mc.cause),
+      volunteerTypes: mission.volunteerTypes.map((mvt) => mvt.volunteerType),
+    }));
+
+    return {
+      missions,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
+  }
+
+  // ----------------------------------------------------------------
   // PATCH — mise à jour des informations de l'association
   // ----------------------------------------------------------------
   async updateAssociation(

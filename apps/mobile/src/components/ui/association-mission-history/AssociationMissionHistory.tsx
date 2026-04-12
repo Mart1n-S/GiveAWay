@@ -29,13 +29,16 @@ export function AssociationMissionHistory({
     setIsLoading(true);
     setError(null);
     try {
-      const { data } = await api.get<MissionListResponse>("/missions", {
-        params: {
-          associationId: String(associationId),
-          pageSize: "3",
-          page: "1",
+      const { data } = await api.get<MissionListResponse>(
+        `/associations/missions/${associationId}`,
+        {
+          params: {
+            pageSize: "3",
+            page: "1",
+          },
         },
-      });
+      );
+
       setMissions(data.missions.slice(0, 3));
     } catch {
       setError("Impossible de charger les missions.");
