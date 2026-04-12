@@ -16,6 +16,7 @@ import { useProfileStore } from "@/stores/profile.store";
 import WarningIconSource from "@assets/icons/ic_info.svg";
 import LockIconSource from "@assets/icons/ic_lock.svg";
 import UnlockIconSource from "@assets/icons/ic_unlock.svg";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const iconConfig = {
   className: {
@@ -37,6 +38,7 @@ type DeleteAccountFormInput = {
 // Composant
 export default function DeleteAccountScreen() {
   const router = useRouter();
+  usePageTitle("Supprimer mon compte");
   const user = useProfileStore((state) => state.profile);
   const isGoogleAccount = !user?.hasPassword;
 

@@ -45,6 +45,7 @@ import LockIconSource from "@assets/icons/ic_lock.svg";
 import UnlockIconSource from "@assets/icons/ic_unlock.svg";
 import InfoIconSource from "@assets/icons/ic_info.svg";
 import { isAxiosError } from "axios";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const CameraPlaceholder = () => <Text className="text-4xl">🏢</Text>;
 const AvatarPlaceholder = () => <Text className="text-4xl">📷</Text>;
@@ -70,6 +71,7 @@ type VerifyFormInput = z.input<typeof VerifyEmailSchema>;
 type Step = "REGISTER" | "VERIFY";
 
 export default function RegisterAssociationScreen() {
+  usePageTitle("Inscription association");
   const router = useRouter();
   const scrollViewRef = useRef<ScrollView>(null);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);

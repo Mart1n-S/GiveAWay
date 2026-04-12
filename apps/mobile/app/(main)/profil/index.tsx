@@ -25,10 +25,11 @@ import { ExportService } from "@/services/export.service";
 import { useAuthStore } from "@/stores/auth.store";
 import { useProfileStore } from "@/stores/profile.store";
 import { colors } from "@/components/ui/theme/tokens";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function ProfileScreen() {
   const router = useRouter();
-
+  usePageTitle("Mon profil");
   // Store
   const user = useProfileStore((state) => state.profile);
   const isLoading = useProfileStore((state) => state.isLoading);
@@ -37,7 +38,6 @@ export default function ProfileScreen() {
   const [isExporting, setIsExporting] = React.useState(false);
 
   // Chargement
-
   const loadProfile = useCallback(async (isRefresh = false) => {
     // Ne pas charger si l'utilisateur n'est plus connecté
     const isAuthenticated = useAuthStore.getState().isAuthenticated;

@@ -17,6 +17,7 @@ import EmailIconSource from "@assets/icons/ic_email.svg";
 import { cssInterop } from "nativewind";
 import Toast from "react-native-toast-message";
 import { isAxiosError } from "axios";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 type RequestStep = "REQUEST" | "VERIFY";
 type RequestFormInput = z.input<typeof ResendVerificationSchema>;
@@ -38,6 +39,7 @@ export default function DemandeVerificationEmailScreen() {
   const [isResending, setIsResending] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
   const [registeredEmail, setRegisteredEmail] = useState("");
+  usePageTitle("Demande de vérification email");
 
   // --- FORMULAIRE 1 : DEMANDE DE CODE (Email) ---
   const { control: controlRequest, handleSubmit: handleSubmitRequest } =

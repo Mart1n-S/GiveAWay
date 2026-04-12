@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 const mockPrismaService = {
   skill: { findMany: jest.fn() },
   cause: { findMany: jest.fn() },
+  associationCategory: { findMany: jest.fn() },
 };
 
 describe('ReferenceService', () => {
@@ -71,6 +72,37 @@ describe('ReferenceService', () => {
       mockPrismaService.cause.findMany.mockResolvedValue([]);
 
       const result = await service.getCauses();
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getAssociationCategories', () => {
+    it('✅ Doit retourner la liste des catégories triées par nom', async () => {
+      const mockCategories = [
+        { id: 1, name: 'Aide alimentaire' },
+        { id: 2, name: 'Environnement' },
+      ];
+      mockPrismaService.associationCategory.findMany.mockResolvedValue(
+        mockCategories,
+      );
+
+      const result = await service.getAssociationCategories();
+
+      expect(
+        mockPrismaService.associationCategory.findMany,
+      ).toHaveBeenCalledWith({
+        orderBy: { name: 'asc' },
+        select: { id: true, name: true },
+      });
+      expect(result).toEqual(mockCategories);
+      expect(result).toHaveLength(2);
+    });
+
+    it('✅ Doit retourner un tableau vide si aucune catégorie', async () => {
+      mockPrismaService.associationCategory.findMany.mockResolvedValue([]);
+
+      const result = await service.getAssociationCategories();
 
       expect(result).toEqual([]);
     });

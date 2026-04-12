@@ -2,7 +2,7 @@ export interface NavLink {
   id: string;
   label: string;
   href: string;
-  iconName?: "home" | "info" | "user" | "settings" | "logout";
+  iconName?: "home" | "info" | "user" | "settings" | "logout" | "hand-heart";
   isDestructive?: boolean;
   hideInMobileDrawer?: boolean;
   testID?: string;
@@ -18,10 +18,10 @@ export const PUBLIC_LINKS: NavLink[] = [
     hideInMobileDrawer: true,
   },
   {
-    id: "how-it-works",
-    label: "Comment ça marche ?",
-    href: "/a-propos", // TODO: Page à créer
-    iconName: "info",
+    id: "missions",
+    label: "Missions",
+    href: "/missions",
+    iconName: "hand-heart",
   },
 ];
 

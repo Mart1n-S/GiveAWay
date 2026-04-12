@@ -38,3 +38,5 @@ yarn-error.log*
 *.pem
 
 todo.md
+.claude
+.claude/*

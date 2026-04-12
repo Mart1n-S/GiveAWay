@@ -15,10 +15,13 @@ import {
   TransferOwnerDto,
   AssociationRole,
   AssociationStatus,
+  AssociationMapItem,
+  NearbyQueryDto,
 } from '@repo/shared';
 import {
   AssociationRole as PrismaAssociationRole,
   AssociationStatus as PrismaAssociationStatus,
+  Prisma,
 } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AssociationVerificationService } from '../auth/register/association-verification.service';
@@ -401,6 +404,84 @@ export class AssociationService {
     await this.prisma.refreshToken.deleteMany({
       where: { userId: requestingUserId },
     });
+  }
+
+  /**
+   * Retourne les associations validées situées dans un rayon donné
+   * autour d'un point géographique, en utilisant la formule de Haversine.
+   * Supporte un filtre optionnel par catégorie et par date de création.
+   *
+   * @param query - Paramètres validés par NearbyQuerySchema
+   */
+  async findNearby(query: NearbyQueryDto): Promise<AssociationMapItem[]> {
+    const {
+      lat,
+      lng,
+      radius,
+      limit,
+      categoryIds,
+      createdAfter,
+      createdBefore,
+    } = query;
+
+    const categoryFilter =
+      categoryIds && categoryIds.length > 0
+        ? Prisma.sql`AND a.category_id = ANY(ARRAY[${Prisma.join(categoryIds)}]::int[])`
+        : Prisma.empty;
+
+    const createdAfterFilter = createdAfter
+      ? Prisma.sql`AND a.created_at >= ${createdAfter}`
+      : Prisma.empty;
+
+    const createdBeforeFilter = createdBefore
+      ? Prisma.sql`AND a.created_at <= ${createdBefore}`
+      : Prisma.empty;
+
+    return this.prisma.$queryRaw<AssociationMapItem[]>`
+      SELECT
+        sub.id,
+        sub.name,
+        sub."logoUrl",
+        sub.city,
+        sub.latitude,
+        sub.longitude,
+        sub.description,
+        sub.website,
+        sub.category
+      FROM (
+        SELECT
+          a.id,
+          a.name,
+          a.logo_url                    AS "logoUrl",
+          addr.city,
+          addr.latitude::float          AS latitude,
+          addr.longitude::float         AS longitude,
+          a.description,
+          a.website,
+          ac.name                       AS category,
+          (
+            6371 * acos(
+              LEAST(1.0,
+                cos(radians(${lat}::float)) * cos(radians(addr.latitude::float))
+                * cos(radians(addr.longitude::float) - radians(${lng}::float))
+                + sin(radians(${lat}::float)) * sin(radians(addr.latitude::float))
+              )
+            )
+          )                             AS distance
+        FROM associations a
+        JOIN addresses addr ON a.address_id = addr.id
+        LEFT JOIN association_categories ac ON a.category_id = ac.id
+        WHERE a.status = 'VALIDATED'
+          AND addr.latitude  IS NOT NULL
+          AND addr.longitude IS NOT NULL
+          ${categoryFilter}
+          ${createdAfterFilter}
+          ${createdBeforeFilter}
+      ) sub
+      WHERE sub.distance <= ${radius}
+      ORDER BY sub.distance
+      LIMIT ${limit}
+    `;
   }
 
   // ----------------------------------------------------------------

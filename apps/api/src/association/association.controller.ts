@@ -11,6 +11,7 @@ import {
   Post,
   Req,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import {
@@ -24,6 +25,9 @@ import {
   UpdateMemberRoleSchema,
   TransferOwnerDto,
   TransferOwnerSchema,
+  AssociationMapItem,
+  NearbyQueryDto,
+  NearbyQuerySchema,
 } from '@repo/shared';
 import { AssociationRole } from '../generated/prisma/client';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -38,6 +42,29 @@ import { AssociationRoles } from './guards/association-roles.decorator';
 @Controller('associations')
 export class AssociationController {
   constructor(private readonly associationService: AssociationService) {}
+
+  /**
+   * GET /associations/nearby
+   *   ?lat=<float>&lng=<float>
+   *   &radius=10          (km, défaut 10, max 50)
+   *   &limit=200          (max 200)
+   *   &categoryIds=1,2,3  (optionnel, virgule-séparé)
+   *   &createdAfter=2024-01-01  (optionnel, ISO date)
+   *   &createdBefore=2025-01-01 (optionnel, ISO date)
+   *
+   * Retourne les associations validées dans un rayon donné autour d'un point.
+   * Route publique — aucune authentification requise.
+   *
+   * IMPORTANT : doit être déclaré AVANT :associationId
+   * pour éviter que NestJS n'interprète "nearby" comme un paramètre.
+   */
+  @Get('nearby')
+  @HttpCode(HttpStatus.OK)
+  async getNearby(
+    @Query(new ZodValidationPipe(NearbyQuerySchema)) query: NearbyQueryDto,
+  ): Promise<AssociationMapItem[]> {
+    return this.associationService.findNearby(query);
+  }
 
   /**
    * GET /associations/:associationId

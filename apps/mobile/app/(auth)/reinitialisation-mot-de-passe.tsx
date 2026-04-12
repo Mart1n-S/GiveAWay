@@ -14,6 +14,7 @@ import { isAxiosError } from "axios";
 // Icons
 import LockIconSource from "@assets/icons/ic_lock.svg";
 import UnlockIconSource from "@assets/icons/ic_unlock.svg";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const iconConfig = {
   className: {
@@ -29,7 +30,7 @@ export default function ResetPasswordScreen() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-
+  usePageTitle("Réinitialisation du mot de passe");
   const { control, handleSubmit, setError } = useForm<ResetPasswordDto>({
     resolver: zodResolver(ResetPasswordSchema),
     defaultValues: {

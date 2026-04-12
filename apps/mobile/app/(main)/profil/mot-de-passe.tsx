@@ -15,6 +15,7 @@ import { AuthService } from "@/services/auth.service";
 import InfoIconSource from "@assets/icons/ic_info.svg";
 import LockIconSource from "@assets/icons/ic_lock.svg";
 import UnlockIconSource from "@assets/icons/ic_unlock.svg";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const iconConfig = {
   className: {
@@ -29,7 +30,7 @@ const UnlockIcon = cssInterop(UnlockIconSource, iconConfig);
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
-
+  usePageTitle("Changer mon mot de passe");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showOldPassword, setShowOldPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);

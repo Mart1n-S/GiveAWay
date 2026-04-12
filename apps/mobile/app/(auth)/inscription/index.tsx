@@ -6,6 +6,7 @@ import { SelectionCard, Button } from "@/components/ui";
 
 import UserIconSource from "@assets/icons/ic_user.svg";
 import BuildingIconSource from "@assets/icons/ic_building.svg";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const iconConfig = {
   className: {
@@ -19,7 +20,7 @@ const BuildingIcon = cssInterop(BuildingIconSource, iconConfig);
 
 export default function RegisterChoiceScreen() {
   const router = useRouter();
-
+  usePageTitle("Inscription");
   return (
     <>
       <Stack.Screen

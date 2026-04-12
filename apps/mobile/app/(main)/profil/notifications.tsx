@@ -11,6 +11,7 @@ import { ProfileService } from "@/services/profile.service";
 import { useProfileStore } from "@/stores/profile.store";
 
 import InfoIconSource from "@assets/icons/ic_info.svg";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const iconConfig = {
   className: {
@@ -23,7 +24,7 @@ const InfoIcon = cssInterop(InfoIconSource, iconConfig);
 
 export default function NotificationsScreen() {
   const profile = useProfileStore((state) => state.profile);
-
+  usePageTitle("Notifications");
   const [emailNotifications, setEmailNotifications] = useState(
     profile?.emailNotifications ?? false,
   );
@@ -160,7 +161,7 @@ export default function NotificationsScreen() {
 
               <View className="h-[1px] mx-5 bg-grey-100" />
 
-              <View className="px-5 py-4 gap-3">
+              <View className="gap-3 px-5 py-4">
                 {/* Statut réel lu depuis l'OS */}
                 <View className="flex-row items-center justify-between">
                   <Text className="text-sm text-grey-700">

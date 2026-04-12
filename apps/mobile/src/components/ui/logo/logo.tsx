@@ -26,7 +26,7 @@ export function Logo({
       <View
         {...props}
         accessibilityRole="link"
-        accessibilityLabel="Logo GiveAWay — Retour à l'accueil"
+        accessibilityLabel="Logo GiveAWay - Retour à l'accueil"
         className={clsx(
           "flex-row items-center gap-3 web:cursor-pointer",
           "rounded-md transition-all duration-200",
