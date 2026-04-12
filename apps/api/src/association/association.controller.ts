@@ -112,6 +112,29 @@ export class AssociationController {
   }
 
   /**
+   * GET /associations/:associationId/missions
+   * Retourne la liste des missions créées par cette association.
+   * Requiert d'être membre de l'association.
+   */
+  @UseGuards(AuthGuard('jwt'), AssociationMemberGuard)
+  @Get('/missions/:associationId')
+  @HttpCode(HttpStatus.OK)
+  async getAssociationMissions(
+    @Param('associationId', ParseIntPipe) associationId: number,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    const pageNum = page ? parseInt(page, 10) : 1;
+    const limit = pageSize ? parseInt(pageSize, 10) : 3;
+
+    return this.associationService.getAssociationMissions(
+      associationId,
+      pageNum,
+      limit,
+    );
+  }
+
+  /**
    * POST /associations/:associationId/members
    * Ajoute un membre par son email avec le rôle EDITOR.
    * Requiert le rôle OWNER ou ADMIN.

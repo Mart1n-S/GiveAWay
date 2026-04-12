@@ -1,6 +1,16 @@
 import Toast from "react-native-toast-message";
+import { isAxiosError } from "axios";
 import { api } from "@/lib/axios";
-import type { AssociationCategory, AssociationMapItem } from "@repo/shared";
+import type {
+  AssociationCategory,
+  AssociationMapItem,
+  AssociationDto,
+  AssociationMemberDto,
+  UpdateAssociationDto,
+  AddMemberDto,
+  UpdateMemberRoleDto,
+  TransferOwnerDto,
+} from "@repo/shared";
 
 /** Filtres optionnels pour la recherche d'associations proches */
 export interface NearbyFilters {
@@ -74,5 +84,218 @@ export async function getAssociationCategories(): Promise<
       onPress: () => Toast.hide(),
     });
     throw err;
+  }
+}
+
+/**
+ * GET /associations/:associationId
+ * Retourne le profil complet d'une association (membres inclus).
+ * Requiert d'être membre de l'association.
+ */
+export async function getAssociation(
+  associationId: number,
+): Promise<AssociationDto> {
+  try {
+    const { data } = await api.get<AssociationDto>(
+      `/associations/${associationId}`,
+    );
+    return data;
+  } catch (error) {
+    if (isAxiosError(error)) {
+      if (error.response?.status === 403) {
+        throw new Error("Vous n'êtes pas membre de cette association.");
+      }
+      if (error.response?.status === 404) {
+        throw new Error("Association introuvable.");
+      }
+    }
+    throw new Error(
+      "Impossible de charger l'association. Vérifiez votre connexion.",
+    );
+  }
+}
+
+/**
+ * PATCH /associations/:associationId
+ * Met à jour les informations de l'association (OWNER uniquement).
+ */
+export async function updateAssociation(
+  associationId: number,
+  dto: UpdateAssociationDto,
+): Promise<AssociationDto> {
+  try {
+    const { data } = await api.patch<AssociationDto>(
+      `/associations/${associationId}`,
+      dto,
+    );
+    return data;
+  } catch (error) {
+    if (isAxiosError(error)) {
+      if (error.response?.status === 403) {
+        throw new Error(
+          "Vous n'avez pas les droits pour modifier cette association.",
+        );
+      }
+      if (error.response?.status === 404) {
+        throw new Error("Association introuvable.");
+      }
+      const msg = error.response?.data?.message;
+      if (typeof msg === "string") throw new Error(msg);
+    }
+    throw new Error(
+      "Impossible de mettre à jour l'association. Vérifiez votre connexion.",
+    );
+  }
+}
+
+/**
+ * GET /associations/:associationId/members
+ * Retourne la liste des membres de l'association.
+ */
+export async function getMembers(
+  associationId: number,
+): Promise<AssociationMemberDto[]> {
+  try {
+    const { data } = await api.get<AssociationMemberDto[]>(
+      `/associations/${associationId}/members`,
+    );
+    return data;
+  } catch (error) {
+    if (isAxiosError(error)) {
+      if (error.response?.status === 403) {
+        throw new Error("Accès non autorisé à la liste des membres.");
+      }
+      if (error.response?.status === 404) {
+        throw new Error("Association introuvable.");
+      }
+    }
+    throw new Error(
+      "Impossible de charger les membres. Vérifiez votre connexion.",
+    );
+  }
+}
+
+/**
+ * POST /associations/:associationId/members
+ * Ajoute un membre par son email (OWNER ou ADMIN uniquement).
+ */
+export async function addMember(
+  associationId: number,
+  dto: AddMemberDto,
+): Promise<AssociationMemberDto> {
+  try {
+    const { data } = await api.post<AssociationMemberDto>(
+      `/associations/${associationId}/members`,
+      dto,
+    );
+    return data;
+  } catch (error) {
+    if (isAxiosError(error)) {
+      if (error.response?.status === 403) {
+        throw new Error(
+          "Vous n'avez pas les droits pour ajouter des membres.",
+        );
+      }
+      if (error.response?.status === 404) {
+        throw new Error("Aucun utilisateur trouvé avec cet email.");
+      }
+      if (error.response?.status === 409) {
+        throw new Error("Cet utilisateur est déjà membre de l'association.");
+      }
+      const msg = error.response?.data?.message;
+      if (typeof msg === "string") throw new Error(msg);
+    }
+    throw new Error(
+      "Impossible d'ajouter le membre. Vérifiez votre connexion.",
+    );
+  }
+}
+
+/**
+ * PATCH /associations/:associationId/members/:memberId
+ * Met à jour le rôle d'un membre (OWNER uniquement).
+ */
+export async function updateMemberRole(
+  associationId: number,
+  memberId: number,
+  dto: UpdateMemberRoleDto,
+): Promise<AssociationMemberDto> {
+  try {
+    const { data } = await api.patch<AssociationMemberDto>(
+      `/associations/${associationId}/members/${memberId}`,
+      dto,
+    );
+    return data;
+  } catch (error) {
+    if (isAxiosError(error)) {
+      if (error.response?.status === 403) {
+        throw new Error(
+          "Vous n'avez pas les droits pour modifier les rôles.",
+        );
+      }
+      if (error.response?.status === 404) {
+        throw new Error("Membre introuvable.");
+      }
+    }
+    throw new Error(
+      "Impossible de modifier le rôle. Vérifiez votre connexion.",
+    );
+  }
+}
+
+/**
+ * DELETE /associations/:associationId/members/:memberId
+ * Retire un membre de l'association (OWNER ou ADMIN).
+ */
+export async function removeMember(
+  associationId: number,
+  memberId: number,
+): Promise<void> {
+  try {
+    await api.delete(`/associations/${associationId}/members/${memberId}`);
+  } catch (error) {
+    if (isAxiosError(error)) {
+      if (error.response?.status === 403) {
+        throw new Error(
+          "Vous n'avez pas les droits pour retirer ce membre.",
+        );
+      }
+      if (error.response?.status === 404) {
+        throw new Error("Membre introuvable.");
+      }
+    }
+    throw new Error(
+      "Impossible de retirer le membre. Vérifiez votre connexion.",
+    );
+  }
+}
+
+/**
+ * POST /associations/:associationId/transfer-owner
+ * Transfère la propriété de l'association à un autre membre (OWNER uniquement).
+ * L'OWNER actuel sera rétrogradé ADMIN et déconnecté.
+ */
+export async function transferOwner(
+  associationId: number,
+  dto: TransferOwnerDto,
+): Promise<void> {
+  try {
+    await api.post(`/associations/${associationId}/transfer-owner`, dto);
+  } catch (error) {
+    if (isAxiosError(error)) {
+      if (error.response?.status === 403) {
+        throw new Error(
+          "Vous n'avez pas les droits pour transférer la propriété.",
+        );
+      }
+      if (error.response?.status === 404) {
+        throw new Error("Membre cible introuvable.");
+      }
+      const msg = error.response?.data?.message;
+      if (typeof msg === "string") throw new Error(msg);
+    }
+    throw new Error(
+      "Impossible de transférer la propriété. Vérifiez votre connexion.",
+    );
   }
 }
