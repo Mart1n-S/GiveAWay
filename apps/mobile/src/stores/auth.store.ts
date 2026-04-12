@@ -48,6 +48,9 @@ export const useAuthStore = create<AuthState>()(
         void import("./reference.store").then(({ useReferenceStore }) => {
           useReferenceStore.getState().clearReferences();
         });
+        void import("./association.store").then(({ useAssociationStore }) => {
+          useAssociationStore.getState().clearAssociation();
+        });
         set({
           user: null,
           accessToken: null,

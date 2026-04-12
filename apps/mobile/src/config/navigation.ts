@@ -2,7 +2,14 @@ export interface NavLink {
   id: string;
   label: string;
   href: string;
-  iconName?: "home" | "info" | "user" | "settings" | "logout" | "hand-heart";
+  iconName?:
+    | "home"
+    | "info"
+    | "user"
+    | "settings"
+    | "logout"
+    | "hand-heart"
+    | "building";
   isDestructive?: boolean;
   hideInMobileDrawer?: boolean;
   testID?: string;
@@ -51,6 +58,14 @@ export const USER_LINKS: NavLink[] = [
     iconName: "user",
     hideInMobileDrawer: true,
     testID: "link-profile",
+  },
+  {
+    id: "association",
+    label: "Mon Association",
+    href: "/association",
+    iconName: "building",
+    hideInMobileDrawer: true,
+    testID: "link-association",
   },
   {
     id: "settings",
