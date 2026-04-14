@@ -9,7 +9,6 @@ import {
 } from "react-native";
 import { useEffect, useRef, useState } from "react";
 import type { AssociationCategory } from "@repo/shared";
-import { getAssociationCategories } from "@/services/association.service";
 import type { NearbyFilters } from "@/services/association.service";
 
 // ------------------------------------------------------------------ types ---
@@ -32,6 +31,8 @@ interface MapFiltersProps {
    * `false` : panneau en flux normal, rendu au-dessus de la carte dans une colonne.
    */
   floating?: boolean;
+  /** Catégories d'associations — fournies par le parent. */
+  categories?: AssociationCategory[];
 }
 
 // --------------------------------------------------------------- geocoding ---
@@ -54,23 +55,16 @@ async function geocode(query: string): Promise<AddressSuggestion[]> {
 
 // --------------------------------------------------------------- component ---
 
-export function MapFilters({ onChange, floating = true }: MapFiltersProps) {
+export function MapFilters({ onChange, floating = true, categories = [] }: MapFiltersProps) {
   const [addressQuery, setAddressQuery] = useState("");
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [loadingAddress, setLoadingAddress] = useState(false);
   const addressDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [categories, setCategories] = useState<AssociationCategory[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
   const [createdAfter, setCreatedAfter] = useState("");
   const [createdBefore, setCreatedBefore] = useState("");
-
-  useEffect(() => {
-    getAssociationCategories()
-      .then(setCategories)
-      .catch(() => {});
-  }, []);
 
   // Notifie le parent à chaque changement de filtre (hors adresse)
   useEffect(() => {

@@ -5,6 +5,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   Modal,
+  Platform,
   Pressable,
 } from "react-native";
 import { Stack, useRouter } from "expo-router";
@@ -27,6 +28,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 
 import TrashIconSource from "@assets/icons/ic_trash.svg";
 import EditIconSource from "@assets/icons/ic_edit.svg";
+import { SearchInput } from "@/components/ui/search-input/SearchInput";
 
 const iconConfig = {
   className: {
@@ -310,8 +312,22 @@ export default function MembresScreen() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [memberToRemove, setMemberToRemove] =
     useState<AssociationMemberDto | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { members, userRole, isLoading } = store;
+
+  const filteredMembers = members
+    ? searchQuery.trim()
+      ? members.filter((m) => {
+          const q = searchQuery.toLowerCase();
+          return (
+            m.firstName.toLowerCase().includes(q) ||
+            m.lastName.toLowerCase().includes(q) ||
+            m.email.toLowerCase().includes(q)
+          );
+        })
+      : members
+    : [];
 
   const loadMembers = useCallback(
     async (forceRefresh = false) => {
@@ -442,6 +458,15 @@ export default function MembresScreen() {
       >
         <View className="w-full max-w-2xl gap-4 px-4 pt-4 mx-auto">
 
+          {/* Bouton retour — web uniquement */}
+          {Platform.OS === "web" && (
+            <View className="items-start">
+              <Button variant="secondary" onPress={() => router.back()}>
+                ← Retour
+              </Button>
+            </View>
+          )}
+
           {/* Header */}
           <View className="flex-row items-center justify-between">
             <Text className="text-xl font-bold text-grey-900">
@@ -457,6 +482,15 @@ export default function MembresScreen() {
             )}
           </View>
 
+          {/* Barre de recherche */}
+          {members && members.length > 0 && (
+            <SearchInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Rechercher par nom ou email…"
+            />
+          )}
+
           {/* Liste des membres */}
           {!members || members.length === 0 ? (
             <View className="items-center gap-2 py-12">
@@ -464,9 +498,15 @@ export default function MembresScreen() {
                 Aucun membre pour le moment.
               </Text>
             </View>
+          ) : filteredMembers.length === 0 ? (
+            <View className="items-center gap-2 py-12">
+              <Text className="text-base font-medium text-grey-600">
+                Aucun membre ne correspond à votre recherche.
+              </Text>
+            </View>
           ) : (
             <View className="gap-3">
-              {members.map((member) => (
+              {filteredMembers.map((member) => (
                 <MemberCard
                   key={member.id}
                   member={member}

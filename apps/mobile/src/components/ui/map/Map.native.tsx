@@ -12,9 +12,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "@/components/ui";
 import MapView, { Marker, Region } from "react-native-maps";
 import Constants, { ExecutionEnvironment } from "expo-constants";
-import { MissionService } from "@/services/mission.service";
 import { MissionMarkerNative, TYPE_COLORS } from "./MissionMarker.native";
-import type { MissionListQuery, MissionMapItem } from "@repo/shared";
+import type { MissionMapItem } from "@repo/shared";
 import CloseIconSource from "@assets/icons/ic_close.svg";
 import ArrowRightIconSource from "@assets/icons/ic_arrow_right.svg";
 import ChevronLeftIconSource from "@assets/icons/ic_chevron_left.svg";
@@ -43,7 +42,6 @@ const INITIAL_REGION: Region = {
   latitudeDelta: 0.05,
   longitudeDelta: 0.05,
 };
-const DEBOUNCE_MS = 1000;
 const MAX_DESC = 110;
 
 const TYPE_LABELS: Record<MissionMapItem["type"], string> = {
@@ -209,7 +207,6 @@ function MissionPopup({
 interface MapProps {
   missions?: MissionMapItem[];
   isLoading?: boolean;
-  filters?: MissionListQuery;
   selectedMissionId?: number;
   onMissionSelect?: (id: number) => void;
   onVisibleMissionsChange?: (ids: number[]) => void;
@@ -218,18 +215,14 @@ interface MapProps {
 }
 
 export default function Map({
-  missions: missionsProp,
+  missions = [],
   isLoading: isLoadingProp = false,
-  filters,
   onMissionSelect,
   onVisibleMissionsChange,
   center,
 }: MapProps) {
   const mapRef = useRef<MapView>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [localMissions, setLocalMissions] = useState<MissionMapItem[]>([]);
-  const [fetchError, setFetchError] = useState(false);
   const [region, setRegion] = useState<Region>(INITIAL_REGION);
 
   // Popup overlay state
@@ -237,31 +230,6 @@ export default function Map({
     null,
   );
   const [popupIndex, setPopupIndex] = useState(0);
-
-  const missions = missionsProp ?? localMissions;
-
-  // ---------------------------------------------------------------- fetch autonome ---
-
-  const fetchMissions = useCallback(() => {
-    if (missionsProp !== undefined) return;
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(async () => {
-      try {
-        const data = await MissionService.getMissionsForMap(filters ?? {});
-        setLocalMissions(data);
-        setFetchError(false);
-      } catch {
-        setFetchError(true);
-      }
-    }, DEBOUNCE_MS);
-  }, [missionsProp, filters]);
-
-  useEffect(() => {
-    fetchMissions();
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [fetchMissions]);
 
   // Réinitialise l'index quand on sélectionne un nouveau groupe
   useEffect(() => {
@@ -385,14 +353,6 @@ export default function Map({
 
   return (
     <View style={styles.container}>
-      {fetchError && missionsProp === undefined && (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorText}>
-            Impossible de charger les missions. Vérifiez votre connexion.
-          </Text>
-        </View>
-      )}
-
       {isLoadingProp && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="small" color="#CC460F" />
@@ -407,7 +367,6 @@ export default function Map({
         onPress={() => setSelectedGroup(null)}
         onRegionChangeComplete={(r: Region) => {
           setRegion(r);
-          fetchMissions();
         }}
       >
         {/* Clusters géographiques */}

@@ -80,7 +80,7 @@ export function MissionDetailHeader({
     <View className="mb-6">
       {/* Bouton retour — web uniquement */}
       {isWeb && (
-        <View className="mb-4">
+        <View className="mb-4 items-start">
           <Button variant="secondary" onPress={onBack}>
             ← Retour
           </Button>

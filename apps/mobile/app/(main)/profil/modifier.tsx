@@ -280,6 +280,17 @@ export default function EditProfileScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View className="w-full max-w-2xl gap-6 px-4">
+            {/* Bouton retour — web uniquement */}
+            {Platform.OS === "web" && (
+              <Button
+                variant="secondary"
+                onPress={() => router.back()}
+                className="self-start"
+              >
+                ← Retour
+              </Button>
+            )}
+
             {/* Erreur globale */}
             {errors.root?.message && (
               <View className="p-3 border rounded-md bg-error-30 border-error-100">
@@ -469,15 +480,27 @@ export default function EditProfileScreen() {
               )}
             </View>
 
-            {/* Bouton sauvegarder */}
-            <Button
-              onPress={handleSubmit(onSubmit)}
-              loading={isSubmitting}
-              className="w-full"
-              testID="btn-save-profile"
-            >
-              Sauvegarder les modifications
-            </Button>
+            {/* Boutons actions */}
+            <View className="flex-row gap-3">
+              {Platform.OS === "web" && (
+                <Button
+                  variant="secondary"
+                  onPress={() => router.back()}
+                  disabled={isSubmitting}
+                  className="flex-1"
+                >
+                  Annuler
+                </Button>
+              )}
+              <Button
+                onPress={handleSubmit(onSubmit)}
+                loading={isSubmitting}
+                className="flex-1"
+                testID="btn-save-profile"
+              >
+                Sauvegarder les modifications
+              </Button>
+            </View>
 
             <View className="h-10" />
           </View>

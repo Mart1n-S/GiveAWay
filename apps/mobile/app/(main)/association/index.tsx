@@ -22,10 +22,11 @@ import GlobeIconSource from "@assets/icons/ic_globe.svg";
 import { useAuthStore } from "@/stores/auth.store";
 import { useAssociationStore } from "@/stores/association.store";
 import { AuthService } from "@/services/auth.service";
+import { MissionService } from "@/services/mission.service";
 import * as AssociationService from "@/services/association.service";
 
 import { AssociationRole, AssociationStatus } from "@repo/shared";
-import type { AssociationMemberDto } from "@repo/shared";
+import type { AssociationMemberDto, MissionListItem } from "@repo/shared";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { cssInterop } from "react-native-css-interop";
 
@@ -216,8 +217,30 @@ export default function AssociationScreen() {
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [objectExpanded, setObjectExpanded] = useState(false);
 
+  const [recentMissions, setRecentMissions] = useState<MissionListItem[]>([]);
+  const [missionsLoading, setMissionsLoading] = useState(false);
+  const [missionsError, setMissionsError] = useState<string | null>(null);
+
   const userAssociation = user?.associations?.[0] ?? null;
   const associationId = userAssociation?.associationId ?? null;
+
+  const loadRecentMissions = useCallback(async () => {
+    if (!associationId) return;
+    setMissionsLoading(true);
+    setMissionsError(null);
+    try {
+      const result = await MissionService.getMissionsByAssociation(associationId, { page: 1, pageSize: 3 });
+      setRecentMissions(result.missions.slice(0, 3));
+    } catch {
+      setMissionsError("Impossible de charger les missions.");
+    } finally {
+      setMissionsLoading(false);
+    }
+  }, [associationId]);
+
+  useEffect(() => {
+    loadRecentMissions();
+  }, [loadRecentMissions]);
 
   const loadAssociation = useCallback(
     async (forceRefresh = false) => {
@@ -505,7 +528,10 @@ export default function AssociationScreen() {
 
           {/* ── Section 5 : Missions récentes ── */}
           <AssociationMissionHistory
-            associationId={associationId}
+            missions={recentMissions}
+            loading={missionsLoading}
+            error={missionsError}
+            onRetry={loadRecentMissions}
             onViewAll={() => {
               Toast.show({
                 type: "info",
