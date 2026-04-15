@@ -23,17 +23,6 @@ RUN cd apps/api && DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" 
 # Build NestJS via Turborepo
 RUN npx turbo run build --filter=api --filter=./packages/*
 
-# ---- Dépendances de production uniquement ----
-FROM node:20-alpine AS deps
-WORKDIR /app
-COPY package*.json ./
-COPY apps/api/package*.json ./apps/api/
-COPY packages/shared/package*.json ./packages/shared/
-COPY packages/typescript-config/package*.json ./packages/typescript-config/
-COPY packages/eslint-config/package*.json ./packages/eslint-config/
-COPY .npmrc* ./
-RUN npm ci --omit=dev
-
 # ---- Image de production ----
 FROM node:20-alpine AS production
 WORKDIR /app
@@ -42,8 +31,9 @@ ENV NODE_ENV=production
 
 COPY --from=base /app/apps/api/dist ./dist
 COPY --from=base /app/apps/api/prisma ./prisma
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=base /app/apps/api/prisma.config.ts ./prisma.config.ts
+COPY --from=base /app/node_modules ./node_modules
+COPY --from=base /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=base /app/packages/shared/dist ./packages/shared/dist
 COPY --from=base /app/packages/shared/package.json ./packages/shared/package.json
 
