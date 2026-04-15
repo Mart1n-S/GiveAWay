@@ -17,6 +17,12 @@ COPY apps/mobile/ ./apps/mobile/
 COPY packages/ ./packages/
 COPY turbo.json ./
 
+# Variables d'environnement baked dans le bundle Expo au build
+ARG EXPO_PUBLIC_API_URL
+ARG EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID
+ENV EXPO_PUBLIC_API_URL=$EXPO_PUBLIC_API_URL
+ENV EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=$EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID
+
 # Build @repo/shared (requis par Metro pour résoudre les imports)
 RUN npx turbo run build --filter=./packages/shared
 

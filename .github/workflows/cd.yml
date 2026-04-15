@@ -46,6 +46,9 @@ jobs:
           context: .
           file: apps/mobile/Dockerfile
           push: true
+          build-args: |
+            EXPO_PUBLIC_API_URL=https://api.giiveaway.fr
+            EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }}
           tags: |
             ${{ secrets.HARBOR_URL }}/giiveaway/front:latest
             ${{ secrets.HARBOR_URL }}/giiveaway/front:${{ github.sha }}
