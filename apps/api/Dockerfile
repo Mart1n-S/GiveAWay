@@ -15,8 +15,8 @@ COPY apps/api/ ./apps/api/
 COPY packages/ ./packages/
 COPY turbo.json ./
 
-# Générer Prisma
-RUN cd apps/api && npx prisma generate --schema prisma/schema.prisma
+# Générer Prisma (DATABASE_URL fictive requise par Prisma v6 au moment du generate)
+RUN cd apps/api && DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" npx prisma generate --schema prisma/schema.prisma
 
 # Build NestJS via Turborepo
 RUN npx turbo run build --filter=api --filter=./packages/*
