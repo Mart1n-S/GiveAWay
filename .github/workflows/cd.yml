@@ -1,23 +1,18 @@
 name: CD - Build & Deploy
 
 on:
-  workflow_run:
-    workflows: ["CI"]
+  push:
     branches: [develop]
-    types:
-      - completed
 
 jobs:
   build-and-push:
     name: Build & Push Docker images
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure' }}
+    needs: []
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          ref: develop
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -50,8 +45,6 @@ jobs:
           tags: |
             ${{ secrets.HARBOR_URL }}/giiveaway/api:latest
             ${{ secrets.HARBOR_URL }}/giiveaway/api:${{ github.sha }}
-          cache-from: type=registry,ref=${{ secrets.HARBOR_URL }}/giiveaway/api:latest
-          cache-to: type=inline
 
       - name: Build & Push Front
         uses: docker/build-push-action@v5
@@ -62,8 +55,6 @@ jobs:
           tags: |
             ${{ secrets.HARBOR_URL }}/giiveaway/front:latest
             ${{ secrets.HARBOR_URL }}/giiveaway/front:${{ github.sha }}
-          cache-from: type=registry,ref=${{ secrets.HARBOR_URL }}/giiveaway/front:latest
-          cache-to: type=inline
 
   update-gitops:
     name: Update GitOps repo
@@ -80,9 +71,9 @@ jobs:
 
       - name: Update image tags
         run: |
-          sed -i "s|image: ${{ secrets.HARBOR_URL }}/giiveaway/api:.*|image: ${{ secrets.HARBOR_URL }}/giiveaway/api:${{ github.event.workflow_run.head_sha }}|g" \
+          sed -i "s|image: ${{ secrets.HARBOR_URL }}/giiveaway/api:.*|image: ${{ secrets.HARBOR_URL }}/giiveaway/api:${{ github.sha }}|g" \
             gitops/apps/giiveaway/deployment.yaml
-          sed -i "s|image: ${{ secrets.HARBOR_URL }}/giiveaway/front:.*|image: ${{ secrets.HARBOR_URL }}/giiveaway/front:${{ github.event.workflow_run.head_sha }}|g" \
+          sed -i "s|image: ${{ secrets.HARBOR_URL }}/giiveaway/front:.*|image: ${{ secrets.HARBOR_URL }}/giiveaway/front:${{ github.sha }}|g" \
             gitops/apps/giiveaway/deployment.yaml
 
       - name: Commit and push
@@ -91,5 +82,5 @@ jobs:
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
           git add apps/giiveaway/deployment.yaml
-          git diff --staged --quiet || git commit -m "ci: deploy giiveaway ${{ github.event.workflow_run.head_sha }}"
+          git diff --staged --quiet || git commit -m "ci: deploy giiveaway ${{ github.sha }}"
           git push
