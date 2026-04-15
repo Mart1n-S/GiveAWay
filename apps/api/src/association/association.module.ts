@@ -8,10 +8,6 @@ import { AssociationRoleGuard } from './guards/association-role.guard';
 @Module({
   imports: [ConfigModule],
   controllers: [AssociationController],
-  providers: [
-    AssociationService,
-    AssociationMemberGuard,
-    AssociationRoleGuard,
-  ],
+  providers: [AssociationService, AssociationMemberGuard, AssociationRoleGuard],
 })
 export class AssociationModule {}

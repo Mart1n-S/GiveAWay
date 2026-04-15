@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { AssociationService } from './association.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { AssociationVerificationService } from '../auth/register/association-verification.service';
+import { FILE_SERVICE } from '../common/files/interfaces/file-service.interface';
 import { AssociationRole, AssociationStatus } from '../generated/prisma/client';
 
 // ----------------------------------------------------------------
@@ -74,6 +74,14 @@ const mockEditorMember = {
   user: mockEditorUser,
 };
 
+const mockDocument = {
+  id: 5,
+  fileUrl: 'association-documents/mock-doc-id',
+  type: 'PDF',
+  createdAt: new Date('2024-01-01'),
+  associationId: 42,
+};
+
 const mockAssociation = {
   id: 42,
   name: 'Les Amis du Quartier',
@@ -97,6 +105,11 @@ const mockAssociation = {
   addressId: 1,
 };
 
+const mockAssociationWithDoc = {
+  ...mockAssociation,
+  documents: [mockDocument],
+};
+
 // ----------------------------------------------------------------
 // Mocks
 // ----------------------------------------------------------------
@@ -112,19 +125,27 @@ const mockPrisma = {
     create: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
+  },
+  associationDocument: {
+    findFirst: jest.fn(),
+    create: jest.fn(),
     deleteMany: jest.fn(),
   },
   user: {
     findUnique: jest.fn(),
   },
-  refreshToken: {
-    deleteMany: jest.fn(),
+  mission: {
+    findMany: jest.fn(),
+    count: jest.fn(),
   },
   $transaction: jest.fn(),
+  $queryRaw: jest.fn(),
 };
 
-const mockVerificationService = {
-  verifyAssociation: jest.fn(),
+const mockFileService = {
+  uploadFile: jest.fn(),
+  deleteFile: jest.fn(),
+  getFileForDownload: jest.fn(),
 };
 
 // ----------------------------------------------------------------
@@ -139,10 +160,7 @@ describe('AssociationService', () => {
       providers: [
         AssociationService,
         { provide: PrismaService, useValue: mockPrisma },
-        {
-          provide: AssociationVerificationService,
-          useValue: mockVerificationService,
-        },
+        { provide: FILE_SERVICE, useValue: mockFileService },
       ],
     }).compile();
 
@@ -184,6 +202,7 @@ describe('AssociationService', () => {
       );
       expect(owner).toBeDefined();
       expect(owner?.email).toBe('alice@test.com');
+      expect(typeof owner?.createdAt).toBe('string');
     });
 
     it("✅ Retourne null pour l'adresse si elle est absente", async () => {
@@ -195,13 +214,125 @@ describe('AssociationService', () => {
       const result = await service.getAssociation(42);
       expect(result.address).toBeNull();
     });
+
+    it('✅ Mappe correctement les documents', async () => {
+      mockPrisma.association.findUnique.mockResolvedValue(
+        mockAssociationWithDoc,
+      );
+
+      const result = await service.getAssociation(42);
+
+      expect(result.documents).toHaveLength(1);
+      expect(result.documents[0].id).toBe(5);
+      expect(result.documents[0].type).toBe('PDF');
+    });
+
+    it('✅ Convertit latitude/longitude Decimal en number', async () => {
+      mockPrisma.association.findUnique.mockResolvedValue({
+        ...mockAssociation,
+        address: { ...mockAddress, latitude: '48.85', longitude: '2.35' },
+      });
+
+      const result = await service.getAssociation(42);
+
+      expect(result.address?.latitude).toBe(48.85);
+      expect(result.address?.longitude).toBe(2.35);
+      expect(typeof result.address?.latitude).toBe('number');
+    });
+  });
+
+  // ===========================================================================
+  // getAssociationMissions
+  // ===========================================================================
+  describe('getAssociationMissions', () => {
+    const makePrismaMission = () => ({
+      id: 1,
+      title: 'Mission Test',
+      description: 'Description',
+      type: 'MISSION',
+      hasRegistration: true,
+      volunteersNeeded: 5,
+      durationInt: 120,
+      frequency: 'ONCE',
+      startDate: new Date('2026-06-01'),
+      endDate: null,
+      createdAt: new Date(),
+      associationId: 42,
+      association: { name: 'Les Amis du Quartier' },
+      address: null,
+      causes: [{ cause: { id: 1, label: 'Aide alimentaire' } }],
+      volunteerTypes: [{ volunteerType: { id: 1, label: 'Ouvert à tous' } }],
+    });
+
+    it('✅ Retourne la liste paginée des missions avec les relations aplaties', async () => {
+      const rawMissions = [makePrismaMission()];
+      mockPrisma.$transaction.mockImplementation(
+        (queries: Promise<unknown>[]) => Promise.all(queries),
+      );
+      mockPrisma.mission.findMany.mockResolvedValue(rawMissions);
+      mockPrisma.mission.count.mockResolvedValue(1);
+
+      const result = await service.getAssociationMissions(42, 1, 3);
+
+      expect(result.total).toBe(1);
+      expect(result.page).toBe(1);
+      expect(result.pageSize).toBe(3);
+      expect(result.totalPages).toBe(1);
+      expect(result.missions).toHaveLength(1);
+    });
+
+    it('✅ Aplatit les causes et volunteerTypes depuis les pivots', async () => {
+      const rawMissions = [makePrismaMission()];
+      mockPrisma.$transaction.mockImplementation(
+        (queries: Promise<unknown>[]) => Promise.all(queries),
+      );
+      mockPrisma.mission.findMany.mockResolvedValue(rawMissions);
+      mockPrisma.mission.count.mockResolvedValue(1);
+
+      const result = await service.getAssociationMissions(42, 1, 3);
+
+      expect(result.missions[0].causes).toEqual([
+        { id: 1, label: 'Aide alimentaire' },
+      ]);
+      expect(result.missions[0].volunteerTypes).toEqual([
+        { id: 1, label: 'Ouvert à tous' },
+      ]);
+    });
+
+    it('✅ Retourne un résultat vide si aucune mission', async () => {
+      mockPrisma.$transaction.mockImplementation(
+        (queries: Promise<unknown>[]) => Promise.all(queries),
+      );
+      mockPrisma.mission.findMany.mockResolvedValue([]);
+      mockPrisma.mission.count.mockResolvedValue(0);
+
+      const result = await service.getAssociationMissions(42, 1, 3);
+
+      expect(result.missions).toEqual([]);
+      expect(result.total).toBe(0);
+      expect(result.totalPages).toBe(0);
+    });
+
+    it('✅ Calcule correctement skip selon la page', async () => {
+      mockPrisma.$transaction.mockImplementation(
+        (queries: Promise<unknown>[]) => Promise.all(queries),
+      );
+      mockPrisma.mission.findMany.mockResolvedValue([]);
+      mockPrisma.mission.count.mockResolvedValue(0);
+
+      await service.getAssociationMissions(42, 3, 5);
+
+      expect(mockPrisma.mission.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ skip: 10, take: 5 }),
+      );
+    });
   });
 
   // ===========================================================================
   // updateAssociation
   // ===========================================================================
   describe('updateAssociation', () => {
-    it('✅ Met à jour les champs sans appel API si RNA et SIRET inchangés', async () => {
+    it('✅ Met à jour les champs scalaires sans appel au service de fichiers', async () => {
       mockPrisma.association.findUnique
         .mockResolvedValueOnce(mockAssociation)
         .mockResolvedValueOnce(mockAssociation);
@@ -210,9 +341,11 @@ describe('AssociationService', () => {
         description: 'Nouvelle description',
       });
 
-      expect(mockVerificationService.verifyAssociation).not.toHaveBeenCalled();
+      expect(mockFileService.uploadFile).not.toHaveBeenCalled();
+      expect(mockFileService.deleteFile).not.toHaveBeenCalled();
       expect(mockPrisma.association.update).toHaveBeenCalledWith(
         expect.objectContaining({
+          where: { id: 42 },
           data: expect.objectContaining({
             description: 'Nouvelle description',
           }),
@@ -225,15 +358,13 @@ describe('AssociationService', () => {
         .mockResolvedValueOnce(mockAssociation)
         .mockResolvedValueOnce(mockAssociation);
 
-      const newAddress = {
-        street: '5 avenue de la Liberté',
-        postalCode: '69001',
-        city: 'Lyon',
-        latitude: undefined,
-        longitude: undefined,
-      };
-
-      await service.updateAssociation(42, { address: newAddress });
+      await service.updateAssociation(42, {
+        address: {
+          street: '5 avenue de la Liberté',
+          postalCode: '69001',
+          city: 'Lyon',
+        },
+      });
 
       expect(mockPrisma.association.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -249,149 +380,69 @@ describe('AssociationService', () => {
       );
     });
 
-    it("✅ Utilise dto.address dans l'input de vérification quand RNA change", async () => {
+    it("✅ Upload le nouveau logo et supprime l'ancien si un fichier est fourni", async () => {
+      const existingWithLogo = { ...mockAssociation, logoUrl: 'old-logo-id' };
       mockPrisma.association.findUnique
-        .mockResolvedValueOnce({ ...mockAssociation, rna: 'W111111111' })
+        .mockResolvedValueOnce(existingWithLogo)
         .mockResolvedValueOnce(mockAssociation);
 
-      mockVerificationService.verifyAssociation.mockResolvedValue({
-        exists: true,
-        isActive: true,
-        isConsistent: true,
-        officialData: {},
-        requiresManualReview: false,
+      mockFileService.uploadFile.mockResolvedValue({
+        publicId: 'new-logo-id',
+        url: 'https://cdn/new-logo.jpg',
       });
+      mockFileService.deleteFile.mockResolvedValue(undefined);
 
-      const newAddress = {
-        street: '5 avenue de la Liberté',
-        postalCode: '69001',
-        city: 'Lyon',
-        latitude: undefined,
-        longitude: undefined,
-      };
+      const logoFile = {
+        buffer: Buffer.from('img'),
+        mimetype: 'image/jpeg',
+      } as Express.Multer.File;
+      await service.updateAssociation(42, {}, logoFile);
 
-      await service.updateAssociation(42, {
-        rna: 'W999999999',
-        address: newAddress,
-      });
-
-      expect(mockVerificationService.verifyAssociation).toHaveBeenCalledWith(
-        expect.objectContaining({
-          address: expect.objectContaining({ postalCode: '69001' }),
-        }),
+      expect(mockFileService.uploadFile).toHaveBeenCalledWith(
+        logoFile,
+        'association-logos',
       );
-    });
-
-    it('✅ Appelle verifyAssociation quand RNA change', async () => {
-      const existingWithOldRna = { ...mockAssociation, rna: 'W111111111' };
-      mockPrisma.association.findUnique
-        .mockResolvedValueOnce(existingWithOldRna)
-        .mockResolvedValueOnce(existingWithOldRna);
-
-      mockVerificationService.verifyAssociation.mockResolvedValue({
-        exists: true,
-        isActive: true,
-        isConsistent: true,
-        officialData: {},
-        requiresManualReview: false,
-      });
-
-      await service.updateAssociation(42, { rna: 'W999999999' });
-
-      expect(mockVerificationService.verifyAssociation).toHaveBeenCalledTimes(
-        1,
-      );
-    });
-
-    it('✅ Appelle verifyAssociation quand SIRET change', async () => {
-      const existingWithOldSiret = {
-        ...mockAssociation,
-        siret: '11111111111111',
-      };
-      mockPrisma.association.findUnique
-        .mockResolvedValueOnce(existingWithOldSiret)
-        .mockResolvedValueOnce(existingWithOldSiret);
-
-      mockVerificationService.verifyAssociation.mockResolvedValue({
-        exists: true,
-        isActive: true,
-        isConsistent: true,
-        officialData: {},
-        requiresManualReview: false,
-      });
-
-      await service.updateAssociation(42, { siret: '99999999999999' });
-
-      expect(mockVerificationService.verifyAssociation).toHaveBeenCalledTimes(
-        1,
-      );
-    });
-
-    it("❌ Bloque la mise à jour et lève BadRequestException si l'association est dissoute", async () => {
-      mockPrisma.association.findUnique.mockResolvedValue({
-        ...mockAssociation,
-        rna: 'W111111111',
-      });
-
-      mockVerificationService.verifyAssociation.mockResolvedValue({
-        exists: true,
-        isActive: false,
-        isConsistent: false,
-        officialData: {},
-        requiresManualReview: false,
-        rejectionReason: "L'association est fermée (dissoute).",
-      });
-
-      await expect(
-        service.updateAssociation(42, { rna: 'W999999999' }),
-      ).rejects.toThrow(BadRequestException);
-
-      expect(mockPrisma.association.update).not.toHaveBeenCalled();
-    });
-
-    it('✅ Repasse en PENDING et active requiresManualReview si la vérification le requiert', async () => {
-      mockPrisma.association.findUnique
-        .mockResolvedValueOnce({ ...mockAssociation, rna: 'W111111111' })
-        .mockResolvedValueOnce(mockAssociation);
-
-      mockVerificationService.verifyAssociation.mockResolvedValue({
-        exists: false,
-        isActive: false,
-        isConsistent: false,
-        officialData: null,
-        requiresManualReview: true,
-      });
-
-      await service.updateAssociation(42, { rna: 'W999999999' });
-
       expect(mockPrisma.association.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({
-            status: AssociationStatus.PENDING,
-            requiresManualReview: true,
-          }),
+          data: expect.objectContaining({ logoUrl: 'new-logo-id' }),
         }),
       );
     });
 
-    it('✅ Ne change pas le statut si la vérification passe', async () => {
+    it('✅ Efface le logo quand dto.logoUrl est une chaîne vide (suppression explicite)', async () => {
+      const existingWithLogo = { ...mockAssociation, logoUrl: 'old-logo-id' };
       mockPrisma.association.findUnique
-        .mockResolvedValueOnce({ ...mockAssociation, rna: 'W111111111' })
+        .mockResolvedValueOnce(existingWithLogo)
         .mockResolvedValueOnce(mockAssociation);
+      mockFileService.deleteFile.mockResolvedValue(undefined);
 
-      mockVerificationService.verifyAssociation.mockResolvedValue({
-        exists: true,
-        isActive: true,
-        isConsistent: true,
-        officialData: {},
-        requiresManualReview: false,
+      await service.updateAssociation(42, { logoUrl: '' });
+
+      expect(mockFileService.deleteFile).toHaveBeenCalledWith('old-logo-id');
+      expect(mockPrisma.association.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ logoUrl: null }),
+        }),
+      );
+    });
+
+    it('✅ Supprime les documents retirés de dto.documentUrls', async () => {
+      const existingWithDocs = {
+        ...mockAssociation,
+        documents: [mockDocument],
+      };
+      mockPrisma.association.findUnique
+        .mockResolvedValueOnce(existingWithDocs)
+        .mockResolvedValueOnce(mockAssociation);
+      mockFileService.deleteFile.mockResolvedValue(undefined);
+      mockPrisma.associationDocument.deleteMany.mockResolvedValue({ count: 1 });
+
+      // Passer une liste vide = supprimer tous les documents existants
+      await service.updateAssociation(42, { documentUrls: [] });
+
+      expect(mockPrisma.associationDocument.deleteMany).toHaveBeenCalledWith({
+        where: { id: { in: [mockDocument.id] } },
       });
-
-      await service.updateAssociation(42, { rna: 'W999999999' });
-
-      const updateCall = mockPrisma.association.update.mock.calls[0][0];
-      expect(updateCall.data.status).toBeUndefined();
-      expect(updateCall.data.requiresManualReview).toBeUndefined();
     });
 
     it("❌ Lève NotFoundException quand l'association est introuvable", async () => {
@@ -400,6 +451,67 @@ describe('AssociationService', () => {
       await expect(
         service.updateAssociation(42, { name: 'Nouveau nom' }),
       ).rejects.toThrow(NotFoundException);
+
+      expect(mockPrisma.association.update).not.toHaveBeenCalled();
+    });
+
+    it('✅ Ne supprime pas les documents conservés dans dto.documentUrls', async () => {
+      const existingWithDocs = {
+        ...mockAssociation,
+        documents: [mockDocument],
+      };
+      mockPrisma.association.findUnique
+        .mockResolvedValueOnce(existingWithDocs)
+        .mockResolvedValueOnce(mockAssociation);
+
+      // Garder le document existant
+      await service.updateAssociation(42, {
+        documentUrls: [mockDocument.fileUrl],
+      });
+
+      expect(mockPrisma.associationDocument.deleteMany).not.toHaveBeenCalled();
+    });
+  });
+
+  // ===========================================================================
+  // getDocumentForDownload
+  // ===========================================================================
+  describe('getDocumentForDownload', () => {
+    it('✅ Retourne le résultat du service de fichiers pour un document valide', async () => {
+      mockPrisma.associationDocument.findFirst.mockResolvedValue(mockDocument);
+      const downloadResult = {
+        type: 'redirect' as const,
+        url: 'https://cdn.example.com/doc.pdf',
+      };
+      mockFileService.getFileForDownload.mockResolvedValue(downloadResult);
+
+      const result = await service.getDocumentForDownload(42, 5);
+
+      expect(mockPrisma.associationDocument.findFirst).toHaveBeenCalledWith({
+        where: { id: 5, associationId: 42 },
+      });
+      expect(mockFileService.getFileForDownload).toHaveBeenCalledWith(
+        mockDocument.fileUrl,
+      );
+      expect(result).toEqual(downloadResult);
+    });
+
+    it('❌ Lève NotFoundException si le document est introuvable', async () => {
+      mockPrisma.associationDocument.findFirst.mockResolvedValue(null);
+
+      await expect(service.getDocumentForDownload(42, 999)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(mockFileService.getFileForDownload).not.toHaveBeenCalled();
+    });
+
+    it('❌ Lève NotFoundException si le document appartient à une autre association', async () => {
+      // findFirst retourne null car le where inclut associationId
+      mockPrisma.associationDocument.findFirst.mockResolvedValue(null);
+
+      await expect(service.getDocumentForDownload(99, 5)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -437,9 +549,7 @@ describe('AssociationService', () => {
       mockPrisma.associationUser.findFirst.mockResolvedValue(null);
       mockPrisma.associationUser.create.mockResolvedValue(mockEditorMember);
 
-      const result = await service.addMember(42, {
-        email: 'charlie@test.com',
-      });
+      const result = await service.addMember(42, { email: 'charlie@test.com' });
 
       expect(mockPrisma.associationUser.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -460,9 +570,26 @@ describe('AssociationService', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it("❌ Lève ConflictException si l'utilisateur est déjà membre", async () => {
+    it("❌ Lève ConflictException si l'utilisateur est déjà membre de cette association", async () => {
       mockPrisma.user.findUnique.mockResolvedValue(mockEditorUser);
-      mockPrisma.associationUser.findFirst.mockResolvedValue(mockEditorMember);
+      mockPrisma.associationUser.findFirst.mockResolvedValue({
+        ...mockEditorMember,
+        associationId: 42,
+        association: { id: 42, name: 'Les Amis du Quartier' },
+      });
+
+      await expect(
+        service.addMember(42, { email: 'charlie@test.com' }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it("❌ Lève ConflictException si l'utilisateur est déjà membre d'une autre association", async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(mockEditorUser);
+      mockPrisma.associationUser.findFirst.mockResolvedValue({
+        ...mockEditorMember,
+        associationId: 99,
+        association: { id: 99, name: 'Autre Association' },
+      });
 
       await expect(
         service.addMember(42, { email: 'charlie@test.com' }),
@@ -529,7 +656,7 @@ describe('AssociationService', () => {
   // removeMember
   // ===========================================================================
   describe('removeMember', () => {
-    it('✅ Retire un membre EDITOR avec succès', async () => {
+    it('✅ Retire un membre EDITOR avec succès (par un OWNER)', async () => {
       mockPrisma.associationUser.findFirst
         .mockResolvedValueOnce(mockEditorMember)
         .mockResolvedValueOnce(mockOwnerMember);
@@ -597,16 +724,59 @@ describe('AssociationService', () => {
   });
 
   // ===========================================================================
+  // leaveAssociation
+  // ===========================================================================
+  describe('leaveAssociation', () => {
+    it("✅ Permet à un EDITOR de quitter l'association", async () => {
+      mockPrisma.associationUser.findFirst.mockResolvedValue(mockEditorMember);
+      mockPrisma.associationUser.delete.mockResolvedValue(mockEditorMember);
+
+      await service.leaveAssociation(42, mockEditorUser.id);
+
+      expect(mockPrisma.associationUser.delete).toHaveBeenCalledWith({
+        where: { id: mockEditorMember.id },
+      });
+    });
+
+    it("✅ Permet à un ADMIN de quitter l'association", async () => {
+      mockPrisma.associationUser.findFirst.mockResolvedValue(mockAdminMember);
+      mockPrisma.associationUser.delete.mockResolvedValue(mockAdminMember);
+
+      await service.leaveAssociation(42, mockUser2.id);
+
+      expect(mockPrisma.associationUser.delete).toHaveBeenCalledWith({
+        where: { id: mockAdminMember.id },
+      });
+    });
+
+    it("❌ Lève ForbiddenException si l'OWNER tente de quitter", async () => {
+      mockPrisma.associationUser.findFirst.mockResolvedValue(mockOwnerMember);
+
+      await expect(service.leaveAssociation(42, mockUser1.id)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(mockPrisma.associationUser.delete).not.toHaveBeenCalled();
+    });
+
+    it("❌ Lève NotFoundException si l'utilisateur n'est pas membre", async () => {
+      mockPrisma.associationUser.findFirst.mockResolvedValue(null);
+
+      await expect(service.leaveAssociation(42, 999)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  // ===========================================================================
   // transferOwner
   // ===========================================================================
   describe('transferOwner', () => {
-    it('✅ Exécute la transaction (nouveau OWNER, ancien OWNER → ADMIN) et invalide les tokens', async () => {
+    it('✅ Exécute la transaction atomique (nouveau OWNER, ancien OWNER → ADMIN)', async () => {
       mockPrisma.associationUser.findFirst
-        .mockResolvedValueOnce(mockAdminMember)
-        .mockResolvedValueOnce(mockOwnerMember);
+        .mockResolvedValueOnce(mockAdminMember) // cible (futur owner)
+        .mockResolvedValueOnce(mockOwnerMember); // requérant (owner actuel)
 
       mockPrisma.$transaction.mockResolvedValue([]);
-      mockPrisma.refreshToken.deleteMany.mockResolvedValue({ count: 1 });
 
       await service.transferOwner(
         42,
@@ -615,9 +785,6 @@ describe('AssociationService', () => {
       );
 
       expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
-      expect(mockPrisma.refreshToken.deleteMany).toHaveBeenCalledWith({
-        where: { userId: mockUser1.id },
-      });
     });
 
     it("❌ Lève NotFoundException si l'utilisateur cible n'est pas membre", async () => {
@@ -636,9 +803,12 @@ describe('AssociationService', () => {
           mockUser1.id,
         ),
       ).rejects.toThrow(BadRequestException);
+
+      // Aucune requête DB ne doit être exécutée avant ce check
+      expect(mockPrisma.associationUser.findFirst).not.toHaveBeenCalled();
     });
 
-    it("❌ Lève NotFoundException si le membre demandeur (OWNER) n'est pas trouvé", async () => {
+    it('❌ Lève NotFoundException si le membre demandeur (OWNER) est introuvable', async () => {
       mockPrisma.associationUser.findFirst
         .mockResolvedValueOnce(mockAdminMember) // cible OK
         .mockResolvedValueOnce(null); // owner introuvable
@@ -650,6 +820,74 @@ describe('AssociationService', () => {
           mockUser1.id,
         ),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ===========================================================================
+  // findNearby
+  // ===========================================================================
+  describe('findNearby', () => {
+    const nearbyQuery = {
+      lat: 48.85,
+      lng: 2.35,
+      radius: 10,
+      limit: 200,
+    };
+
+    const mockMapItems = [
+      {
+        id: 42,
+        name: 'Les Amis du Quartier',
+        logoUrl: null,
+        city: 'Paris',
+        latitude: 48.85,
+        longitude: 2.35,
+        description: null,
+        website: null,
+        category: null,
+      },
+    ];
+
+    it('✅ Retourne les associations dans le rayon', async () => {
+      mockPrisma.$queryRaw.mockResolvedValue(mockMapItems);
+
+      const result = await service.findNearby(nearbyQuery);
+
+      expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
+      expect(result).toEqual(mockMapItems);
+    });
+
+    it('✅ Retourne un tableau vide si aucune association dans le rayon', async () => {
+      mockPrisma.$queryRaw.mockResolvedValue([]);
+
+      const result = await service.findNearby(nearbyQuery);
+
+      expect(result).toEqual([]);
+    });
+
+    it('✅ Gère les filtres optionnels (categoryIds, createdAfter, createdBefore)', async () => {
+      mockPrisma.$queryRaw.mockResolvedValue([]);
+
+      await service.findNearby({
+        ...nearbyQuery,
+        categoryIds: [1, 2],
+        createdAfter: new Date('2024-01-01'),
+        createdBefore: new Date('2025-01-01'),
+      });
+
+      expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
+    });
+
+    it('✅ Retourne plusieurs associations triées par distance', async () => {
+      const multipleItems = [
+        { ...mockMapItems[0], id: 1, latitude: 48.85, longitude: 2.35 },
+        { ...mockMapItems[0], id: 2, latitude: 48.86, longitude: 2.36 },
+      ];
+      mockPrisma.$queryRaw.mockResolvedValue(multipleItems);
+
+      const result = await service.findNearby(nearbyQuery);
+
+      expect(result).toHaveLength(2);
     });
   });
 });

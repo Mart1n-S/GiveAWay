@@ -41,8 +41,9 @@ export class LocalFileService implements IFileService {
 
       // 2. Générer un nom unique (nom d'origine sanitisé + tiret + uuid + extension)
       const ext = path.extname(file.originalname);
-      const baseName = path.basename(file.originalname, ext)
-        .replace(/[^a-zA-Z0-9_\-]/g, '_')
+      const baseName = path
+        .basename(file.originalname, ext)
+        .replace(/[^a-zA-Z0-9_-]/g, '_')
         .substring(0, 60);
       const filename = `${baseName}-${randomUUID()}${ext}`;
       const fullPath = path.join(uploadPath, filename);

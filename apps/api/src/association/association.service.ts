@@ -22,7 +22,6 @@ import {
 } from '@repo/shared';
 import {
   AssociationRole as PrismaAssociationRole,
-  AssociationStatus as PrismaAssociationStatus,
   Prisma,
 } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -486,7 +485,9 @@ export class AssociationService {
     });
 
     if (!member) {
-      throw new NotFoundException("Vous n'êtes pas membre de cette association");
+      throw new NotFoundException(
+        "Vous n'êtes pas membre de cette association",
+      );
     }
 
     if (member.role === PrismaAssociationRole.OWNER) {

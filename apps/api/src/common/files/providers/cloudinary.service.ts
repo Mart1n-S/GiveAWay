@@ -36,11 +36,12 @@ export class CloudinaryService implements IFileService {
           // Nom d'origine sanitisé + UUID pour garantir l'unicité et traçabilité
           public_id: (() => {
             const dotIndex = file.originalname.lastIndexOf('.');
-            const base = dotIndex > 0
-              ? file.originalname.substring(0, dotIndex)
-              : file.originalname;
+            const base =
+              dotIndex > 0
+                ? file.originalname.substring(0, dotIndex)
+                : file.originalname;
             const sanitized = base
-              .replaceAll(/[^a-zA-Z0-9_\-]/g, '_')
+              .replaceAll(/[^a-zA-Z0-9_-]/g, '_')
               .substring(0, 60);
             return `${sanitized}-${randomUUID()}`;
           })(),
@@ -97,7 +98,9 @@ export class CloudinaryService implements IFileService {
         });
         resourceType = resource.resource_type ?? 'raw';
       } catch {
-        throw new NotFoundException(`Fichier Cloudinary introuvable : ${publicId}`);
+        throw new NotFoundException(
+          `Fichier Cloudinary introuvable : ${publicId}`,
+        );
       }
     }
 

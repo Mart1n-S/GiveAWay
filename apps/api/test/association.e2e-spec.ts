@@ -9,7 +9,9 @@ import {
   prisma,
   createTestUser,
   createTestAssociation,
+  createTestAssociationWithAddress,
   addAssociationMember,
+  createTestMission,
 } from './prisma-test-helper';
 import { AssociationRole } from '../src/generated/prisma/client';
 import { App } from 'supertest/types';
@@ -38,6 +40,10 @@ const mockFileService = {
     url: 'https://mock-url/mock.jpg',
   }),
   deleteFile: jest.fn().mockResolvedValue(undefined),
+  getFileForDownload: jest.fn().mockResolvedValue({
+    type: 'redirect',
+    url: 'https://mock-url/mock.pdf',
+  }),
 };
 
 // ----------------------------------------------------------------
@@ -128,6 +134,88 @@ describe('Association Module (E2E)', () => {
   afterAll(async () => {
     await app.close();
     await prisma.$disconnect();
+  });
+
+  // ===========================================================================
+  // GET /associations/nearby
+  // ===========================================================================
+  describe('GET /associations/nearby', () => {
+    it('✅ 200 — retourne un tableau vide si aucune association dans le rayon', async () => {
+      const res = await request(httpServer)
+        .get('/associations/nearby')
+        .query({ lat: 48.85, lng: 2.35, radius: 5 })
+        .expect(200);
+
+      expect(Array.isArray(res.body)).toBe(true);
+    });
+
+    it('✅ 200 — retourne les associations géolocalisées dans le rayon', async () => {
+      // Créer une association avec des coordonnées à Paris
+      await createTestAssociationWithAddress(ownerUserId, 48.85, 2.35);
+
+      const res = await request(httpServer)
+        .get('/associations/nearby')
+        .query({ lat: 48.85, lng: 2.35, radius: 10 })
+        .expect(200);
+
+      const body = res.body as unknown[];
+      expect(Array.isArray(body)).toBe(true);
+      expect(body.length).toBeGreaterThanOrEqual(1);
+
+      const firstItem = body[0] as {
+        id: number;
+        name: string;
+        latitude: number;
+        longitude: number;
+        city: string;
+      };
+      expect(firstItem.id).toBeDefined();
+      expect(firstItem.name).toBeDefined();
+      expect(typeof firstItem.latitude).toBe('number');
+      expect(typeof firstItem.longitude).toBe('number');
+    });
+
+    it("✅ 200 — n'inclut pas les associations hors du rayon", async () => {
+      // Créer une association à Lyon (~400km de Tokyo)
+      await createTestAssociationWithAddress(ownerUserId, 45.74, 4.83);
+
+      // Chercher autour de Tokyo (très loin de Lyon)
+      const res = await request(httpServer)
+        .get('/associations/nearby')
+        .query({ lat: 35.68, lng: 139.69, radius: 10 })
+        .expect(200);
+
+      expect(Array.isArray(res.body)).toBe(true);
+      expect((res.body as unknown[]).length).toBe(0);
+    });
+
+    it('❌ 400 — lat manquant', async () => {
+      await request(httpServer)
+        .get('/associations/nearby')
+        .query({ lng: 2.35, radius: 10 })
+        .expect(400);
+    });
+
+    it('❌ 400 — lng manquant', async () => {
+      await request(httpServer)
+        .get('/associations/nearby')
+        .query({ lat: 48.85, radius: 10 })
+        .expect(400);
+    });
+
+    it('❌ 400 — lat invalide (non numérique)', async () => {
+      await request(httpServer)
+        .get('/associations/nearby')
+        .query({ lat: 'invalid', lng: 2.35, radius: 10 })
+        .expect(400);
+    });
+
+    it('❌ 400 — rayon supérieur à 50km (max autorisé)', async () => {
+      await request(httpServer)
+        .get('/associations/nearby')
+        .query({ lat: 48.85, lng: 2.35, radius: 100 })
+        .expect(400);
+    });
   });
 
   // ===========================================================================
@@ -269,6 +357,86 @@ describe('Association Module (E2E)', () => {
     it('❌ 401 — sans token JWT', async () => {
       await request(httpServer)
         .get(`/associations/${associationId}/members`)
+        .expect(401);
+    });
+  });
+
+  // ===========================================================================
+  // GET /associations/missions/:associationId
+  // ===========================================================================
+  describe('GET /associations/missions/:associationId', () => {
+    it('✅ 200 — retourne une liste vide si aucune mission', async () => {
+      const res = await request(httpServer)
+        .get(`/associations/missions/${associationId}`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+
+      const body = res.body as {
+        missions: unknown[];
+        total: number;
+        page: number;
+        pageSize: number;
+        totalPages: number;
+      };
+      expect(Array.isArray(body.missions)).toBe(true);
+      expect(body.total).toBe(0);
+      expect(body.page).toBe(1);
+      expect(body.totalPages).toBe(0);
+    });
+
+    it("✅ 200 — retourne les missions de l'association", async () => {
+      await createTestMission(associationId, { title: 'Mission test A' });
+      await createTestMission(associationId, { title: 'Mission test B' });
+
+      const res = await request(httpServer)
+        .get(`/associations/missions/${associationId}`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+
+      const body = res.body as { missions: unknown[]; total: number };
+      expect(body.total).toBe(2);
+      expect(body.missions).toHaveLength(2);
+    });
+
+    it('✅ 200 — supporte la pagination (page et pageSize)', async () => {
+      await createTestMission(associationId, { title: 'Mission A' });
+      await createTestMission(associationId, { title: 'Mission B' });
+      await createTestMission(associationId, { title: 'Mission C' });
+
+      const res = await request(httpServer)
+        .get(`/associations/missions/${associationId}`)
+        .query({ page: 1, pageSize: 2 })
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+
+      const body = res.body as {
+        missions: unknown[];
+        total: number;
+        pageSize: number;
+        totalPages: number;
+      };
+      expect(body.missions).toHaveLength(2);
+      expect(body.total).toBe(3);
+      expect(body.totalPages).toBe(2);
+    });
+
+    it('✅ 200 — accessible pour un membre EDITOR', async () => {
+      await request(httpServer)
+        .get(`/associations/missions/${associationId}`)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .expect(200);
+    });
+
+    it('❌ 403 — non-membre ne peut pas voir les missions', async () => {
+      await request(httpServer)
+        .get(`/associations/missions/${associationId}`)
+        .set('Authorization', `Bearer ${outsiderToken}`)
+        .expect(403);
+    });
+
+    it('❌ 401 — sans token JWT', async () => {
+      await request(httpServer)
+        .get(`/associations/missions/${associationId}`)
         .expect(401);
     });
   });
@@ -448,6 +616,57 @@ describe('Association Module (E2E)', () => {
     it('❌ 401 — sans token JWT', async () => {
       await request(httpServer)
         .delete(`/associations/${associationId}/members/${memberAssocUserId}`)
+        .expect(401);
+    });
+  });
+
+  // ===========================================================================
+  // DELETE /associations/:associationId/leave
+  // ===========================================================================
+  describe('DELETE /associations/:associationId/leave', () => {
+    it("✅ 204 — un EDITOR peut quitter l'association", async () => {
+      await request(httpServer)
+        .delete(`/associations/${associationId}/leave`)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .expect(204);
+
+      // Vérifier que le membre a bien été retiré
+      const deleted = await prisma.associationUser.findFirst({
+        where: { id: memberAssocUserId },
+      });
+      expect(deleted).toBeNull();
+    });
+
+    it("✅ 204 — un ADMIN peut quitter l'association", async () => {
+      // Promouvoir le membre EDITOR en ADMIN
+      await prisma.associationUser.update({
+        where: { id: memberAssocUserId },
+        data: { role: AssociationRole.ADMIN },
+      });
+
+      await request(httpServer)
+        .delete(`/associations/${associationId}/leave`)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .expect(204);
+    });
+
+    it("❌ 403 — l'OWNER ne peut pas quitter (doit d'abord transférer la propriété)", async () => {
+      await request(httpServer)
+        .delete(`/associations/${associationId}/leave`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(403);
+    });
+
+    it('❌ 403 — un non-membre ne peut pas quitter (guard membership)', async () => {
+      await request(httpServer)
+        .delete(`/associations/${associationId}/leave`)
+        .set('Authorization', `Bearer ${outsiderToken}`)
+        .expect(403);
+    });
+
+    it('❌ 401 — sans token JWT', async () => {
+      await request(httpServer)
+        .delete(`/associations/${associationId}/leave`)
         .expect(401);
     });
   });
