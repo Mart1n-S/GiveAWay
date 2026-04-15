@@ -1,4 +1,4 @@
-name: CD — Build & Deploy
+name: CD - Build & Deploy
 
 on:
   workflow_run:
