@@ -18,6 +18,7 @@ import { TagBadge } from "@/components/ui/tag-badge/tag-badge";
 import { colors } from "@/components/ui/theme/tokens";
 import { AssociationMissionHistory } from "@/components/ui/association-mission-history/AssociationMissionHistory";
 import GlobeIconSource from "@assets/icons/ic_globe.svg";
+import InfoIconSource from "@assets/icons/ic_info.svg";
 
 import { useAuthStore } from "@/stores/auth.store";
 import { useAssociationStore } from "@/stores/association.store";
@@ -40,6 +41,7 @@ const iconConfig = {
 } as const;
 
 const GlobeIcon = cssInterop(GlobeIconSource, iconConfig);
+const InfoIcon = cssInterop(InfoIconSource, iconConfig);
 
 const STATUS_CONFIG: Record<
   AssociationStatus,
@@ -334,6 +336,17 @@ export default function AssociationScreen() {
   const isOwner = userRole === AssociationRole.OWNER;
   const isAdmin = userRole === AssociationRole.ADMIN;
   const memberCount = members?.length ?? association.members.length;
+  const isValidated = association.status === AssociationStatus.VALIDATED;
+
+  const handleLockedAction = () => {
+    Toast.show({
+      type: "info",
+      text1: "Association non validée",
+      text2: "Ces actions seront disponibles une fois votre association validée par notre équipe.",
+      visibilityTime: 10000,
+      onPress: () => Toast.hide(),
+    });
+  };
 
   return (
     <>
@@ -479,9 +492,29 @@ export default function AssociationScreen() {
           {/* ── Section 4 : Actions ── */}
           {(isOwner || isAdmin) && (
             <View className="gap-3">
+              {/* Bannière d'information si l'association n'est pas encore validée */}
+              {!isValidated && (
+                <View className="flex-row items-start gap-2.5 p-3 border border-orange-200 rounded-lg bg-orange-50">
+                  <InfoIcon className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
+                  <Text className="flex-1 text-sm leading-5 text-orange-700">
+                    Ces actions seront disponibles une fois votre association validée par notre équipe.
+                  </Text>
+                </View>
+              )}
+
               {isOwner && (
                 <Button
-                  onPress={() => router.push("/association/modifier" as any)}
+                  onPress={
+                    isValidated
+                      ? () => router.push("/association/modifier" as any)
+                      : handleLockedAction
+                  }
+                  disabled={!isValidated}
+                  icon={
+                    !isValidated ? (
+                      <InfoIcon className="w-4 h-4 text-grey-disabledText" />
+                    ) : undefined
+                  }
                   className="w-full"
                 >
                   Modifier les informations
@@ -491,7 +524,17 @@ export default function AssociationScreen() {
               {(isOwner || isAdmin) && (
                 <Button
                   variant="secondary"
-                  onPress={() => router.push("/association/membres" as any)}
+                  onPress={
+                    isValidated
+                      ? () => router.push("/association/membres" as any)
+                      : handleLockedAction
+                  }
+                  disabled={!isValidated}
+                  icon={
+                    !isValidated ? (
+                      <InfoIcon className="w-4 h-4 text-grey-disabledText" />
+                    ) : undefined
+                  }
                   className="w-full"
                 >
                   Gérer les membres
@@ -500,21 +543,28 @@ export default function AssociationScreen() {
 
               {isOwner && (
                 <Pressable
-                  onPress={() => setShowTransferModal(true)}
+                  onPress={
+                    isValidated ? () => setShowTransferModal(true) : handleLockedAction
+                  }
                   accessibilityRole="button"
                   className={clsx(
                     "h-control w-full rounded-md flex-row items-center justify-center gap-2 transition-all mt-8",
                     "border border-transparent",
-                    "hover:bg-red-50 active:bg-red-200",
+                    isValidated
+                      ? "hover:bg-red-50 active:bg-red-200"
+                      : "opacity-40 web:cursor-not-allowed",
                     "web:outline-none web:focus-visible:ring-2 web:focus-visible:ring-red-500 web:focus-visible:ring-offset-2",
                   )}
                 >
                   {({ pressed }) => (
                     <>
+                      {!isValidated && (
+                        <InfoIcon className="w-4 h-4 text-red-400" />
+                      )}
                       <Text
                         className="text-sm font-bold text-red-600"
                         style={{
-                          color: pressed ? colors.red[900] : colors.red[600],
+                          color: pressed && isValidated ? colors.red[900] : colors.red[600],
                         }}
                       >
                         Transférer la propriété

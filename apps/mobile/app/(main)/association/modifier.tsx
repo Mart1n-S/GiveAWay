@@ -16,6 +16,7 @@ import {
   UpdateAssociationSchema,
   UpdateAssociationFormValues,
   AssociationRole,
+  AssociationStatus,
 } from "@repo/shared";
 import { FormInput, FormTextarea } from "@/components/form";
 import {
@@ -107,6 +108,20 @@ export default function EditAssociationScreen() {
     }
   }, [userRole]);
 
+  // Garde : association validée uniquement
+  useEffect(() => {
+    if (!store.isLoading && store.association && store.association.status !== AssociationStatus.VALIDATED) {
+      Toast.show({
+        type: "info",
+        text1: "Association non validée",
+        text2: "La modification des informations est disponible une fois l'association validée.",
+        visibilityTime: 10000,
+        onPress: () => Toast.hide(),
+      });
+      router.back();
+    }
+  }, [store.isLoading, store.association]);
+
   const onSubmit = async (data: UpdateAssociationFormValues) => {
     if (!associationId) return;
     setIsSubmitting(true);
@@ -193,7 +208,7 @@ export default function EditAssociationScreen() {
   // Chargement
   if (store.isLoading && !association) {
     return (
-      <View className="flex-1 items-center justify-center bg-grey-50">
+      <View className="items-center justify-center flex-1 bg-grey-50">
         <ActivityIndicator size="large" color={colors.primary.default} />
       </View>
     );
@@ -201,7 +216,7 @@ export default function EditAssociationScreen() {
 
   if (!association) {
     return (
-      <View className="flex-1 items-center justify-center bg-grey-50 px-6">
+      <View className="items-center justify-center flex-1 px-6 bg-grey-50">
         <Text className="text-base font-medium text-center text-grey-600">
           Impossible de charger l'association.
         </Text>
@@ -258,20 +273,20 @@ export default function EditAssociationScreen() {
                 </Text>
                 {association.siret && (
                   <View className="gap-1">
-                    <Text className="text-xs font-semibold text-grey-500 uppercase tracking-wide">
+                    <Text className="text-xs font-semibold tracking-wide uppercase text-grey-500">
                       SIRET
                     </Text>
-                    <Text className="text-sm text-grey-900 font-mono">
+                    <Text className="font-mono text-sm text-grey-900">
                       {association.siret}
                     </Text>
                   </View>
                 )}
                 {association.rna && (
                   <View className="gap-1">
-                    <Text className="text-xs font-semibold text-grey-500 uppercase tracking-wide">
+                    <Text className="text-xs font-semibold tracking-wide uppercase text-grey-500">
                       RNA
                     </Text>
-                    <Text className="text-sm text-grey-900 font-mono">
+                    <Text className="font-mono text-sm text-grey-900">
                       {association.rna}
                     </Text>
                   </View>

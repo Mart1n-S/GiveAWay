@@ -22,7 +22,7 @@ import { AddMemberModal } from "@/components/ui/add-member-modal/AddMemberModal"
 
 import { useAssociationStore } from "@/stores/association.store";
 import { useAuthStore } from "@/stores/auth.store";
-import { AssociationRole } from "@repo/shared";
+import { AssociationRole, AssociationStatus } from "@repo/shared";
 import type { AssociationMemberDto, AddMemberDto } from "@repo/shared";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
@@ -375,6 +375,20 @@ export default function MembresScreen() {
       router.back();
     }
   }, [userRole]);
+
+  // Garde : association validée uniquement
+  useEffect(() => {
+    if (!store.isLoading && store.association && store.association.status !== AssociationStatus.VALIDATED) {
+      Toast.show({
+        type: "info",
+        text1: "Association non validée",
+        text2: "La gestion des membres est disponible une fois l'association validée.",
+        visibilityTime: 10000,
+        onPress: () => Toast.hide(),
+      });
+      router.back();
+    }
+  }, [store.isLoading, store.association]);
 
   const handleRoleChange = async (
     memberId: number,
