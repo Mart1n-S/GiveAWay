@@ -348,13 +348,20 @@ export class AssociationService {
       );
     }
 
-    const existing = await this.prisma.associationUser.findFirst({
-      where: { associationId, userId: user.id },
+    // Vérifier si l'utilisateur est déjà membre d'une association (cette association ou une autre)
+    const existingMembership = await this.prisma.associationUser.findFirst({
+      where: { userId: user.id },
+      include: { association: { select: { id: true, name: true } } },
     });
 
-    if (existing) {
+    if (existingMembership) {
+      if (existingMembership.associationId === associationId) {
+        throw new ConflictException(
+          "Cet utilisateur est déjà membre de l'association",
+        );
+      }
       throw new ConflictException(
-        "Cet utilisateur est déjà membre de l'association",
+        `Cet utilisateur fait déjà partie de l'association « ${existingMembership.association.name} »`,
       );
     }
 
@@ -468,6 +475,28 @@ export class AssociationService {
     }
 
     await this.prisma.associationUser.delete({ where: { id: memberId } });
+  }
+
+  // ----------------------------------------------------------------
+  // DELETE — quitter l'association (self-remove)
+  // ----------------------------------------------------------------
+  async leaveAssociation(associationId: number, userId: number): Promise<void> {
+    const member = await this.prisma.associationUser.findFirst({
+      where: { associationId, userId },
+    });
+
+    if (!member) {
+      throw new NotFoundException("Vous n'êtes pas membre de cette association");
+    }
+
+    if (member.role === PrismaAssociationRole.OWNER) {
+      throw new ForbiddenException(
+        "Le propriétaire ne peut pas quitter l'association directement. " +
+          "Transférez d'abord la propriété à un autre membre.",
+      );
+    }
+
+    await this.prisma.associationUser.delete({ where: { id: member.id } });
   }
 
   // ----------------------------------------------------------------

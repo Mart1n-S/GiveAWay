@@ -18,6 +18,7 @@ import { TagBadge } from "@/components/ui/tag-badge/tag-badge";
 import { colors } from "@/components/ui/theme/tokens";
 import { AssociationMissionHistory } from "@/components/ui/association-mission-history/AssociationMissionHistory";
 import GlobeIconSource from "@assets/icons/ic_globe.svg";
+import PhoneIconSource from "@assets/icons/ic_phone.svg";
 import InfoIconSource from "@assets/icons/ic_info.svg";
 import DownloadIconSource from "@assets/icons/ic_download.svg";
 import TrashIconSource from "@assets/icons/ic_trash.svg";
@@ -26,6 +27,7 @@ import { useAuthStore } from "@/stores/auth.store";
 import { useAssociationStore } from "@/stores/association.store";
 import { MissionService } from "@/services/mission.service";
 import * as AssociationService from "@/services/association.service";
+import { ConfirmModal } from "@/components/ui/confirm-modal/ConfirmModal";
 
 import { AssociationRole, AssociationStatus } from "@repo/shared";
 import type { AssociationMemberDto, MissionListItem } from "@repo/shared";
@@ -42,6 +44,7 @@ const iconConfig = {
 } as const;
 
 const GlobeIcon = cssInterop(GlobeIconSource, iconConfig);
+const PhoneIcon = cssInterop(PhoneIconSource, iconConfig);
 const InfoIcon = cssInterop(InfoIconSource, iconConfig);
 const DownloadIcon = cssInterop(DownloadIconSource, iconConfig);
 const TrashIcon = cssInterop(TrashIconSource, iconConfig);
@@ -140,6 +143,8 @@ interface TransferOwnerModalProps {
   associationId: number;
   onClose: () => void;
   onSuccess: () => void;
+  /** Affiche une bannière expliquant que le transfert est requis pour quitter */
+  leaveMode?: boolean;
 }
 
 function TransferOwnerModal({
@@ -149,6 +154,7 @@ function TransferOwnerModal({
   associationId,
   onClose,
   onSuccess,
+  leaveMode = false,
 }: TransferOwnerModalProps) {
   const eligibleMembers = members.filter((m) => m.userId !== currentUserId);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(
@@ -206,6 +212,14 @@ function TransferOwnerModal({
           </View>
 
           <View className="gap-4 px-5 py-4">
+            {leaveMode && (
+              <View className="p-3 border border-blue-200 rounded-lg bg-blue-50">
+                <Text className="text-sm leading-5 text-blue-700">
+                  Pour quitter l'association, vous devez d'abord transférer la
+                  propriété à un autre membre.
+                </Text>
+              </View>
+            )}
             <View className="p-3 border border-red-200 rounded-lg bg-red-50">
               <Text className="text-sm leading-5 text-red-700">
                 ⚠️ Cette action est irréversible. Vous perdrez le rôle
@@ -296,6 +310,9 @@ export default function AssociationScreen() {
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferLeaveMode, setTransferLeaveMode] = useState(false);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [isLeavingAssociation, setIsLeavingAssociation] = useState(false);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [objectExpanded, setObjectExpanded] = useState(false);
   const [downloadingDocId, setDownloadingDocId] = useState<number | null>(null);
@@ -363,6 +380,7 @@ export default function AssociationScreen() {
 
   const handleTransferSuccess = async () => {
     setShowTransferModal(false);
+    setTransferLeaveMode(false);
 
     // Mettre à jour le rôle dans AuthStore (OWNER → ADMIN)
     if (user && user.associations && associationId) {
@@ -383,8 +401,8 @@ export default function AssociationScreen() {
     Toast.show({
       type: "success",
       text1: "Propriété transférée",
-      text2: "Vous êtes maintenant Administrateur de l'association.",
-      visibilityTime: 5000,
+      text2: "Vous êtes maintenant Administrateur. Vous pouvez maintenant quitter l'association si vous le souhaitez.",
+      visibilityTime: 10000,
       onPress: () => Toast.hide(),
     });
   };
@@ -479,7 +497,7 @@ export default function AssociationScreen() {
         type: "success",
         text1: "Document supprimé",
         text2: "Le document a été supprimé avec succès.",
-        visibilityTime: 4000,
+        visibilityTime: 10000,
         onPress: () => Toast.hide(),
       });
     } catch (error) {
@@ -495,6 +513,45 @@ export default function AssociationScreen() {
       });
     } finally {
       setIsDeletingDoc(false);
+    }
+  };
+
+  const handleLeaveAssociation = async () => {
+    if (!associationId) return;
+    setIsLeavingAssociation(true);
+    try {
+      await AssociationService.leaveAssociation(associationId);
+      store.clearAssociation();
+      if (user) {
+        useAuthStore.getState().setUser({
+          ...user,
+          associations: (user.associations ?? []).filter(
+            (a) => a.associationId !== associationId,
+          ),
+        });
+      }
+      setShowLeaveModal(false);
+      Toast.show({
+        type: "success",
+        text1: "Association quittée",
+        text2: "Vous avez quitté l'association avec succès.",
+        visibilityTime: 10000,
+        onPress: () => Toast.hide(),
+      });
+      router.replace("/");
+    } catch (error) {
+      Toast.show({
+        type: "error",
+        text1: "Erreur",
+        text2:
+          error instanceof Error
+            ? error.message
+            : "Impossible de quitter l'association.",
+        visibilityTime: 10000,
+        onPress: () => Toast.hide(),
+      });
+    } finally {
+      setIsLeavingAssociation(false);
     }
   };
 
@@ -559,7 +616,7 @@ export default function AssociationScreen() {
           </View>
 
           {/* ── Section 2 : Infos rapides ── */}
-          <View className="flex-row overflow-hidden bg-white border divide-x rounded-lg border-grey-100 divide-grey-100">
+          <View className="flex-col overflow-hidden bg-white border rounded-lg border-grey-100 divide-y divide-grey-100 lg:flex-row lg:divide-y-0 lg:divide-x">
             {/* Nombre de membres */}
             <View className="items-center flex-1 gap-1 py-4">
               <Text className="text-2xl font-bold text-grey-900">
@@ -569,6 +626,30 @@ export default function AssociationScreen() {
                 {memberCount > 1 ? "Membres" : "Membre"}
               </Text>
             </View>
+
+            {/* Téléphone (si disponible) */}
+            {association.phone && (
+              <Pressable
+                onPress={() => Linking.openURL(`tel:${association.phone}`)}
+                className="items-center flex-1 gap-1 py-4 web:cursor-pointer active:bg-grey-50"
+                accessibilityRole="link"
+                accessibilityLabel="Appeler l'association"
+              >
+                <View className="flex-row items-center gap-2 mb-3">
+                  <PhoneIcon className="w-4 h-4 text-primary" />
+                  <Text className="text-xs font-semibold text-primary">
+                    Téléphone
+                  </Text>
+                </View>
+                <Text
+                  className="px-2 text-xs text-center text-grey-600"
+                  numberOfLines={1}
+                  ellipsizeMode="clip"
+                >
+                  {association.phone}
+                </Text>
+              </Pressable>
+            )}
 
             {/* Site web (si disponible) */}
             {association.website && (
@@ -800,6 +881,66 @@ export default function AssociationScreen() {
                   )}
                 </Pressable>
               )}
+
+              {/* Quitter l'association — OWNER doit transférer d'abord */}
+              {isOwner && (
+                <Pressable
+                  onPress={() => {
+                    setTransferLeaveMode(true);
+                    setShowTransferModal(true);
+                  }}
+                  accessibilityRole="button"
+                  className="flex-row items-center justify-center w-full gap-2 transition-all border border-transparent rounded-md h-control hover:bg-red-50 active:bg-red-200 web:outline-none web:focus-visible:ring-2 web:focus-visible:ring-red-500 web:focus-visible:ring-offset-2"
+                >
+                  {({ pressed }) => (
+                    <Text
+                      className="text-sm font-bold text-red-600"
+                      style={{ color: pressed ? colors.red[900] : colors.red[600] }}
+                    >
+                      Quitter l'association
+                    </Text>
+                  )}
+                </Pressable>
+              )}
+
+              {/* Quitter l'association — ADMIN */}
+              {isAdmin && (
+                <Pressable
+                  onPress={() => setShowLeaveModal(true)}
+                  accessibilityRole="button"
+                  className="flex-row items-center justify-center w-full gap-2 mt-8 transition-all border border-transparent rounded-md h-control hover:bg-red-50 active:bg-red-200 web:outline-none web:focus-visible:ring-2 web:focus-visible:ring-red-500 web:focus-visible:ring-offset-2"
+                >
+                  {({ pressed }) => (
+                    <Text
+                      className="text-sm font-bold text-red-600"
+                      style={{ color: pressed ? colors.red[900] : colors.red[600] }}
+                    >
+                      Quitter l'association
+                    </Text>
+                  )}
+                </Pressable>
+              )}
+
+              {/* Bulle info suppression de l'association — OWNER uniquement */}
+              {isOwner && (
+                <View className="flex-row items-start gap-2.5 p-3 border border-grey-200 rounded-lg bg-grey-50 mt-2">
+                  <InfoIcon className="w-4 h-4 text-grey-500 mt-0.5 shrink-0" />
+                  <Text className="flex-1 text-sm leading-5 text-grey-600">
+                    Pour supprimer définitivement l'association, contactez
+                    l'équipe GiveAWay à{" "}
+                    <Text
+                      className="font-semibold text-primary web:cursor-pointer"
+                      onPress={() =>
+                        Linking.openURL(
+                          `mailto:${process.env.EXPO_PUBLIC_CONTACT_ADMIN_GIVEAWAY ?? "contact-giveaway@gmail.com"}`,
+                        )
+                      }
+                    >
+                      {process.env.EXPO_PUBLIC_CONTACT_ADMIN_GIVEAWAY ?? "contact-giveaway@gmail.com"}
+                    </Text>
+                  </Text>
+                </View>
+              )}
             </View>
           )}
 
@@ -831,6 +972,22 @@ export default function AssociationScreen() {
               >
                 Voir les membres
               </Button>
+
+              {/* Quitter l'association — EDITOR */}
+              <Pressable
+                onPress={() => setShowLeaveModal(true)}
+                accessibilityRole="button"
+                className="flex-row items-center justify-center w-full gap-2 mt-8 transition-all border border-transparent rounded-md h-control hover:bg-red-50 active:bg-red-200 web:outline-none web:focus-visible:ring-2 web:focus-visible:ring-red-500 web:focus-visible:ring-offset-2"
+              >
+                {({ pressed }) => (
+                  <Text
+                    className="text-sm font-bold text-red-600"
+                    style={{ color: pressed ? colors.red[900] : colors.red[600] }}
+                  >
+                    Quitter l'association
+                  </Text>
+                )}
+              </Pressable>
             </View>
           )}
 
@@ -864,6 +1021,19 @@ export default function AssociationScreen() {
         />
       )}
 
+      {/* Modal quitter l'association (ADMIN / EDITOR) */}
+      <ConfirmModal
+        visible={showLeaveModal}
+        title="Quitter l'association ?"
+        message="Êtes-vous sûr de vouloir quitter cette association ? Vous perdrez votre accès et ne pourrez rejoindre qu'une seule association à la fois."
+        confirmLabel="Quitter"
+        cancelLabel="Annuler"
+        destructive
+        loading={isLeavingAssociation}
+        onConfirm={handleLeaveAssociation}
+        onCancel={() => setShowLeaveModal(false)}
+      />
+
       {/* Modal transfert de propriété */}
       {isOwner && members && (
         <TransferOwnerModal
@@ -871,8 +1041,9 @@ export default function AssociationScreen() {
           members={members}
           currentUserId={user?.id ?? -1}
           associationId={associationId}
-          onClose={() => setShowTransferModal(false)}
+          onClose={() => { setShowTransferModal(false); setTransferLeaveMode(false); }}
           onSuccess={handleTransferSuccess}
+          leaveMode={transferLeaveMode}
         />
       )}
     </>

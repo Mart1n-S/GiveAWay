@@ -286,7 +286,10 @@ export async function addMember(
         throw new Error("Aucun utilisateur trouvé avec cet email.");
       }
       if (error.response?.status === 409) {
-        throw new Error("Cet utilisateur est déjà membre de l'association.");
+        const msg = error.response?.data?.message;
+        throw new Error(
+          typeof msg === "string" ? msg : "Cet utilisateur est déjà membre de l'association.",
+        );
       }
       const msg = error.response?.data?.message;
       if (typeof msg === "string") throw new Error(msg);
@@ -382,6 +385,30 @@ export async function transferOwner(
     }
     throw new Error(
       "Impossible de transférer la propriété. Vérifiez votre connexion.",
+    );
+  }
+}
+
+/**
+ * DELETE /associations/:associationId/leave
+ * Permet à l'utilisateur connecté de quitter l'association.
+ * Interdit pour le rôle OWNER (doit d'abord transférer la propriété).
+ */
+export async function leaveAssociation(associationId: number): Promise<void> {
+  try {
+    await api.delete(`/associations/${associationId}/leave`);
+  } catch (error) {
+    if (isAxiosError(error)) {
+      if (error.response?.status === 403) {
+        throw new Error(
+          "Le propriétaire ne peut pas quitter l'association directement. Transférez d'abord la propriété.",
+        );
+      }
+      const msg = error.response?.data?.message;
+      if (typeof msg === "string") throw new Error(msg);
+    }
+    throw new Error(
+      "Impossible de quitter l'association. Vérifiez votre connexion.",
     );
   }
 }

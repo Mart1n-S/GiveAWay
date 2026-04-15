@@ -263,6 +263,21 @@ export class AssociationController {
   }
 
   /**
+   * DELETE /associations/:associationId/leave
+   * Permet à l'utilisateur connecté de quitter l'association.
+   * Interdit pour le rôle OWNER (doit d'abord transférer la propriété).
+   */
+  @UseGuards(AuthGuard('jwt'), AssociationMemberGuard)
+  @Delete(':associationId/leave')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async leaveAssociation(
+    @Param('associationId', ParseIntPipe) associationId: number,
+    @Req() req: AssociationAuthenticatedRequest,
+  ): Promise<void> {
+    return this.associationService.leaveAssociation(associationId, req.user.id);
+  }
+
+  /**
    * POST /associations/:associationId/transfer-owner
    * Transfère la propriété de l'association à un autre membre.
    * Requiert le rôle OWNER. L'ex-OWNER devient ADMIN (reste connecté).
