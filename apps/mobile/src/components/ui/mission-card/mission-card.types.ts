@@ -39,4 +39,7 @@ export interface MissionCardProps {
 
   /** Classes additionnelles */
   className?: string;
+
+  /** Identifiant de test pour Playwright */
+  testID?: string;
 }

@@ -12,7 +12,7 @@ export function MissionCounter({
   className,
 }: MissionCounterProps) {
   return (
-    <View className={clsx("flex-row items-baseline gap-2", className)}>
+    <View testID="mission-counter" className={clsx("flex-row items-baseline gap-2", className)}>
       <Text className="text-2xl font-bold text-grey-900">
         {isLoading ? "..." : total}
       </Text>

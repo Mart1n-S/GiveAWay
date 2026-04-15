@@ -107,7 +107,7 @@ export default function MissionsScreen() {
         <View className="w-full px-4 py-6 mx-auto max-w-7xl md:px-8 md:py-8">
           {/* En-tête */}
           <View className="mb-6">
-            <Text className="mb-2 text-3xl font-bold text-grey-900">
+            <Text testID="missions-title" className="mb-2 text-3xl font-bold text-grey-900">
               Missions
             </Text>
             <Text className="text-base text-grey-600">
@@ -158,6 +158,7 @@ export default function MissionsScreen() {
           {hasMore && !isLoading && !error && (
             <View className="items-center mt-8">
               <Button
+                testID="btn-load-more-missions"
                 variant="secondary"
                 onPress={handleLoadMore}
                 loading={isLoadingMore}

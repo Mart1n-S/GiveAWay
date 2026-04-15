@@ -102,6 +102,7 @@ export function MissionCard({
   volunteerTypes,
   onPress,
   className,
+  testID,
 }: MissionCardProps) {
   const { label, badgeVariant, bgClass, iconClass, Icon } = typeConfig[type];
 
@@ -112,6 +113,7 @@ export function MissionCard({
     <Pressable
       onPress={onPress}
       disabled={!onPress}
+      testID={testID}
       className={clsx(
         // flex-1 : remplit la hauteur du wrapper étiré par la grille (égalise les
         // cards d'une même ligne) ; flex-col pour empiler header + footer.

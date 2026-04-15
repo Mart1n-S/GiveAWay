@@ -225,7 +225,10 @@ function ErrorScreen({
 }) {
   const isNotFound = type === "notfound";
   return (
-    <View className="items-center justify-center flex-1 gap-6 px-8 bg-grey-50">
+    <View
+      testID={isNotFound ? "mission-error-notfound" : "mission-error-network"}
+      className="items-center justify-center flex-1 gap-6 px-8 bg-grey-50"
+    >
       <View className="items-center justify-center w-20 h-20 rounded-full bg-grey-100">
         <Text className="text-4xl">{isNotFound ? "🔍" : "⚠️"}</Text>
       </View>
@@ -500,6 +503,7 @@ export default function MissionDetailScreen() {
               {Platform.OS === "web" && (
                 <View className="items-start">
                   <Button
+                    testID="btn-back-mission"
                     variant="secondary"
                     onPress={handleBack}
                     icon={
@@ -523,11 +527,12 @@ export default function MissionDetailScreen() {
               {/* Badge + titre */}
               <View className="gap-2">
                 <TagBadge
+                  testID="mission-detail-badge"
                   label={tc.label}
                   variant={tc.badgeVariant}
                   size="sm"
                 />
-                <Text className="text-2xl font-bold leading-snug text-grey-900">
+                <Text testID="mission-detail-title" className="text-2xl font-bold leading-snug text-grey-900">
                   {mission.title}
                 </Text>
               </View>
@@ -600,7 +605,7 @@ export default function MissionDetailScreen() {
                       </View>
                     )}
                     <View className="flex-1 gap-1">
-                      <Text className="text-base font-bold text-grey-900">
+                      <Text testID="mission-detail-association" className="text-base font-bold text-grey-900">
                         {mission.association.name}
                       </Text>
                       {mission.association.description && (
@@ -627,7 +632,7 @@ export default function MissionDetailScreen() {
                 </View>
 
                 {/* Description */}
-                <View className="gap-3 p-4 bg-white rounded-2xl">
+                <View testID="mission-detail-description" className="gap-3 p-4 bg-white rounded-2xl">
                   <SectionLabel label="À propos de la mission" />
                   <Text className="text-sm leading-6 text-grey-700">
                     {mission.description}
@@ -712,6 +717,7 @@ export default function MissionDetailScreen() {
         {/* ─────────────────────────────────────── CTA FIXE ── */}
         {canRegister && (
           <View
+            testID="mission-detail-cta"
             className="absolute bottom-0 left-0 right-0 px-4 bg-white border-t border-grey-100"
             style={{
               paddingTop: 12,
@@ -721,6 +727,7 @@ export default function MissionDetailScreen() {
             <View className="w-full max-w-4xl mx-auto">
               {isFull ? (
                 <Button
+                  testID="btn-mission-full"
                   variant="primary"
                   disabled
                   onPress={() => {}}
@@ -729,7 +736,7 @@ export default function MissionDetailScreen() {
                   Complet — toutes les places sont prises
                 </Button>
               ) : (
-                <Button variant="primary" onPress={() => {}} className="w-full">
+                <Button testID="btn-candidater" variant="primary" onPress={() => {}} className="w-full">
                   Candidater à cette mission
                 </Button>
               )}
