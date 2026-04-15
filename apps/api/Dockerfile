@@ -50,4 +50,4 @@ COPY --from=base /app/packages/shared/package.json ./packages/shared/package.jso
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx prisma migrate deploy --schema ./prisma/schema.prisma && node dist/main"]
+CMD ["sh", "-c", "npx prisma migrate deploy --schema ./prisma/schema.prisma && node dist/src/main"]
