@@ -17,6 +17,9 @@ COPY apps/mobile/ ./apps/mobile/
 COPY packages/ ./packages/
 COPY turbo.json ./
 
+# Build @repo/shared (requis par Metro pour résoudre les imports)
+RUN npx turbo run build --filter=./packages/shared
+
 # Build Expo Web
 RUN cd apps/mobile && npx expo export --platform web --output-dir dist
 
