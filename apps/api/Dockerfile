@@ -5,6 +5,8 @@ WORKDIR /app
 COPY package*.json ./
 COPY apps/api/package*.json ./apps/api/
 COPY packages/shared/package*.json ./packages/shared/
+COPY packages/typescript-config/package*.json ./packages/typescript-config/
+COPY packages/eslint-config/package*.json ./packages/eslint-config/
 COPY .npmrc* ./
 
 # Installer toutes les dépendances
