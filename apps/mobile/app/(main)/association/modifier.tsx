@@ -25,6 +25,18 @@ import {
   Text,
   colors,
 } from "@/components/ui";
+import { cssInterop } from "nativewind";
+
+import ArrowLeftIconSource from "@assets/icons/ic_arrow_left.svg";
+
+const iconConfig = {
+  className: {
+    target: "style",
+    nativeStyleToProp: { width: true, height: true, color: true },
+  },
+} as const;
+
+const ArrowLeftIcon = cssInterop(ArrowLeftIconSource, iconConfig);
 import { useAssociationStore } from "@/stores/association.store";
 import { useAuthStore } from "@/stores/auth.store";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -244,15 +256,17 @@ export default function EditAssociationScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View className="w-full max-w-2xl gap-6 px-4">
-
             {/* Bouton retour — web uniquement */}
             {Platform.OS === "web" && (
               <Button
                 variant="secondary"
                 onPress={() => router.back()}
                 className="self-start"
+                icon={
+                  <ArrowLeftIcon className="w-4 h-4 text-primary group-hover:text-primary-hover group-active:text-primary-active" />
+                }
               >
-                ← Retour
+                Retour
               </Button>
             )}
 
@@ -389,23 +403,21 @@ export default function EditAssociationScreen() {
             </View>
 
             {/* Boutons actions */}
-            <View className="flex-row gap-3">
-              {Platform.OS === "web" && (
-                <Button
-                  variant="secondary"
-                  onPress={() => router.back()}
-                  disabled={isSubmitting}
-                  className="flex-1"
-                >
-                  Annuler
-                </Button>
-              )}
+            <View className="gap-3">
               <Button
                 onPress={handleSubmit(onSubmit)}
                 loading={isSubmitting}
-                className="flex-1"
+                className="w-full"
               >
                 Sauvegarder les modifications
+              </Button>
+              <Button
+                variant="secondary"
+                onPress={() => router.back()}
+                disabled={isSubmitting}
+                className="w-full"
+              >
+                Annuler
               </Button>
             </View>
 

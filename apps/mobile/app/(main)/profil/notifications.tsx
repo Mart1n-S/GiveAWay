@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { View, ScrollView, Platform, Linking, AppState, AppStateStatus } from "react-native";
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { useFocusEffect } from "expo-router";
 import { isAxiosError } from "axios";
 import { cssInterop } from "nativewind";
@@ -11,6 +11,7 @@ import { ProfileService } from "@/services/profile.service";
 import { useProfileStore } from "@/stores/profile.store";
 
 import InfoIconSource from "@assets/icons/ic_info.svg";
+import ArrowLeftIconSource from "@assets/icons/ic_arrow_left.svg";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 const iconConfig = {
@@ -21,8 +22,10 @@ const iconConfig = {
 } as const;
 
 const InfoIcon = cssInterop(InfoIconSource, iconConfig);
+const ArrowLeftIcon = cssInterop(ArrowLeftIconSource, iconConfig);
 
 export default function NotificationsScreen() {
+  const router = useRouter();
   const profile = useProfileStore((state) => state.profile);
   usePageTitle("Notifications");
   const [emailNotifications, setEmailNotifications] = useState(
@@ -109,6 +112,20 @@ export default function NotificationsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View className="w-full max-w-2xl gap-6 px-4">
+          {/* Bouton retour — web uniquement */}
+          {Platform.OS === "web" && (
+            <Button
+              variant="secondary"
+              onPress={() => router.back()}
+              className="self-start"
+              icon={
+                <ArrowLeftIcon className="w-4 h-4 text-primary group-hover:text-primary-hover group-active:text-primary-active" />
+              }
+            >
+              Retour
+            </Button>
+          )}
+
           {/* Bulle d'information */}
           <View className="flex-row gap-3 p-4 border border-blue-200 rounded-lg bg-blue-50">
             <InfoIcon className="w-5 h-5 mt-0.5 text-blue-600 shrink-0" />
@@ -189,7 +206,10 @@ export default function NotificationsScreen() {
                   le bouton ci-dessous pour ouvrir les paramètres.
                 </Text>
 
-                <Button variant="secondary" onPress={() => Linking.openSettings()}>
+                <Button
+                  variant="secondary"
+                  onPress={() => Linking.openSettings()}
+                >
                   Gérer dans les paramètres
                 </Button>
               </View>

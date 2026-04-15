@@ -16,6 +16,7 @@ import { useProfileStore } from "@/stores/profile.store";
 import WarningIconSource from "@assets/icons/ic_info.svg";
 import LockIconSource from "@assets/icons/ic_lock.svg";
 import UnlockIconSource from "@assets/icons/ic_unlock.svg";
+import ArrowLeftIconSource from "@assets/icons/ic_arrow_left.svg";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 const iconConfig = {
@@ -28,6 +29,7 @@ const iconConfig = {
 const WarningIcon = cssInterop(WarningIconSource, iconConfig);
 const LockIcon = cssInterop(LockIconSource, iconConfig);
 const UnlockIcon = cssInterop(UnlockIconSource, iconConfig);
+const ArrowLeftIcon = cssInterop(ArrowLeftIconSource, iconConfig);
 
 // Types
 type DeleteAccountFormInput = {
@@ -142,6 +144,19 @@ export default function DeleteAccountScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View className="w-full max-w-2xl gap-6 px-4">
+            {/* Bouton retour — web uniquement */}
+            {Platform.OS === "web" && (
+              <Button
+                variant="secondary"
+                onPress={() => router.back()}
+                className="self-start"
+                icon={
+                  <ArrowLeftIcon className="w-4 h-4 text-primary group-hover:text-primary-hover group-active:text-primary-active" />
+                }
+              >
+                Retour
+              </Button>
+            )}
             {/* Avertissement */}
             <View className="flex-row gap-3 p-4 border border-red-200 rounded-lg bg-red-50">
               <WarningIcon className="w-5 h-5 mt-0.5 text-red-600 shrink-0" />
@@ -227,7 +242,7 @@ export default function DeleteAccountScreen() {
               >
                 Supprimer définitivement
               </Button>
-              
+
               <Button
                 variant="secondary"
                 onPress={() => router.back()}

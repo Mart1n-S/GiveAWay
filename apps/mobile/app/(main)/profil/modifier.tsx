@@ -39,6 +39,7 @@ import { useReferenceStore } from "@/stores/reference.store";
 
 import AddIconSource from "@assets/icons/ic_add.svg";
 import TrashIconSource from "@assets/icons/ic_trash.svg";
+import ArrowLeftIconSource from "@assets/icons/ic_arrow_left.svg";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 const iconConfig = {
@@ -50,6 +51,7 @@ const iconConfig = {
 
 const AddIcon = cssInterop(AddIconSource, iconConfig);
 const TrashIcon = cssInterop(TrashIconSource, iconConfig);
+const ArrowLeftIcon = cssInterop(ArrowLeftIconSource, iconConfig);
 const CameraPlaceholder = () => <Text className="text-4xl">📷</Text>;
 
 // Types
@@ -286,8 +288,11 @@ export default function EditProfileScreen() {
                 variant="secondary"
                 onPress={() => router.back()}
                 className="self-start"
+                icon={
+                  <ArrowLeftIcon className="w-4 h-4 text-primary group-hover:text-primary-hover group-active:text-primary-active" />
+                }
               >
-                ← Retour
+                Retour
               </Button>
             )}
 
@@ -481,24 +486,22 @@ export default function EditProfileScreen() {
             </View>
 
             {/* Boutons actions */}
-            <View className="flex-row gap-3">
-              {Platform.OS === "web" && (
-                <Button
-                  variant="secondary"
-                  onPress={() => router.back()}
-                  disabled={isSubmitting}
-                  className="flex-1"
-                >
-                  Annuler
-                </Button>
-              )}
+            <View className="gap-3">
               <Button
                 onPress={handleSubmit(onSubmit)}
                 loading={isSubmitting}
-                className="flex-1"
+                className="w-full"
                 testID="btn-save-profile"
               >
                 Sauvegarder les modifications
+              </Button>
+              <Button
+                variant="secondary"
+                onPress={() => router.back()}
+                disabled={isSubmitting}
+                className="w-full"
+              >
+                Annuler
               </Button>
             </View>
 

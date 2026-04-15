@@ -502,7 +502,9 @@ export default function MissionDetailScreen() {
                   <Button
                     variant="secondary"
                     onPress={handleBack}
-                    icon={<ArrowLeftIcon className="w-5 h-5 text-primary" />}
+                    icon={
+                      <ArrowLeftIcon className="w-5 h-5 text-primary group-hover:text-primary-hover group-active:text-primary-active" />
+                    }
                     accessibilityLabel="Retour"
                   />
                 </View>
@@ -702,7 +704,6 @@ export default function MissionDetailScreen() {
                     </>
                   )}
                 </View>
-
               </View>
             </View>
           </View>

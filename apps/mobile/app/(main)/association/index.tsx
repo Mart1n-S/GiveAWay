@@ -194,7 +194,12 @@ function TransferOwnerModal({
               onPress={handleTransfer}
               loading={isLoading}
               disabled={!selectedUserId || eligibleMembers.length === 0}
-              className="flex-1 bg-red-600 border-red-600 hover:bg-red-700 hover:border-red-700 active:bg-red-800 active:border-red-800"
+              className={clsx(
+                "flex-1",
+                selectedUserId && eligibleMembers.length > 0
+                  ? "bg-red-600 border-red-600 hover:bg-red-700 hover:border-red-700 active:bg-red-800 active:border-red-800"
+                  : undefined,
+              )}
             >
               Transférer
             </Button>
@@ -335,6 +340,7 @@ export default function AssociationScreen() {
 
   const isOwner = userRole === AssociationRole.OWNER;
   const isAdmin = userRole === AssociationRole.ADMIN;
+  const isEditor = userRole === AssociationRole.EDITOR;
   const memberCount = members?.length ?? association.members.length;
   const isValidated = association.status === AssociationStatus.VALIDATED;
 
@@ -573,6 +579,37 @@ export default function AssociationScreen() {
                   )}
                 </Pressable>
               )}
+            </View>
+          )}
+
+          {/* ── Section 4b : Actions EDITOR ── */}
+          {isEditor && (
+            <View className="gap-3">
+              {!isValidated && (
+                <View className="flex-row items-start gap-2.5 p-3 border border-orange-200 rounded-lg bg-orange-50">
+                  <InfoIcon className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
+                  <Text className="flex-1 text-sm leading-5 text-orange-700">
+                    Ces actions seront disponibles une fois votre association validée par notre équipe.
+                  </Text>
+                </View>
+              )}
+              <Button
+                variant="secondary"
+                onPress={
+                  isValidated
+                    ? () => router.push("/association/membres" as any)
+                    : handleLockedAction
+                }
+                disabled={!isValidated}
+                icon={
+                  !isValidated ? (
+                    <InfoIcon className="w-4 h-4 text-grey-disabledText" />
+                  ) : undefined
+                }
+                className="w-full"
+              >
+                Voir les membres
+              </Button>
             </View>
           )}
 

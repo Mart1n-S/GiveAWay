@@ -28,6 +28,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 
 import TrashIconSource from "@assets/icons/ic_trash.svg";
 import EditIconSource from "@assets/icons/ic_edit.svg";
+import ArrowLeftIconSource from "@assets/icons/ic_arrow_left.svg";
 import { SearchInput } from "@/components/ui/search-input/SearchInput";
 
 const iconConfig = {
@@ -39,6 +40,7 @@ const iconConfig = {
 
 const TrashIcon = cssInterop(TrashIconSource, iconConfig);
 const EditIcon = cssInterop(EditIconSource, iconConfig);
+const ArrowLeftIcon = cssInterop(ArrowLeftIconSource, iconConfig);
 
 // ─── Role Picker Modal ────────────────────────────────────────────────────────
 
@@ -362,19 +364,7 @@ export default function MembresScreen() {
     loadMembers();
   }, [loadMembers]);
 
-  // Garde : OWNER ou ADMIN uniquement
-  useEffect(() => {
-    if (userRole === AssociationRole.EDITOR) {
-      Toast.show({
-        type: "error",
-        text1: "Accès non autorisé",
-        text2: "Seuls les administrateurs peuvent gérer les membres.",
-        visibilityTime: 5000,
-        onPress: () => Toast.hide(),
-      });
-      router.back();
-    }
-  }, [userRole]);
+  const isReadOnly = userRole === AssociationRole.EDITOR;
 
   // Garde : association validée uniquement
   useEffect(() => {
@@ -471,12 +461,17 @@ export default function MembresScreen() {
         }
       >
         <View className="w-full max-w-2xl gap-4 px-4 pt-4 mx-auto">
-
           {/* Bouton retour — web uniquement */}
           {Platform.OS === "web" && (
             <View className="items-start">
-              <Button variant="secondary" onPress={() => router.back()}>
-                ← Retour
+              <Button
+                variant="secondary"
+                onPress={() => router.back()}
+                icon={
+                  <ArrowLeftIcon className="w-4 h-4 text-primary group-hover:text-primary-hover group-active:text-primary-active" />
+                }
+              >
+                Retour
               </Button>
             </View>
           )}
@@ -487,14 +482,21 @@ export default function MembresScreen() {
               Membres ({members?.length ?? 0})
             </Text>
             {canAdd && (
-              <Button
-                onPress={() => setShowAddModal(true)}
-                className="px-3"
-              >
+              <Button onPress={() => setShowAddModal(true)} className="px-3">
                 + Ajouter
               </Button>
             )}
           </View>
+
+          {/* Bannière lecture seule pour les Éditeurs */}
+          {isReadOnly && (
+            <View className="p-3 border border-blue-200 rounded-lg bg-blue-50">
+              <Text className="text-xs leading-4 text-blue-700">
+                En tant qu'Éditeur, vous pouvez consulter la liste des membres
+                mais ne pouvez pas les modifier.
+              </Text>
+            </View>
+          )}
 
           {/* Barre de recherche */}
           {members && members.length > 0 && (
