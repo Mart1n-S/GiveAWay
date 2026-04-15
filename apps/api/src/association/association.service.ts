@@ -2,7 +2,9 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -24,8 +26,10 @@ import {
   Prisma,
 } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { AssociationVerificationService } from '../auth/register/association-verification.service';
-import type { RegisterAssociationDto } from '@repo/shared';
+import {
+  FILE_SERVICE,
+  IFileService,
+} from '../common/files/interfaces/file-service.interface';
 
 // Type Prisma avec relations pour le mapping
 type AssociationWithRelations = Awaited<
@@ -61,9 +65,11 @@ type AssociationWithRelations = Awaited<
 
 @Injectable()
 export class AssociationService {
+  private readonly logger = new Logger(AssociationService.name);
+
   constructor(
     private readonly prisma: PrismaService,
-    private readonly associationVerificationService: AssociationVerificationService,
+    @Inject(FILE_SERVICE) private readonly fileService: IFileService,
   ) {}
 
   // ----------------------------------------------------------------
@@ -110,11 +116,10 @@ export class AssociationService {
   ) {
     const skip = (page - 1) * pageSize;
 
-    // Récupère les missions et le total en parallèle
     const [rawMissions, total] = await this.prisma.$transaction([
       this.prisma.mission.findMany({
         where: { associationId },
-        orderBy: { createdAt: 'desc' }, // Les plus récentes en premier
+        orderBy: { createdAt: 'desc' },
         skip,
         take: pageSize,
         include: {
@@ -122,7 +127,6 @@ export class AssociationService {
             select: { name: true },
           },
           address: true,
-          // Navigation à travers les tables de liaison (pivot)
           causes: {
             include: { cause: true },
           },
@@ -136,8 +140,6 @@ export class AssociationService {
       }),
     ]);
 
-    // Formatage pour que les causes et volunteerTypes correspondent
-    // à ce que le frontend attend (on "saute" la table pivot)
     const missions = rawMissions.map((mission) => ({
       ...mission,
       causes: mission.causes.map((mc) => mc.cause),
@@ -159,86 +161,145 @@ export class AssociationService {
   async updateAssociation(
     associationId: number,
     dto: UpdateAssociationDto,
+    logoFile?: Express.Multer.File,
+    documentFiles?: Express.Multer.File[],
   ): Promise<AssociationDto> {
     const existing = await this.prisma.association.findUnique({
       where: { id: associationId },
-      include: { address: true },
+      include: { address: true, documents: true },
     });
 
     if (!existing) {
       throw new NotFoundException('Association introuvable');
     }
 
-    // Vérifie si RNA ou SIRET change → re-vérification API
-    const rnaChanging =
-      dto.rna !== undefined && dto.rna !== (existing.rna ?? '');
-    const siretChanging =
-      dto.siret !== undefined && dto.siret !== (existing.siret ?? '');
+    // ── 1. Gestion du logo ─────────────────────────────────────────
+    // undefined = pas de changement ; null = effacer en base
+    let newLogoPublicId: string | null | undefined;
 
-    if (rnaChanging || siretChanging) {
-      // Pour la vérification de cohérence, on privilégie l'adresse du DTO
-      // (si fournie) sur celle existante en base.
-      const addressForVerification = dto.address
-        ? {
-            street: dto.address.street,
-            postalCode: dto.address.postalCode,
-            city: dto.address.city,
-          }
-        : existing.address
-          ? {
-              street: existing.address.street,
-              postalCode: existing.address.postalCode,
-              city: existing.address.city,
-            }
-          : undefined;
+    if (logoFile) {
+      // Nouveau fichier : upload puis suppression de l'ancien (best effort)
+      const uploadResult = await this.fileService.uploadFile(
+        logoFile,
+        'association-logos',
+      );
+      newLogoPublicId = uploadResult.publicId;
 
-      const verificationInput = {
-        name: dto.name ?? existing.name,
-        rna:
-          dto.rna !== undefined
-            ? dto.rna || undefined
-            : (existing.rna ?? undefined),
-        siret:
-          dto.siret !== undefined
-            ? dto.siret || undefined
-            : (existing.siret ?? undefined),
-        address: addressForVerification,
-      } as unknown as RegisterAssociationDto;
+      if (existing.logoUrl) {
+        this.fileService
+          .deleteFile(existing.logoUrl)
+          .catch((e) =>
+            this.logger.warn(
+              `Impossible de supprimer l'ancien logo (${existing.logoUrl})`,
+              e,
+            ),
+          );
+      }
+    } else if (dto.logoUrl !== undefined && dto.logoUrl === '') {
+      // Signal de suppression explicite (logoUrl = "" sans nouveau fichier)
+      if (existing.logoUrl) {
+        this.fileService
+          .deleteFile(existing.logoUrl)
+          .catch((e) =>
+            this.logger.warn(
+              `Impossible de supprimer le logo (${existing.logoUrl})`,
+              e,
+            ),
+          );
+      }
+      newLogoPublicId = null;
+    }
 
-      const verification =
-        await this.associationVerificationService.verifyAssociation(
-          verificationInput,
+    // ── 2. Suppression des documents retirés ──────────────────────
+    if (dto.documentUrls !== undefined) {
+      const urlsToKeep = new Set(dto.documentUrls);
+      const docsToDelete = (existing.documents ?? []).filter(
+        (d) => !urlsToKeep.has(d.fileUrl),
+      );
+
+      if (docsToDelete.length > 0) {
+        await Promise.allSettled(
+          docsToDelete.map((doc) =>
+            this.fileService
+              .deleteFile(doc.fileUrl)
+              .catch((e) =>
+                this.logger.warn(
+                  `Impossible de supprimer le document (${doc.fileUrl})`,
+                  e,
+                ),
+              ),
+          ),
         );
 
-      // Association dissoute → bloquer la mise à jour
-      if (verification.rejectionReason) {
-        throw new BadRequestException(verification.rejectionReason);
-      }
-
-      // Revue manuelle nécessaire → repasser en PENDING
-      if (verification.requiresManualReview) {
-        await this.prisma.association.update({
-          where: { id: associationId },
-          data: {
-            ...this.buildScalarUpdateData(dto),
-            ...this.buildAddressUpsert(dto),
-            status: PrismaAssociationStatus.PENDING,
-            requiresManualReview: true,
-          },
+        await this.prisma.associationDocument.deleteMany({
+          where: { id: { in: docsToDelete.map((d) => d.id) } },
         });
-        return this.getAssociation(associationId);
       }
     }
 
+    // ── 3. Upload des nouveaux documents ──────────────────────────
+    if (documentFiles && documentFiles.length > 0) {
+      for (const doc of documentFiles) {
+        try {
+          const result = await this.fileService.uploadFile(
+            doc,
+            'association-documents',
+          );
+          await this.prisma.associationDocument.create({
+            data: {
+              associationId,
+              fileUrl: result.publicId,
+              type: doc.mimetype.startsWith('image/') ? 'IMAGE' : 'PDF',
+            },
+          });
+        } catch (e) {
+          this.logger.warn(
+            `Impossible d'uploader le document (${doc.originalname})`,
+            e,
+          );
+        }
+      }
+    }
+
+    // ── 4. Construction des données scalaires ──────────────────────
+    const scalarData: Record<string, unknown> = {};
+
+    if (dto.name !== undefined) scalarData.name = dto.name;
+    if (dto.object !== undefined) scalarData.object = dto.object;
+    if (dto.legalStatus !== undefined) scalarData.legalStatus = dto.legalStatus;
+    if (dto.phone !== undefined) scalarData.phone = dto.phone || null;
+    if (dto.website !== undefined) scalarData.website = dto.website || null;
+    if (dto.description !== undefined) scalarData.description = dto.description;
+
+    if (newLogoPublicId !== undefined) {
+      scalarData.logoUrl = newLogoPublicId; // null efface, string remplace
+    }
+
+    // ── 5. Mise à jour Prisma ──────────────────────────────────────
     await this.prisma.association.update({
       where: { id: associationId },
       data: {
-        ...this.buildScalarUpdateData(dto),
+        ...scalarData,
         ...this.buildAddressUpsert(dto),
       },
     });
 
     return this.getAssociation(associationId);
+  }
+
+  // ----------------------------------------------------------------
+  // GET — téléchargement sécurisé d'un document (OWNER uniquement)
+  // ----------------------------------------------------------------
+  async getDocumentForDownload(associationId: number, documentId: number) {
+    const doc = await this.prisma.associationDocument.findFirst({
+      where: { id: documentId, associationId },
+    });
+
+    if (!doc) {
+      throw new NotFoundException('Document introuvable');
+    }
+
+    return this.fileService.getFileForDownload(doc.fileUrl);
   }
 
   // ----------------------------------------------------------------
@@ -452,11 +513,6 @@ export class AssociationService {
         data: { role: PrismaAssociationRole.ADMIN },
       }),
     ]);
-
-    // Invalider tous les refresh tokens de l'ancien OWNER (force logout)
-    await this.prisma.refreshToken.deleteMany({
-      where: { userId: requestingUserId },
-    });
   }
 
   /**
@@ -540,26 +596,6 @@ export class AssociationService {
   // ----------------------------------------------------------------
   // Helpers privés
   // ----------------------------------------------------------------
-
-  /**
-   * Construit les champs scalaires à mettre à jour (hors adresse).
-   * Seuls les champs présents dans le DTO (non `undefined`) sont inclus.
-   */
-  private buildScalarUpdateData(
-    dto: UpdateAssociationDto,
-  ): Record<string, unknown> {
-    const data: Record<string, unknown> = {};
-    if (dto.name !== undefined) data.name = dto.name;
-    if (dto.rna !== undefined) data.rna = dto.rna || null;
-    if (dto.siret !== undefined) data.siret = dto.siret || null;
-    if (dto.object !== undefined) data.object = dto.object;
-    if (dto.legalStatus !== undefined) data.legalStatus = dto.legalStatus;
-    if (dto.phone !== undefined) data.phone = dto.phone || null;
-    if (dto.website !== undefined) data.website = dto.website || null;
-    if (dto.description !== undefined) data.description = dto.description;
-    if (dto.logoUrl !== undefined) data.logoUrl = dto.logoUrl || null;
-    return data;
-  }
 
   /**
    * Construit l'upsert Prisma pour l'adresse du siège.

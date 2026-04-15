@@ -10,10 +10,15 @@ import {
   Patch,
   Post,
   Req,
+  Res,
+  UploadedFiles,
   UseGuards,
+  UseInterceptors,
   Query,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import {
   AssociationDto,
   AssociationMemberDto,
@@ -31,6 +36,8 @@ import {
 } from '@repo/shared';
 import { AssociationRole } from '../generated/prisma/client';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { ImageValidationPipe } from '../common/pipes/image-validation.pipe';
+import { DocumentsValidationPipe } from '../common/pipes/documents-validation.pipe';
 import { AssociationService } from './association.service';
 import {
   AssociationMemberGuard,
@@ -84,17 +91,79 @@ export class AssociationController {
    * PATCH /associations/:associationId
    * Met à jour les informations de l'association.
    * Requiert le rôle OWNER.
+   *
+   * Accepte du multipart/form-data pour permettre l'upload du logo et de nouveaux documents.
+   * Le champ `logo` est optionnel (fichier image, max 1).
+   * Le champ `documents` est optionnel (PDF/image, max 5 par requête).
+   * Les autres champs sont envoyés comme champs de formulaire.
    */
   @UseGuards(AuthGuard('jwt'), AssociationMemberGuard, AssociationRoleGuard)
   @AssociationRoles(AssociationRole.OWNER)
   @Patch(':associationId')
   @HttpCode(HttpStatus.OK)
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'logo', maxCount: 1 },
+      { name: 'documents', maxCount: 5 },
+    ]),
+  )
   async updateAssociation(
     @Param('associationId', ParseIntPipe) associationId: number,
     @Body(new ZodValidationPipe(UpdateAssociationSchema))
     dto: UpdateAssociationDto,
+    @UploadedFiles()
+    rawFiles?: {
+      logo?: Express.Multer.File[];
+      documents?: Express.Multer.File[];
+    },
   ): Promise<AssociationDto> {
-    return this.associationService.updateAssociation(associationId, dto);
+    const logoFile = new ImageValidationPipe(false).transform(
+      rawFiles?.logo?.[0],
+    );
+    const documentFiles = new DocumentsValidationPipe(false).transform(
+      rawFiles?.documents,
+    );
+    return this.associationService.updateAssociation(
+      associationId,
+      dto,
+      logoFile,
+      documentFiles,
+    );
+  }
+
+  /**
+   * GET /associations/:associationId/documents/:documentId/download
+   * Télécharge un document justificatif de l'association.
+   * Requiert le rôle OWNER.
+   *
+   * Renvoie le fichier en pièce jointe (Content-Disposition: attachment)
+   * pour un stockage local, ou redirige vers l'URL CDN (Cloudinary).
+   */
+  @UseGuards(AuthGuard('jwt'), AssociationMemberGuard, AssociationRoleGuard)
+  @AssociationRoles(AssociationRole.OWNER)
+  @Get(':associationId/documents/:documentId/download')
+  async downloadDocument(
+    @Param('associationId', ParseIntPipe) associationId: number,
+    @Param('documentId', ParseIntPipe) documentId: number,
+    @Res() res: Response,
+  ): Promise<void> {
+    const result = await this.associationService.getDocumentForDownload(
+      associationId,
+      documentId,
+    );
+
+    if (result.type === 'redirect') {
+      res.redirect(302, result.url);
+      return;
+    }
+
+    res.setHeader('Content-Type', result.mimeType);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${encodeURIComponent(result.filename)}"`,
+    );
+    res.setHeader('Content-Length', result.buffer.length);
+    res.end(result.buffer);
   }
 
   /**
@@ -196,7 +265,7 @@ export class AssociationController {
   /**
    * POST /associations/:associationId/transfer-owner
    * Transfère la propriété de l'association à un autre membre.
-   * Requiert le rôle OWNER. Force le logout de l'OWNER actuel.
+   * Requiert le rôle OWNER. L'ex-OWNER devient ADMIN (reste connecté).
    */
   @UseGuards(AuthGuard('jwt'), AssociationMemberGuard, AssociationRoleGuard)
   @AssociationRoles(AssociationRole.OWNER)

@@ -360,6 +360,60 @@ async function main() {
           "Aménagement d'espaces naturels",
         ] satisfies CauseLabel[],
       },
+      // index 7 — responsable Croix-Rouge
+      {
+        email: 'responsable1@gmail.com',
+        firstName: 'Claire',
+        lastName: 'Fontaine',
+        age: 42,
+        status: UserStatus.ACTIVE,
+        emailVerified: true,
+        street: '22 Rue Joseph Cabassol',
+        cp: '13100',
+        city: 'Aix-en-Provence',
+        lat: 43.5308,
+        lng: 5.4512,
+        availability: {
+          frequency: [AvailabilityFrequency.DAYS_WEEK],
+          timeSlot: [AvailabilityTime.WEEKDAY],
+          type: AvailabilityType.ON_SITE,
+        },
+        skills: [
+          'Secourisme et sécurité civile',
+          'Gestion de projets',
+        ] satisfies SkillLabel[],
+        causes: [
+          'Écoute / Aide psychologique',
+          'Maraude',
+        ] satisfies CauseLabel[],
+      },
+      // index 8 — responsable Mémoires de Provence
+      {
+        email: 'responsable2@gmail.com',
+        firstName: 'Marc',
+        lastName: 'Aubert',
+        age: 50,
+        status: UserStatus.ACTIVE,
+        emailVerified: true,
+        street: '9 Rue Gaston de Saporta',
+        cp: '13100',
+        city: 'Aix-en-Provence',
+        lat: 43.5294,
+        lng: 5.4477,
+        availability: {
+          frequency: [AvailabilityFrequency.HOURS_WEEK],
+          timeSlot: [AvailabilityTime.WEEKDAY, AvailabilityTime.WEEKEND],
+          type: AvailabilityType.HYBRID,
+        },
+        skills: [
+          'Gestion administrative',
+          'Photographie / Vidéo',
+        ] satisfies SkillLabel[],
+        causes: [
+          'Médiation culturelle',
+          'Valorisation du patrimoine',
+        ] satisfies CauseLabel[],
+      },
     ];
 
     const createdUsers: User[] = [];
@@ -741,7 +795,7 @@ async function main() {
         object: 'Prévenir et atténuer les souffrances humaines, protéger la vie, la santé et la dignité humaine, sans discrimination.',
         legalStatus: 'Association reconnue d\'utilité publique',
         categoryName: 'Santé & Médical',
-        ownerIndex: 5,
+        ownerIndex: 7,
         street: '15 Boulevard du Roi René',
         cp: '13100',
         city: 'Aix-en-Provence',
@@ -829,7 +883,7 @@ async function main() {
         object: 'Collecter, conserver et diffuser le patrimoine culturel, mémoriel et historique de la Provence auprès du grand public.',
         legalStatus: 'Association loi 1901',
         categoryName: 'Culture & Patrimoine',
-        ownerIndex: 0,
+        ownerIndex: 8,
         street: '2 Place des Cardeurs',
         cp: '13100',
         city: 'Aix-en-Provence',
@@ -1095,7 +1149,8 @@ async function main() {
   console.log('🚀 Seed terminé avec succès !');
   console.log(`
 📊 Résumé :
-  - 7 utilisateurs (1 admin, 2 bénévoles actifs, 1 pending, 1 suspendu, 1 supprimé)
+  - 9 utilisateurs (1 admin test, 2 bénévoles actifs, 2 responsables d'association, 1 pending, 1 suspendu, 1 supprimé)
+  - Chaque utilisateur actif est propriétaire d'au plus une association
   - 6 associations validées à Aix-en-Provence
       (avec objet statutaire, statut juridique, RNA, téléphone, site web, email vérifié)
   - 20 missions (MISSION, EVENT, COLLECT, INFO — ACTIVE et ARCHIVED)

@@ -19,10 +19,11 @@ import { colors } from "@/components/ui/theme/tokens";
 import { AssociationMissionHistory } from "@/components/ui/association-mission-history/AssociationMissionHistory";
 import GlobeIconSource from "@assets/icons/ic_globe.svg";
 import InfoIconSource from "@assets/icons/ic_info.svg";
+import DownloadIconSource from "@assets/icons/ic_download.svg";
+import TrashIconSource from "@assets/icons/ic_trash.svg";
 
 import { useAuthStore } from "@/stores/auth.store";
 import { useAssociationStore } from "@/stores/association.store";
-import { AuthService } from "@/services/auth.service";
 import { MissionService } from "@/services/mission.service";
 import * as AssociationService from "@/services/association.service";
 
@@ -42,6 +43,8 @@ const iconConfig = {
 
 const GlobeIcon = cssInterop(GlobeIconSource, iconConfig);
 const InfoIcon = cssInterop(InfoIconSource, iconConfig);
+const DownloadIcon = cssInterop(DownloadIconSource, iconConfig);
+const TrashIcon = cssInterop(TrashIconSource, iconConfig);
 
 const STATUS_CONFIG: Record<
   AssociationStatus,
@@ -55,6 +58,78 @@ const STATUS_CONFIG: Record<
   [AssociationStatus.REJECTED]: { label: "Rejetée", variant: "red" },
   [AssociationStatus.SUSPENDED]: { label: "Suspendue", variant: "surface" },
 };
+
+// ─── Delete Document Modal ────────────────────────────────────────────────────
+
+interface DeleteDocModalProps {
+  visible: boolean;
+  filename: string;
+  isLoading: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}
+
+function DeleteDocModal({
+  visible,
+  filename,
+  isLoading,
+  onClose,
+  onConfirm,
+}: DeleteDocModalProps) {
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+      presentationStyle="overFullScreen"
+    >
+      <Pressable
+        className="items-center justify-center flex-1 p-4 bg-black/50"
+        onPress={onClose}
+        accessibilityViewIsModal
+      >
+        <Pressable
+          className="w-full max-w-sm overflow-hidden bg-white shadow-xl rounded-xl"
+          onPress={(e) => e.stopPropagation()}
+          accessibilityRole="none"
+        >
+          <View className="px-5 pt-5 pb-3 border-b border-grey-100">
+            <Text className="text-lg font-bold text-grey-900">
+              Supprimer le document
+            </Text>
+          </View>
+
+          <View className="gap-4 px-5 py-4">
+            <Text className="text-sm leading-5 text-grey-600">
+              Voulez-vous vraiment supprimer{" "}
+              <Text className="font-semibold text-grey-900">{filename}</Text>
+              {" "}? Cette action est irréversible.
+            </Text>
+          </View>
+
+          <View className="flex-row gap-3 px-5 pb-5">
+            <Button
+              variant="secondary"
+              onPress={onClose}
+              disabled={isLoading}
+              className="flex-1"
+            >
+              Annuler
+            </Button>
+            <Button
+              onPress={onConfirm}
+              loading={isLoading}
+              className="flex-1 bg-red-600 border-red-600 hover:bg-red-700 hover:border-red-700 active:bg-red-800 active:border-red-800"
+            >
+              Supprimer
+            </Button>
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
 
 // ─── Transfer Owner Modal ─────────────────────────────────────────────────────
 
@@ -223,6 +298,9 @@ export default function AssociationScreen() {
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [objectExpanded, setObjectExpanded] = useState(false);
+  const [downloadingDocId, setDownloadingDocId] = useState<number | null>(null);
+  const [docToDelete, setDocToDelete] = useState<{ id: number; fileUrl: string; filename: string } | null>(null);
+  const [isDeletingDoc, setIsDeletingDoc] = useState(false);
 
   const [recentMissions, setRecentMissions] = useState<MissionListItem[]>([]);
   const [missionsLoading, setMissionsLoading] = useState(false);
@@ -285,8 +363,30 @@ export default function AssociationScreen() {
 
   const handleTransferSuccess = async () => {
     setShowTransferModal(false);
-    await AuthService.logout();
-    router.replace("/");
+
+    // Mettre à jour le rôle dans AuthStore (OWNER → ADMIN)
+    if (user && user.associations && associationId) {
+      const updatedAssociations = user.associations.map((a) =>
+        a.associationId === associationId
+          ? { ...a, role: AssociationRole.ADMIN }
+          : a,
+      );
+      useAuthStore.getState().setUser({ ...user, associations: updatedAssociations });
+    }
+
+    // Rafraîchir le store association : userRole passera à ADMIN
+    store.clearAssociation();
+    if (associationId) {
+      await store.fetchAssociation(associationId);
+    }
+
+    Toast.show({
+      type: "success",
+      text1: "Propriété transférée",
+      text2: "Vous êtes maintenant Administrateur de l'association.",
+      visibilityTime: 5000,
+      onPress: () => Toast.hide(),
+    });
   };
 
   // ── Empty state : pas d'association
@@ -343,6 +443,60 @@ export default function AssociationScreen() {
   const isEditor = userRole === AssociationRole.EDITOR;
   const memberCount = members?.length ?? association.members.length;
   const isValidated = association.status === AssociationStatus.VALIDATED;
+
+  const handleDownloadDoc = async (docId: number, fileUrl: string) => {
+    if (!associationId) return;
+    const filename = fileUrl.split("/").pop() || `document-${docId}`;
+    setDownloadingDocId(docId);
+    try {
+      await AssociationService.downloadDocument(associationId, docId, filename);
+    } catch {
+      Toast.show({
+        type: "error",
+        text1: "Téléchargement impossible",
+        text2: "Une erreur est survenue lors du téléchargement.",
+        visibilityTime: 10000,
+        onPress: () => Toast.hide(),
+      });
+    } finally {
+      setDownloadingDocId(null);
+    }
+  };
+
+  const handleConfirmDeleteDoc = async () => {
+    if (!docToDelete || !associationId || !association) return;
+    setIsDeletingDoc(true);
+    try {
+      await AssociationService.deleteDocument(
+        associationId,
+        docToDelete.id,
+        association.documents ?? [],
+      );
+      store.clearAssociation();
+      await store.fetchAssociation(associationId);
+      setDocToDelete(null);
+      Toast.show({
+        type: "success",
+        text1: "Document supprimé",
+        text2: "Le document a été supprimé avec succès.",
+        visibilityTime: 4000,
+        onPress: () => Toast.hide(),
+      });
+    } catch (error) {
+      Toast.show({
+        type: "error",
+        text1: "Erreur",
+        text2:
+          error instanceof Error
+            ? error.message
+            : "Impossible de supprimer le document.",
+        visibilityTime: 10000,
+        onPress: () => Toast.hide(),
+      });
+    } finally {
+      setIsDeletingDoc(false);
+    }
+  };
 
   const handleLockedAction = () => {
     Toast.show({
@@ -495,6 +649,73 @@ export default function AssociationScreen() {
             </View>
           )}
 
+          {/* ── Section 3b : Documents justificatifs (OWNER uniquement) ── */}
+          {isOwner && association.documents && association.documents.length > 0 && (
+            <View className="gap-3 p-5 bg-white border rounded-lg border-grey-100">
+              <Text className="text-base font-bold text-grey-900">
+                Documents justificatifs
+              </Text>
+              <View className="gap-2">
+                {association.documents.map((doc) => {
+                  const filename = doc.fileUrl.split("/").pop() || doc.type;
+                  const date = new Date(doc.createdAt).toLocaleDateString(
+                    "fr-FR",
+                    { day: "numeric", month: "short", year: "numeric" },
+                  );
+                  const isDownloading = downloadingDocId === doc.id;
+                  return (
+                    <View
+                      key={doc.id}
+                      className="flex-row items-center gap-3 p-3 border rounded-lg border-grey-100 bg-grey-50"
+                    >
+                      <View className="flex-1 gap-0.5 min-w-0">
+                        <Text
+                          className="text-sm font-medium text-grey-900"
+                          numberOfLines={1}
+                          ellipsizeMode="middle"
+                        >
+                          {filename}
+                        </Text>
+                        <Text className="text-xs text-grey-500">
+                          {doc.type} · {date}
+                        </Text>
+                      </View>
+                      <Button
+                        variant="tertiary"
+                        onPress={() => handleDownloadDoc(doc.id, doc.fileUrl)}
+                        disabled={isDownloading}
+                        loading={isDownloading}
+                        accessibilityLabel={`Télécharger ${doc.type}`}
+                        className="hover:bg-grey-100 active:bg-grey-200 shrink-0"
+                        icon={
+                          !isDownloading ? (
+                            <DownloadIcon className="w-4 h-4 text-primary group-hover:text-primary-hover group-active:text-primary-active" />
+                          ) : undefined
+                        }
+                      />
+                      <Button
+                        variant="tertiary"
+                        onPress={() =>
+                          setDocToDelete({
+                            id: doc.id,
+                            fileUrl: doc.fileUrl,
+                            filename,
+                          })
+                        }
+                        disabled={isDownloading}
+                        accessibilityLabel={`Supprimer ${doc.type}`}
+                        className="hover:bg-red-50 active:bg-red-100 shrink-0"
+                        icon={
+                          <TrashIcon className="w-4 h-4 text-red-500 group-hover:text-red-600 group-active:text-red-700" />
+                        }
+                      />
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
           {/* ── Section 4 : Actions ── */}
           {(isOwner || isAdmin) && (
             <View className="gap-3">
@@ -631,6 +852,17 @@ export default function AssociationScreen() {
           />
         </View>
       </ScrollView>
+
+      {/* Modal suppression de document */}
+      {isOwner && (
+        <DeleteDocModal
+          visible={!!docToDelete}
+          filename={docToDelete?.filename ?? ""}
+          isLoading={isDeletingDoc}
+          onClose={() => setDocToDelete(null)}
+          onConfirm={handleConfirmDeleteDoc}
+        />
+      )}
 
       {/* Modal transfert de propriété */}
       {isOwner && members && (

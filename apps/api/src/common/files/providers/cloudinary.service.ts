@@ -1,13 +1,15 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import {
   v2 as cloudinary,
   UploadApiResponse,
   UploadApiErrorResponse,
 } from 'cloudinary';
 import * as streamifier from 'streamifier';
+import { randomUUID } from 'node:crypto';
 import {
   IFileService,
   FileUploadResult,
+  FileDownloadResult,
 } from '../interfaces/file-service.interface';
 
 @Injectable()
@@ -31,12 +33,18 @@ export class CloudinaryService implements IFileService {
         {
           folder: `giveaway/${folder}`,
           resource_type: 'auto', // Détecte automatiquement (Image, PDF, Vidéo...)
-          // Nettoyage du nom de fichier pour le public_id
-          public_id: file.originalname
-            .split('.')[0]
-            .replaceAll(/[^a-zA-Z0-9]/g, '_')
-            .toLowerCase(),
-          unique_filename: true,
+          // Nom d'origine sanitisé + UUID pour garantir l'unicité et traçabilité
+          public_id: (() => {
+            const dotIndex = file.originalname.lastIndexOf('.');
+            const base = dotIndex > 0
+              ? file.originalname.substring(0, dotIndex)
+              : file.originalname;
+            const sanitized = base
+              .replaceAll(/[^a-zA-Z0-9_\-]/g, '_')
+              .substring(0, 60);
+            return `${sanitized}-${randomUUID()}`;
+          })(),
+          unique_filename: false,
           overwrite: false,
         },
         (
@@ -66,6 +74,41 @@ export class CloudinaryService implements IFileService {
       // 2. Conversion du Buffer du fichier (RAM) en Flux (Stream) pour l'envoyer
       streamifier.createReadStream(file.buffer).pipe(uploadStream);
     });
+  }
+
+  /**
+   * Retourne une URL de téléchargement CDN Cloudinary (redirection 302).
+   * Cloudinary détermine lui-même le resource_type via l'Admin API.
+   */
+  async getFileForDownload(publicId: string): Promise<FileDownloadResult> {
+    let resourceType: string;
+
+    try {
+      // Essai avec resource_type 'image' (PNG, JPG, WEBP…)
+      const resource = await cloudinary.api.resource(publicId, {
+        resource_type: 'image',
+      });
+      resourceType = resource.resource_type ?? 'image';
+    } catch {
+      try {
+        // Fallback sur 'raw' (PDF, archives…)
+        const resource = await cloudinary.api.resource(publicId, {
+          resource_type: 'raw',
+        });
+        resourceType = resource.resource_type ?? 'raw';
+      } catch {
+        throw new NotFoundException(`Fichier Cloudinary introuvable : ${publicId}`);
+      }
+    }
+
+    // Génère une URL avec le flag fl_attachment (force le téléchargement côté navigateur)
+    const url = cloudinary.url(publicId, {
+      resource_type: resourceType as 'image' | 'raw' | 'video',
+      flags: 'attachment',
+      secure: true,
+    });
+
+    return { type: 'redirect', url };
   }
 
   /**
