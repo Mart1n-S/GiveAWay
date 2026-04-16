@@ -4,6 +4,7 @@
     "moduleSuffixes": [".native", ".web", ""],
     "strict": true,
     "skipLibCheck": true,
+    "customConditions": [],
     "paths": {
       "@/*": ["./src/*"],
       "@assets/*": ["./assets/*"]
@@ -13,9 +14,5 @@
     "**/*.ts",
     "**/*.tsx",
     "nativewind-env.d.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "../../node_modules"
   ]
 }
