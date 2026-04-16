@@ -92,11 +92,14 @@ export class MailService {
   }
 
   private async sendApiEmail(to: string, subject: string, htmlContent: string) {
-    const apiKey =
-      this.config.get<string>('BREVE_API_KEY') ||
-      this.config.get<string>('BREVO_API_KEY');
+    const apiKey = this.config.get<string>('BREVO_API_KEY');
     const senderEmail = this.config.get<string>('MAIL_FROM_EMAIL');
     const brevoUrl = this.config.get<string>('BREVO_URL');
+
+    console.log('BREVO_API_KEY:', apiKey);
+    console.log('BREVO_URL:', brevoUrl);
+    console.log('MAIL_FROM_EMAIL:', senderEmail);
+
 
     if (!brevoUrl) {
       throw new InternalServerErrorException('BREVO_URL non configurée');
