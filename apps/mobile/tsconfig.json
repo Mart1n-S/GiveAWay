@@ -4,10 +4,10 @@
     "moduleSuffixes": [".native", ".web", ""],
     "strict": true,
     "skipLibCheck": true,
-    "customConditions": [],
     "paths": {
       "@/*": ["./src/*"],
-      "@assets/*": ["./assets/*"]
+      "@assets/*": ["./assets/*"],
+      "expo-file-system/legacy": ["../../node_modules/expo-file-system/build/legacy/index"]
     }
   },
   "include": [
