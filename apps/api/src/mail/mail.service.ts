@@ -100,7 +100,6 @@ export class MailService {
     console.log('BREVO_URL:', brevoUrl);
     console.log('MAIL_FROM_EMAIL:', senderEmail);
 
-
     if (!brevoUrl) {
       throw new InternalServerErrorException('BREVO_URL non configurée');
     }
