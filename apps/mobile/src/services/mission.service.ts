@@ -130,6 +130,37 @@ export const MissionService = {
   },
 
   /**
+   * GET /associations/missions/:associationId
+   * Retourne les missions d'une association, paginées.
+   */
+  getMissionsByAssociation: async (
+    associationId: number,
+    query: { page?: number; pageSize?: number } = {},
+  ): Promise<MissionListResponse> => {
+    try {
+      const response = await api.get<MissionListResponse>(
+        `/associations/missions/${associationId}`,
+        {
+          params: {
+            page: String(query.page ?? 1),
+            pageSize: String(query.pageSize ?? 3),
+          },
+        },
+      );
+      return response.data;
+    } catch (err) {
+      Toast.show({
+        type: "error",
+        text1: "Impossible de charger les missions",
+        text2: "Vérifiez votre connexion et réessayez.",
+        visibilityTime: 10000,
+        onPress: () => Toast.hide(),
+      });
+      throw err;
+    }
+  },
+
+  /**
    * GET /reference/causes
    * Retourne la liste des causes disponibles pour les filtres.
    */

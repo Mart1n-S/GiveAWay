@@ -9,4 +9,7 @@ export interface TagBadgeProps {
 
   /** Classes additionnelles */
   className?: string;
+
+  /** Identifiant de test pour Playwright */
+  testID?: string;
 }

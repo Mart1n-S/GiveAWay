@@ -133,72 +133,40 @@ describe("UpdateAssociationSchema", () => {
   });
 
   // ----------------------------------------------------------------
-  // ❌ Validation — RNA
+  // ✅ RNA et SIRET — champs en lecture seule (non modifiables via PATCH)
   // ----------------------------------------------------------------
-  describe("Validation — RNA", () => {
-    it("Doit rejeter un RNA sans le préfixe W", () => {
-      const res = UpdateAssociationSchema.safeParse({ rna: "123456789" });
-      expect(res.success).toBe(false);
-      if (!res.success)
-        expect(res.error.issues[0].message).toContain("RNA");
-    });
-
-    it("Doit rejeter un RNA trop court (W + moins de 9 chiffres)", () => {
-      const res = UpdateAssociationSchema.safeParse({ rna: "W12345" });
-      expect(res.success).toBe(false);
-    });
-
-    it("Doit rejeter un RNA avec des lettres après W", () => {
-      const res = UpdateAssociationSchema.safeParse({ rna: "W12345678A" });
-      expect(res.success).toBe(false);
-    });
-  });
-
-  // ----------------------------------------------------------------
-  // ❌ Validation — SIRET
-  // ----------------------------------------------------------------
-  describe("Validation — SIRET", () => {
-    it("Doit rejeter un SIRET avec moins de 14 chiffres", () => {
-      const res = UpdateAssociationSchema.safeParse({ siret: "1234567890" });
-      expect(res.success).toBe(false);
-      if (!res.success)
-        expect(res.error.issues[0].message).toContain("SIRET");
-    });
-
-    it("Doit rejeter un SIRET avec des lettres", () => {
-      const res = UpdateAssociationSchema.safeParse({
-        siret: "1234567890ABCD",
-      });
-      expect(res.success).toBe(false);
-    });
-
-    it("Doit rejeter un SIRET avec plus de 14 chiffres", () => {
-      const res = UpdateAssociationSchema.safeParse({
-        siret: "123456789012345",
-      });
-      expect(res.success).toBe(false);
-    });
-  });
-
-  // ----------------------------------------------------------------
-  // ❌ Validation — RNA + SIRET (superRefine)
-  // ----------------------------------------------------------------
-  describe("Validation — RNA + SIRET (règle combinée)", () => {
-    it("Doit rejeter si RNA et SIRET sont tous les deux vides et soumis ensemble", () => {
-      const res = UpdateAssociationSchema.safeParse({ rna: "", siret: "" });
-      expect(res.success).toBe(false);
-      if (!res.success) {
-        const messages = res.error.issues.map((i) => i.message);
-        expect(
-          messages.some((m) => m.includes("au moins le RNA ou le SIRET")),
-        ).toBe(true);
+  describe("RNA et SIRET (champs en lecture seule)", () => {
+    it("Doit ignorer silencieusement un RNA soumis (champ inconnu du schéma)", () => {
+      // RNA est readonly — UpdateAssociationSchema ne le valide pas.
+      // Zod strip les champs inconnus par défaut → succès sans erreur.
+      const res = UpdateAssociationSchema.safeParse({ rna: "W123456789" });
+      expect(res.success).toBe(true);
+      if (res.success) {
+        expect((res.data as any).rna).toBeUndefined();
       }
     });
 
-    it("Ne doit pas déclencher le superRefine si un seul identifiant est soumis vide", () => {
-      // Seul rna est soumis et vide, siret n'est pas dans le payload → pas d'erreur cross-field
-      const res = UpdateAssociationSchema.safeParse({ rna: "" });
+    it("Doit ignorer silencieusement un SIRET soumis (champ inconnu du schéma)", () => {
+      // SIRET est readonly — UpdateAssociationSchema ne le valide pas.
+      const res = UpdateAssociationSchema.safeParse({ siret: "77567227200016" });
       expect(res.success).toBe(true);
+      if (res.success) {
+        expect((res.data as any).siret).toBeUndefined();
+      }
+    });
+
+    it("Doit ignorer RNA et SIRET même s'ils sont tous les deux soumis", () => {
+      const res = UpdateAssociationSchema.safeParse({
+        rna: "W123456789",
+        siret: "77567227200016",
+        name: "Mon Association",
+      });
+      expect(res.success).toBe(true);
+      if (res.success) {
+        expect((res.data as any).rna).toBeUndefined();
+        expect((res.data as any).siret).toBeUndefined();
+        expect(res.data.name).toBe("Mon Association");
+      }
     });
   });
 

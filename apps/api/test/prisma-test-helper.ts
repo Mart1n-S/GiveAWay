@@ -4,6 +4,8 @@ import {
   UserStatus,
   AssociationStatus,
   AssociationRole,
+  MissionStatus,
+  ActivityType,
 } from '../src/generated/prisma/client';
 
 // 1. On récupère l'URL de test
@@ -54,6 +56,41 @@ export async function createTestAssociation(ownerId: number) {
 }
 
 /**
+ * Crée une association avec une adresse géolocalisée (pour les tests de proximité).
+ * L'association est VALIDATED et possède des coordonnées lat/lng.
+ */
+export async function createTestAssociationWithAddress(
+  ownerId: number,
+  lat: number,
+  lng: number,
+) {
+  return prisma.association.create({
+    data: {
+      name: 'Association Géolocalisée E2E',
+      object: 'Test de proximité E2E',
+      legalStatus: 'Association loi 1901',
+      rna: 'W888888888',
+      status: AssociationStatus.VALIDATED,
+      members: {
+        create: {
+          userId: ownerId,
+          role: AssociationRole.OWNER,
+        },
+      },
+      address: {
+        create: {
+          street: '1 rue de la Paix',
+          postalCode: '75001',
+          city: 'Paris',
+          latitude: lat,
+          longitude: lng,
+        },
+      },
+    },
+  });
+}
+
+/**
  * Ajoute un membre à une association existante.
  */
 export async function addAssociationMember(
@@ -63,6 +100,58 @@ export async function addAssociationMember(
 ) {
   return prisma.associationUser.create({
     data: { associationId, userId, role },
+  });
+}
+
+/**
+ * Crée une mission de test liée à une association.
+ * Par défaut : MISSION ACTIVE sans adresse.
+ * Avec `withAddress: true`, la mission reçoit une adresse parisienne avec coordonnées.
+ */
+export async function createTestMission(
+  associationId: number,
+  options: {
+    title?: string;
+    type?: ActivityType;
+    status?: MissionStatus;
+    withAddress?: boolean;
+    lat?: number;
+    lng?: number;
+    volunteersNeeded?: number;
+  } = {},
+) {
+  const {
+    title = 'Mission E2E Test',
+    type = ActivityType.MISSION,
+    status = MissionStatus.ACTIVE,
+    withAddress = false,
+    lat = 48.85,
+    lng = 2.35,
+    volunteersNeeded,
+  } = options;
+
+  return prisma.mission.create({
+    data: {
+      title,
+      description:
+        'Description de la mission de test E2E pour les tests automatisés.',
+      type,
+      hasRegistration: true,
+      status,
+      volunteersNeeded: volunteersNeeded ?? null,
+      association: { connect: { id: associationId } },
+      ...(withAddress && {
+        address: {
+          create: {
+            street: '10 rue de la Paix',
+            postalCode: '75001',
+            city: 'Paris',
+            latitude: lat,
+            longitude: lng,
+          },
+        },
+      }),
+    },
   });
 }
 

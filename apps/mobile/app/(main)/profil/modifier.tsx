@@ -39,6 +39,7 @@ import { useReferenceStore } from "@/stores/reference.store";
 
 import AddIconSource from "@assets/icons/ic_add.svg";
 import TrashIconSource from "@assets/icons/ic_trash.svg";
+import ArrowLeftIconSource from "@assets/icons/ic_arrow_left.svg";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 const iconConfig = {
@@ -50,6 +51,7 @@ const iconConfig = {
 
 const AddIcon = cssInterop(AddIconSource, iconConfig);
 const TrashIcon = cssInterop(TrashIconSource, iconConfig);
+const ArrowLeftIcon = cssInterop(ArrowLeftIconSource, iconConfig);
 const CameraPlaceholder = () => <Text className="text-4xl">📷</Text>;
 
 // Types
@@ -280,6 +282,20 @@ export default function EditProfileScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View className="w-full max-w-2xl gap-6 px-4">
+            {/* Bouton retour — web uniquement */}
+            {Platform.OS === "web" && (
+              <Button
+                variant="secondary"
+                onPress={() => router.back()}
+                className="self-start"
+                icon={
+                  <ArrowLeftIcon className="w-4 h-4 text-primary group-hover:text-primary-hover group-active:text-primary-active" />
+                }
+              >
+                Retour
+              </Button>
+            )}
+
             {/* Erreur globale */}
             {errors.root?.message && (
               <View className="p-3 border rounded-md bg-error-30 border-error-100">
@@ -469,15 +485,25 @@ export default function EditProfileScreen() {
               )}
             </View>
 
-            {/* Bouton sauvegarder */}
-            <Button
-              onPress={handleSubmit(onSubmit)}
-              loading={isSubmitting}
-              className="w-full"
-              testID="btn-save-profile"
-            >
-              Sauvegarder les modifications
-            </Button>
+            {/* Boutons actions */}
+            <View className="gap-3">
+              <Button
+                onPress={handleSubmit(onSubmit)}
+                loading={isSubmitting}
+                className="w-full"
+                testID="btn-save-profile"
+              >
+                Sauvegarder les modifications
+              </Button>
+              <Button
+                variant="secondary"
+                onPress={() => router.back()}
+                disabled={isSubmitting}
+                className="w-full"
+              >
+                Annuler
+              </Button>
+            </View>
 
             <View className="h-10" />
           </View>

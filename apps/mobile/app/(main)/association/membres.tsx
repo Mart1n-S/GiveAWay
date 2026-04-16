@@ -5,6 +5,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   Modal,
+  Platform,
   Pressable,
 } from "react-native";
 import { Stack, useRouter } from "expo-router";
@@ -21,12 +22,14 @@ import { AddMemberModal } from "@/components/ui/add-member-modal/AddMemberModal"
 
 import { useAssociationStore } from "@/stores/association.store";
 import { useAuthStore } from "@/stores/auth.store";
-import { AssociationRole } from "@repo/shared";
+import { AssociationRole, AssociationStatus } from "@repo/shared";
 import type { AssociationMemberDto, AddMemberDto } from "@repo/shared";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 import TrashIconSource from "@assets/icons/ic_trash.svg";
 import EditIconSource from "@assets/icons/ic_edit.svg";
+import ArrowLeftIconSource from "@assets/icons/ic_arrow_left.svg";
+import { SearchInput } from "@/components/ui/search-input/SearchInput";
 
 const iconConfig = {
   className: {
@@ -37,6 +40,7 @@ const iconConfig = {
 
 const TrashIcon = cssInterop(TrashIconSource, iconConfig);
 const EditIcon = cssInterop(EditIconSource, iconConfig);
+const ArrowLeftIcon = cssInterop(ArrowLeftIconSource, iconConfig);
 
 // ─── Role Picker Modal ────────────────────────────────────────────────────────
 
@@ -310,8 +314,22 @@ export default function MembresScreen() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [memberToRemove, setMemberToRemove] =
     useState<AssociationMemberDto | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { members, userRole, isLoading } = store;
+
+  const filteredMembers = members
+    ? searchQuery.trim()
+      ? members.filter((m) => {
+          const q = searchQuery.toLowerCase();
+          return (
+            m.firstName.toLowerCase().includes(q) ||
+            m.lastName.toLowerCase().includes(q) ||
+            m.email.toLowerCase().includes(q)
+          );
+        })
+      : members
+    : [];
 
   const loadMembers = useCallback(
     async (forceRefresh = false) => {
@@ -346,19 +364,21 @@ export default function MembresScreen() {
     loadMembers();
   }, [loadMembers]);
 
-  // Garde : OWNER ou ADMIN uniquement
+  const isReadOnly = userRole === AssociationRole.EDITOR;
+
+  // Garde : association validée uniquement
   useEffect(() => {
-    if (userRole === AssociationRole.EDITOR) {
+    if (!store.isLoading && store.association && store.association.status !== AssociationStatus.VALIDATED) {
       Toast.show({
-        type: "error",
-        text1: "Accès non autorisé",
-        text2: "Seuls les administrateurs peuvent gérer les membres.",
-        visibilityTime: 5000,
+        type: "info",
+        text1: "Association non validée",
+        text2: "La gestion des membres est disponible une fois l'association validée.",
+        visibilityTime: 10000,
         onPress: () => Toast.hide(),
       });
       router.back();
     }
-  }, [userRole]);
+  }, [store.isLoading, store.association]);
 
   const handleRoleChange = async (
     memberId: number,
@@ -441,6 +461,20 @@ export default function MembresScreen() {
         }
       >
         <View className="w-full max-w-2xl gap-4 px-4 pt-4 mx-auto">
+          {/* Bouton retour — web uniquement */}
+          {Platform.OS === "web" && (
+            <View className="items-start">
+              <Button
+                variant="secondary"
+                onPress={() => router.back()}
+                icon={
+                  <ArrowLeftIcon className="w-4 h-4 text-primary group-hover:text-primary-hover group-active:text-primary-active" />
+                }
+              >
+                Retour
+              </Button>
+            </View>
+          )}
 
           {/* Header */}
           <View className="flex-row items-center justify-between">
@@ -448,14 +482,30 @@ export default function MembresScreen() {
               Membres ({members?.length ?? 0})
             </Text>
             {canAdd && (
-              <Button
-                onPress={() => setShowAddModal(true)}
-                className="px-3"
-              >
+              <Button onPress={() => setShowAddModal(true)} className="px-3">
                 + Ajouter
               </Button>
             )}
           </View>
+
+          {/* Bannière lecture seule pour les Éditeurs */}
+          {isReadOnly && (
+            <View className="p-3 border border-blue-200 rounded-lg bg-blue-50">
+              <Text className="text-xs leading-4 text-blue-700">
+                En tant qu'Éditeur, vous pouvez consulter la liste des membres
+                mais ne pouvez pas les modifier.
+              </Text>
+            </View>
+          )}
+
+          {/* Barre de recherche */}
+          {members && members.length > 0 && (
+            <SearchInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Rechercher par nom ou email…"
+            />
+          )}
 
           {/* Liste des membres */}
           {!members || members.length === 0 ? (
@@ -464,9 +514,15 @@ export default function MembresScreen() {
                 Aucun membre pour le moment.
               </Text>
             </View>
+          ) : filteredMembers.length === 0 ? (
+            <View className="items-center gap-2 py-12">
+              <Text className="text-base font-medium text-grey-600">
+                Aucun membre ne correspond à votre recherche.
+              </Text>
+            </View>
           ) : (
             <View className="gap-3">
-              {members.map((member) => (
+              {filteredMembers.map((member) => (
                 <MemberCard
                   key={member.id}
                   member={member}

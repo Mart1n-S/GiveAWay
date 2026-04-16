@@ -15,8 +15,8 @@ import type { MissionFiltersProps } from "./mission-filters.types";
 import type { ActivityType, MissionFrequency } from "@repo/shared";
 import { DateInput } from "./DateInput";
 
+import { SearchInput } from "../search-input/SearchInput";
 import LocalisationIconSource from "@assets/icons/ic_localisation.svg";
-import SearchIconSource from "@assets/icons/ic_search.svg";
 
 const iconConfig = {
   className: {
@@ -26,7 +26,6 @@ const iconConfig = {
 } as const;
 
 const LocalisationIcon = cssInterop(LocalisationIconSource, iconConfig);
-const SearchIcon = cssInterop(SearchIconSource, iconConfig);
 
 // ─── Géolocalisation ──────────────────────────────────────────────────────────
 
@@ -813,27 +812,13 @@ export function MissionFilters({
     <View className={clsx("gap-4", className)}>
       {/* Champ de recherche — variante 'list' seulement */}
       {variant === "list" && (
-        <View
-          className={clsx(
-            "h-control flex-row items-center rounded-md border border-grey-300 px-3 gap-2 bg-white transition-colors",
-            isWeb && "hover:border-primary focus-within:border-primary",
-            isWeb &&
-              "focus-within:ring-2 focus-within:ring-focus focus-within:ring-offset-2",
-          )}
-        >
-          <SearchIcon className="w-5 h-5 text-grey-400" />
-          <TextInput
-            value={value.search ?? ""}
-            onChangeText={(text) =>
-              onChange({ ...value, search: text || undefined })
-            }
-            placeholder="Rechercher une mission, une association..."
-            placeholderTextColor={colors.grey[400]}
-            style={webInputStyle}
-            returnKeyType="search"
-            className="flex-1 h-full p-0 font-sans text-base bg-transparent border-0 text-grey-900"
-          />
-        </View>
+        <SearchInput
+          value={value.search ?? ""}
+          onChangeText={(text) =>
+            onChange({ ...value, search: text || undefined })
+          }
+          placeholder="Rechercher une mission, une association..."
+        />
       )}
 
       {/* ── Row 1 — Barre primaire ───────────────────────────────────────── */}

@@ -15,6 +15,7 @@ interface ApiCandidate {
   nom_raison_sociale?: string;
   etat_administratif?: string;
   siege?: {
+    siret?: string;
     code_postal?: string;
     [key: string]: unknown;
   };
@@ -208,6 +209,19 @@ export class AssociationVerificationService {
       if (dto.rna !== candidate.complements.identifiant_association) {
         this.logger.debug(
           `RNA incohérent : soumis="${dto.rna}", officiel="${candidate.complements.identifiant_association}"`,
+        );
+        return false;
+      }
+    }
+
+    // Vérification croisée du SIRET
+    if (dto.siret && candidate.siege?.siret) {
+      // Normalisation : supprime les espaces éventuels
+      const normalizedSubmitted = dto.siret.replace(/\s/g, '');
+      const normalizedOfficial = candidate.siege.siret.replace(/\s/g, '');
+      if (normalizedSubmitted !== normalizedOfficial) {
+        this.logger.debug(
+          `SIRET incohérent : soumis="${dto.siret}", officiel="${candidate.siege.siret}"`,
         );
         return false;
       }

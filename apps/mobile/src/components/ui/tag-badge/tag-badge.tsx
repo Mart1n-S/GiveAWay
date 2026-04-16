@@ -43,11 +43,12 @@ export function TagBadge({
   variant = "surface",
   size = "md",
   className,
+  testID,
 }: TagBadgeProps) {
   const { bg, text } = variantClasses[variant];
 
   return (
-    <View className={clsx("rounded-lg", sizeClasses[size], bg, className)}>
+    <View testID={testID} className={clsx("rounded-lg", sizeClasses[size], bg, className)}>
       <Text className={clsx("font-semibold", textSizeClasses[size], text)}>
         {label}
       </Text>

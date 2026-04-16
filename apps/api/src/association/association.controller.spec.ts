@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AssociationController } from './association.controller';
 import { AssociationService } from './association.service';
@@ -22,10 +26,13 @@ const mockAssociationService = {
   findNearby: jest.fn(),
   getAssociation: jest.fn(),
   updateAssociation: jest.fn(),
+  getDocumentForDownload: jest.fn(),
   getMembers: jest.fn(),
+  getAssociationMissions: jest.fn(),
   addMember: jest.fn(),
   updateMemberRole: jest.fn(),
   removeMember: jest.fn(),
+  leaveAssociation: jest.fn(),
   transferOwner: jest.fn(),
 };
 
@@ -173,7 +180,7 @@ describe('AssociationController', () => {
   // updateAssociation
   // =========================================================================
   describe('updateAssociation', () => {
-    it("✅ Doit déléguer au service avec l'ID et le DTO", async () => {
+    it("✅ Doit déléguer au service avec l'ID, le DTO et les fichiers parsés", async () => {
       const dto: UpdateAssociationDto = { name: 'Nouveau nom' };
       mockAssociationService.updateAssociation.mockResolvedValue({
         ...mockAssociationDto,
@@ -185,19 +192,104 @@ describe('AssociationController', () => {
       expect(mockAssociationService.updateAssociation).toHaveBeenCalledWith(
         1,
         dto,
+        undefined, // logoFile
+        undefined, // documentFiles
       );
       expect(result.name).toBe('Nouveau nom');
     });
 
-    it('✅ Doit propager BadRequestException si RNA/SIRET invalide', async () => {
-      const { BadRequestException } = await import('@nestjs/common');
+    it('✅ Doit propager BadRequestException si la validation échoue', async () => {
       mockAssociationService.updateAssociation.mockRejectedValue(
-        new BadRequestException('RNA invalide'),
+        new BadRequestException('Données invalides'),
       );
 
       await expect(
-        controller.updateAssociation(1, { rna: 'INVALID' }),
+        controller.updateAssociation(1, { name: 'A' }),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it("✅ Doit propager NotFoundException si l'association est introuvable", async () => {
+      mockAssociationService.updateAssociation.mockRejectedValue(
+        new NotFoundException('Association introuvable'),
+      );
+
+      await expect(
+        controller.updateAssociation(999, { description: 'Test' }),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // =========================================================================
+  // downloadDocument
+  // =========================================================================
+  describe('downloadDocument', () => {
+    let mockRes: {
+      redirect: jest.Mock;
+      setHeader: jest.Mock;
+      end: jest.Mock;
+    };
+
+    beforeEach(() => {
+      mockRes = {
+        redirect: jest.fn(),
+        setHeader: jest.fn(),
+        end: jest.fn(),
+      };
+    });
+
+    it("✅ Doit rediriger vers l'URL CDN si le service retourne un redirect", async () => {
+      mockAssociationService.getDocumentForDownload.mockResolvedValue({
+        type: 'redirect',
+        url: 'https://cdn.example.com/doc.pdf',
+      });
+
+      await controller.downloadDocument(1, 5, mockRes as any);
+
+      expect(
+        mockAssociationService.getDocumentForDownload,
+      ).toHaveBeenCalledWith(1, 5);
+      expect(mockRes.redirect).toHaveBeenCalledWith(
+        302,
+        'https://cdn.example.com/doc.pdf',
+      );
+      expect(mockRes.end).not.toHaveBeenCalled();
+    });
+
+    it('✅ Doit envoyer le fichier en pièce jointe pour un stockage local', async () => {
+      const buffer = Buffer.from('fake-pdf-content');
+      mockAssociationService.getDocumentForDownload.mockResolvedValue({
+        type: 'file',
+        buffer,
+        mimeType: 'application/pdf',
+        filename: 'document.pdf',
+      });
+
+      await controller.downloadDocument(1, 5, mockRes as any);
+
+      expect(mockRes.setHeader).toHaveBeenCalledWith(
+        'Content-Type',
+        'application/pdf',
+      );
+      expect(mockRes.setHeader).toHaveBeenCalledWith(
+        'Content-Disposition',
+        expect.stringContaining('attachment'),
+      );
+      expect(mockRes.setHeader).toHaveBeenCalledWith(
+        'Content-Length',
+        buffer.length,
+      );
+      expect(mockRes.end).toHaveBeenCalledWith(buffer);
+      expect(mockRes.redirect).not.toHaveBeenCalled();
+    });
+
+    it('❌ Doit propager NotFoundException si le document est introuvable', async () => {
+      mockAssociationService.getDocumentForDownload.mockRejectedValue(
+        new NotFoundException('Document introuvable'),
+      );
+
+      await expect(
+        controller.downloadDocument(1, 99, mockRes as any),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -220,6 +312,56 @@ describe('AssociationController', () => {
       const result = await controller.getMembers(1);
 
       expect(result).toEqual([]);
+    });
+  });
+
+  // =========================================================================
+  // getAssociationMissions
+  // =========================================================================
+  describe('getAssociationMissions', () => {
+    const mockMissionsResponse = {
+      missions: [],
+      total: 0,
+      page: 1,
+      pageSize: 3,
+      totalPages: 0,
+    };
+
+    it('✅ Doit déléguer au service avec les valeurs par défaut (page=1, pageSize=3)', async () => {
+      mockAssociationService.getAssociationMissions.mockResolvedValue(
+        mockMissionsResponse,
+      );
+
+      const result = await controller.getAssociationMissions(1);
+
+      expect(
+        mockAssociationService.getAssociationMissions,
+      ).toHaveBeenCalledWith(1, 1, 3);
+      expect(result).toEqual(mockMissionsResponse);
+    });
+
+    it('✅ Doit transmettre page et pageSize quand fournis en query string', async () => {
+      mockAssociationService.getAssociationMissions.mockResolvedValue({
+        ...mockMissionsResponse,
+        page: 2,
+        pageSize: 5,
+      });
+
+      await controller.getAssociationMissions(1, '2', '5');
+
+      expect(
+        mockAssociationService.getAssociationMissions,
+      ).toHaveBeenCalledWith(1, 2, 5);
+    });
+
+    it('✅ Doit propager une erreur du service', async () => {
+      mockAssociationService.getAssociationMissions.mockRejectedValue(
+        new Error('DB error'),
+      );
+
+      await expect(controller.getAssociationMissions(1)).rejects.toThrow(
+        'DB error',
+      );
     });
   });
 
@@ -289,6 +431,16 @@ describe('AssociationController', () => {
         controller.updateMemberRole(1, 10, { role: 'ADMIN' as any }),
       ).rejects.toThrow(ForbiddenException);
     });
+
+    it('❌ Doit propager NotFoundException si le membre est introuvable', async () => {
+      mockAssociationService.updateMemberRole.mockRejectedValue(
+        new NotFoundException('Membre introuvable'),
+      );
+
+      await expect(
+        controller.updateMemberRole(1, 999, { role: 'ADMIN' as any }),
+      ).rejects.toThrow(NotFoundException);
+    });
   });
 
   // =========================================================================
@@ -317,6 +469,53 @@ describe('AssociationController', () => {
         controller.removeMember(1, 10, mockRequest(42)),
       ).rejects.toThrow(ForbiddenException);
     });
+
+    it('❌ Doit propager NotFoundException si le membre est introuvable', async () => {
+      mockAssociationService.removeMember.mockRejectedValue(
+        new NotFoundException('Membre introuvable'),
+      );
+
+      await expect(
+        controller.removeMember(1, 999, mockRequest(42)),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // =========================================================================
+  // leaveAssociation
+  // =========================================================================
+  describe('leaveAssociation', () => {
+    it("✅ Doit déléguer au service avec associationId et l'ID de l'utilisateur", async () => {
+      mockAssociationService.leaveAssociation.mockResolvedValue(undefined);
+      const req = mockRequest(42);
+
+      await controller.leaveAssociation(1, req);
+
+      expect(mockAssociationService.leaveAssociation).toHaveBeenCalledWith(
+        1,
+        42,
+      );
+    });
+
+    it('❌ Doit propager ForbiddenException si le requérant est OWNER', async () => {
+      mockAssociationService.leaveAssociation.mockRejectedValue(
+        new ForbiddenException('Le propriétaire ne peut pas quitter'),
+      );
+
+      await expect(
+        controller.leaveAssociation(1, mockRequest(42)),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it("❌ Doit propager NotFoundException si l'utilisateur n'est pas membre", async () => {
+      mockAssociationService.leaveAssociation.mockRejectedValue(
+        new NotFoundException("Vous n'êtes pas membre de cette association"),
+      );
+
+      await expect(
+        controller.leaveAssociation(1, mockRequest(42)),
+      ).rejects.toThrow(NotFoundException);
+    });
   });
 
   // =========================================================================
@@ -338,7 +537,6 @@ describe('AssociationController', () => {
     });
 
     it('✅ Doit propager BadRequestException si transfert à soi-même', async () => {
-      const { BadRequestException } = await import('@nestjs/common');
       mockAssociationService.transferOwner.mockRejectedValue(
         new BadRequestException(
           'Vous ne pouvez pas vous transférer à vous-même',

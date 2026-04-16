@@ -527,7 +527,6 @@ function DiscoveryView() {
     );
   }
 
-  // Mode nearby : carte + filtres + grille de cards (bugs 1, 5, 7)
   return (
     <ScrollView className="flex-1 bg-white">
       <View className="w-full mx-auto max-w-7xl">

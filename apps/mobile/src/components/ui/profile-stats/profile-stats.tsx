@@ -27,7 +27,7 @@ export function ProfileStats({ user, className }: ProfileStatsProps) {
 
       {/* Associations */}
       <StatCard
-        label="Associations"
+        label="Association"
         value={(user.associations?.length ?? 0).toString()}
         className="flex-1"
       />

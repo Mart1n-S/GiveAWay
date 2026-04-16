@@ -337,6 +337,127 @@ describe('MissionService', () => {
       expect(whereArg.address.city.contains).toBe('Aix');
       expect(whereArg.causes.some.causeId).toEqual({ in: [3] });
     });
+
+    it('✅ Doit filtrer par skillIds quand fourni', async () => {
+      mockPrismaService.mission.findMany.mockResolvedValue([]);
+      mockPrismaService.mission.count.mockResolvedValue(0);
+
+      await service.findAll({ ...defaultQuery, skillIds: [1, 3] });
+
+      const whereArg =
+        mockPrismaService.mission.findMany.mock.calls[0][0].where;
+      expect(whereArg.skills).toEqual({ some: { skillId: { in: [1, 3] } } });
+    });
+
+    it('✅ Doit filtrer par fréquence quand fournie', async () => {
+      mockPrismaService.mission.findMany.mockResolvedValue([]);
+      mockPrismaService.mission.count.mockResolvedValue(0);
+
+      await service.findAll({ ...defaultQuery, frequency: 'WEEKLY' });
+
+      const whereArg =
+        mockPrismaService.mission.findMany.mock.calls[0][0].where;
+      expect(whereArg.frequency).toBe('WEEKLY');
+    });
+
+    it('✅ Doit filtrer par plage de dates (startDateFrom et startDateTo)', async () => {
+      mockPrismaService.mission.findMany.mockResolvedValue([]);
+      mockPrismaService.mission.count.mockResolvedValue(0);
+
+      await service.findAll({
+        ...defaultQuery,
+        startDateFrom: '2026-01-01',
+        startDateTo: '2026-12-31',
+      });
+
+      const whereArg =
+        mockPrismaService.mission.findMany.mock.calls[0][0].where;
+      expect(whereArg.startDate).toBeDefined();
+      expect(whereArg.startDate.gte).toEqual(new Date('2026-01-01'));
+      expect(whereArg.startDate.lte).toEqual(new Date('2026-12-31'));
+    });
+
+    it('✅ Doit filtrer en mode REMOTE (locationMode=remote)', async () => {
+      mockPrismaService.mission.findMany.mockResolvedValue([]);
+      mockPrismaService.mission.count.mockResolvedValue(0);
+
+      await service.findAll({ ...defaultQuery, locationMode: 'remote' });
+
+      const whereArg =
+        mockPrismaService.mission.findMany.mock.calls[0][0].where;
+      expect(whereArg.availabilityType).toBe('REMOTE');
+    });
+
+    it('✅ Doit filtrer en mode ON_SITE/HYBRID (locationMode=nearby)', async () => {
+      mockPrismaService.mission.findMany.mockResolvedValue([]);
+      mockPrismaService.mission.count.mockResolvedValue(0);
+
+      await service.findAll({ ...defaultQuery, locationMode: 'nearby' });
+
+      const whereArg =
+        mockPrismaService.mission.findMany.mock.calls[0][0].where;
+      expect(whereArg.availabilityType).toEqual({ in: ['ON_SITE', 'HYBRID'] });
+    });
+  });
+
+  // =========================================================================
+  // findAll — hasAvailableSpots (filtre JS post-fetch)
+  // =========================================================================
+  describe('findAll — hasAvailableSpots', () => {
+    const makeMissionWithCount = (
+      volunteersNeeded: number | null,
+      participantsCount: number,
+    ) => ({
+      ...makePrismaMission({ volunteersNeeded }),
+      availabilityType: 'ON_SITE',
+      status: 'ACTIVE',
+      _count: { participants: participantsCount },
+    });
+
+    it('✅ Doit retourner uniquement les missions avec places disponibles', async () => {
+      const available = makeMissionWithCount(10, 5); // 5 places restantes
+      const full = makeMissionWithCount(3, 3); // complet
+
+      // Prisma retourne seulement les missions avec volunteersNeeded != null
+      mockPrismaService.mission.findMany.mockResolvedValue([available, full]);
+      mockPrismaService.mission.count.mockResolvedValue(2);
+
+      const result = await service.findAll({
+        ...defaultQuery,
+        hasAvailableSpots: true,
+      });
+
+      // Le filtre JS post-fetch doit éliminer la mission "full"
+      expect(result.missions).toHaveLength(1);
+      expect(result.missions[0].volunteersNeeded).toBe(10);
+    });
+
+    it('✅ Doit ajouter volunteersNeeded NOT NULL dans le where Prisma', async () => {
+      mockPrismaService.mission.findMany.mockResolvedValue([]);
+      mockPrismaService.mission.count.mockResolvedValue(0);
+
+      await service.findAll({ ...defaultQuery, hasAvailableSpots: true });
+
+      const whereArg =
+        mockPrismaService.mission.findMany.mock.calls[0][0].where;
+      expect(whereArg.volunteersNeeded).toEqual({ not: null });
+    });
+
+    it('✅ Le total retourné correspond aux résultats filtrés (pas au count Prisma)', async () => {
+      const available = makeMissionWithCount(10, 5);
+      const full = makeMissionWithCount(3, 3);
+
+      mockPrismaService.mission.findMany.mockResolvedValue([available, full]);
+      mockPrismaService.mission.count.mockResolvedValue(2);
+
+      const result = await service.findAll({
+        ...defaultQuery,
+        hasAvailableSpots: true,
+      });
+
+      // Le total doit refléter le résultat après filtre JS (1), pas le count Prisma (2)
+      expect(result.total).toBe(1);
+    });
   });
 
   // =========================================================================
