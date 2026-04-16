@@ -161,7 +161,7 @@ export default function DeleteAccountScreen() {
             )}
             {/* Blocage si OWNER d'une association */}
             {isOwnerOfAssociation && (
-              <View className="flex-row gap-3 p-4 border border-orange-200 rounded-lg bg-orange-50">
+              <View testID="delete-owner-warning" className="flex-row gap-3 p-4 border border-orange-200 rounded-lg bg-orange-50">
                 <WarningIcon className="w-5 h-5 mt-0.5 text-orange-600 shrink-0" />
                 <View className="flex-1 gap-1">
                   <Text className="text-sm font-bold text-orange-700">
@@ -219,6 +219,7 @@ export default function DeleteAccountScreen() {
                     autoCapitalize="characters"
                     autoCorrect={false}
                     required
+                    testID="input-delete-confirmation"
                   />
                 </>
               ) : (
@@ -237,6 +238,7 @@ export default function DeleteAccountScreen() {
                     label="Mot de passe"
                     secureTextEntry={!showPassword}
                     required
+                    testID="input-delete-password"
                     rightIcon={
                       showPassword ? (
                         <UnlockIcon
@@ -261,6 +263,7 @@ export default function DeleteAccountScreen() {
             {/* Boutons */}
             <View className="gap-3">
               <Button
+                testID="btn-submit-delete-account"
                 onPress={handleSubmit(onSubmit)}
                 loading={isSubmitting}
                 disabled={isOwnerOfAssociation || (isGoogleAccount && !isConfirmationValid)}
@@ -270,6 +273,7 @@ export default function DeleteAccountScreen() {
               </Button>
 
               <Button
+                testID="btn-cancel-delete-account"
                 variant="secondary"
                 onPress={() => router.back()}
                 disabled={isSubmitting}

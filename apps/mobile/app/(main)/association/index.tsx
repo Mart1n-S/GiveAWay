@@ -412,7 +412,7 @@ export default function AssociationScreen() {
     return (
       <>
         <Stack.Screen options={{ headerShown: false }} />
-        <View className="items-center justify-center flex-1 gap-4 px-6 bg-grey-50">
+        <View testID="association-empty-state" className="items-center justify-center flex-1 gap-4 px-6 bg-grey-50">
           <Text className="text-2xl font-bold text-center text-grey-900">
             Aucune association
           </Text>
@@ -441,7 +441,7 @@ export default function AssociationScreen() {
     return (
       <>
         <Stack.Screen options={{ headerShown: false }} />
-        <View className="items-center justify-center flex-1 gap-4 px-6 bg-grey-50">
+        <View testID="association-error-state" className="items-center justify-center flex-1 gap-4 px-6 bg-grey-50">
           <Text className="text-base font-medium text-center text-grey-600">
             Impossible de charger votre association.
           </Text>
@@ -594,11 +594,12 @@ export default function AssociationScreen() {
             />
 
             <View className="items-center gap-1.5">
-              <Text className="text-xl font-bold text-center text-grey-900">
+              <Text testID="association-name" className="text-xl font-bold text-center text-grey-900">
                 {association.name}
               </Text>
 
               <TagBadge
+                testID="association-status-badge"
                 label={statusConfig.label}
                 variant={statusConfig.variant}
                 size="sm"
@@ -618,7 +619,7 @@ export default function AssociationScreen() {
           {/* ── Section 2 : Infos rapides ── */}
           <View className="flex-col overflow-hidden bg-white border rounded-lg border-grey-100 divide-y divide-grey-100 lg:flex-row lg:divide-y-0 lg:divide-x">
             {/* Nombre de membres */}
-            <View className="items-center flex-1 gap-1 py-4">
+            <View testID="association-member-count" className="items-center flex-1 gap-1 py-4">
               <Text className="text-2xl font-bold text-grey-900">
                 {memberCount}
               </Text>
@@ -812,6 +813,7 @@ export default function AssociationScreen() {
 
               {isOwner && (
                 <Button
+                  testID="btn-edit-association"
                   onPress={
                     isValidated
                       ? () => router.push("/association/modifier" as any)
@@ -831,6 +833,7 @@ export default function AssociationScreen() {
 
               {(isOwner || isAdmin) && (
                 <Button
+                  testID="btn-manage-members"
                   variant="secondary"
                   onPress={
                     isValidated
@@ -851,6 +854,7 @@ export default function AssociationScreen() {
 
               {isOwner && (
                 <Pressable
+                  testID="btn-transfer-owner"
                   onPress={
                     isValidated ? () => setShowTransferModal(true) : handleLockedAction
                   }
@@ -885,6 +889,7 @@ export default function AssociationScreen() {
               {/* Quitter l'association — OWNER doit transférer d'abord */}
               {isOwner && (
                 <Pressable
+                  testID="btn-leave-association-owner"
                   onPress={() => {
                     setTransferLeaveMode(true);
                     setShowTransferModal(true);
@@ -906,6 +911,7 @@ export default function AssociationScreen() {
               {/* Quitter l'association — ADMIN */}
               {isAdmin && (
                 <Pressable
+                  testID="btn-leave-association"
                   onPress={() => setShowLeaveModal(true)}
                   accessibilityRole="button"
                   className="flex-row items-center justify-center w-full gap-2 mt-8 transition-all border border-transparent rounded-md h-control hover:bg-red-50 active:bg-red-200 web:outline-none web:focus-visible:ring-2 web:focus-visible:ring-red-500 web:focus-visible:ring-offset-2"
@@ -956,6 +962,7 @@ export default function AssociationScreen() {
                 </View>
               )}
               <Button
+                testID="btn-view-members"
                 variant="secondary"
                 onPress={
                   isValidated
@@ -975,6 +982,7 @@ export default function AssociationScreen() {
 
               {/* Quitter l'association — EDITOR */}
               <Pressable
+                testID="btn-leave-association"
                 onPress={() => setShowLeaveModal(true)}
                 accessibilityRole="button"
                 className="flex-row items-center justify-center w-full gap-2 mt-8 transition-all border border-transparent rounded-md h-control hover:bg-red-50 active:bg-red-200 web:outline-none web:focus-visible:ring-2 web:focus-visible:ring-red-500 web:focus-visible:ring-offset-2"
