@@ -13,6 +13,30 @@
     "check-types": {
       "dependsOn": ["^check-types"]
     },
+    "test": {
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**"],
+      "inputs": [
+        "src/**/*.tsx",
+        "src/**/*.ts",
+        "test/**/*.ts",
+        "$TURBO_DEFAULT$"
+      ]
+    },
+    "test:cov": {
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**"],
+      "inputs": [
+        "src/**/*.tsx",
+        "src/**/*.ts",
+        "test/**/*.ts",
+        "$TURBO_DEFAULT$"
+      ]
+    },
+    "test:e2e": {
+      "cache": false,
+      "interactive": false
+    },
     "dev": {
       "cache": false,
       "persistent": true

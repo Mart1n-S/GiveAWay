@@ -1,10 +1,9 @@
-// On importe tes tokens (le chemin remonte de apps/mobile vers packages/ui)
 const {
   colors,
   radius,
   sizing,
   typography,
-} = require("../../packages/ui/src/theme/tokens");
+} = require("./src/components/ui/theme/tokens");
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
@@ -13,14 +12,13 @@ module.exports = {
     "./App.{js,jsx,ts,tsx}",
     "./app/**/*.{js,jsx,ts,tsx}",
     "./src/**/*.{js,jsx,ts,tsx}",
-    "../../packages/ui/src/**/*.{js,jsx,ts,tsx}",
   ],
   presets: [require("nativewind/preset")],
   theme: {
     extend: {
       colors: {
         /* --- Brand --- */
-        // On mappe tes couleurs primaires aux tokens
+        // On mappe les couleurs primaires aux tokens
         primary: {
           DEFAULT: colors.primary.default,
           hover: colors.primary.hover,
@@ -36,11 +34,12 @@ module.exports = {
 
         /* --- Greys --- */
         grey: colors.grey,
+        red: colors.red,
+        green: colors.green,
+        blue: colors.blue,
 
         /* --- Feedback --- */
         focus: colors.focus,
-
-        // On garde tes classes existantes (error-100) mais on utilise la valeur du token (error.strong)
         error: {
           100: colors.error.strong,
           30: colors.error.soft,
@@ -48,6 +47,35 @@ module.exports = {
         success: {
           100: colors.success.strong,
           30: colors.success.soft,
+        },
+
+        /* --- Badge colors --- */
+        badge: {
+          // Orange (causes)
+          orange: {
+            bg: colors.white.active,
+            text: colors.primary.default,
+          },
+          // Vert (environnement, nature)
+          green: {
+            bg: colors.green[50],
+            text: colors.green[700],
+          },
+          // Bleu (info, tech)
+          blue: {
+            bg: colors.blue[50],
+            text: colors.blue[700],
+          },
+          // Rouge (urgent, santé)
+          red: {
+            bg: colors.red[50],
+            text: colors.red[700],
+          },
+          // Gris (neutre, compétences)
+          surface: {
+            bg: colors.grey[100],
+            text: colors.grey[800],
+          },
         },
       },
 

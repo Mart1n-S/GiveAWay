@@ -1,0 +1,13 @@
+export interface ProfileActionsProps {
+  /** Indique si l'utilisateur s'est connecté via Google (pas de mot de passe) */
+  isGoogleAccount: boolean;
+  onEditPress: () => void;
+  onLogoutPress: () => void;
+  onDeletePress: () => void;
+  onPasswordPress: () => void;
+  onNotificationsPress: () => void;
+  onExportPress: () => void;
+  isLoggingOut?: boolean;
+  isExporting?: boolean;
+  className?: string;
+}
