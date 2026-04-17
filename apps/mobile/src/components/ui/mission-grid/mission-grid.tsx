@@ -52,7 +52,7 @@ export function MissionGrid({
   // --- État Empty ---
   if (missions.length === 0) {
     return (
-      <View className={clsx("items-center justify-center py-16", className)}>
+      <View testID="mission-empty" className={clsx("items-center justify-center py-16", className)}>
         <Text className="text-lg font-bold text-grey-900 mb-2">
           Aucune mission trouvée
         </Text>
@@ -67,6 +67,7 @@ export function MissionGrid({
   // --- Grille de cards ---
   return (
     <View
+      testID="mission-grid"
       className={clsx(
         "flex-row flex-wrap",
         CONTAINER_GAP,
@@ -90,6 +91,7 @@ export function MissionGrid({
             startDate={mission.startDate}
             causes={mission.causes.map((c) => c.label)}
             volunteerTypes={mission.volunteerTypes.map((v) => v.label)}
+            testID={`mission-card-${mission.id}`}
             onPress={
               onMissionPress
                 ? () => onMissionPress(mission.id)

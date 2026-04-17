@@ -1,6 +1,11 @@
 import { useEffect } from "react";
 import { Stack, SplashScreen } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import * as WebBrowser from "expo-web-browser";
+
+// Nécessaire en prod (SSR) : ferme la popup OAuth quand Google redirige
+// vers la racine de l'app plutôt que vers /connexion
+WebBrowser.maybeCompleteAuthSession();
 import {
   configureReanimatedLogger,
   ReanimatedLogLevel,

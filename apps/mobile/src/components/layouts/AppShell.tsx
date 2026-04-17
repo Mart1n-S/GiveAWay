@@ -80,7 +80,9 @@ export function AppShell({ children, layoutType = "main" }: AppShellProps) {
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const user = useAuthStore((state) => state.user);
   const profile = useProfileStore((state) => state.profile);
+  const hasAssociation = (user?.associations?.length ?? 0) > 0;
 
   const handleLogout = async () => {
     await AuthService.logout();
@@ -106,6 +108,8 @@ export function AppShell({ children, layoutType = "main" }: AppShellProps) {
     ...PUBLIC_LINKS.filter((l) => l.id !== "home"),
   ]
     .filter((link) => {
+      // Masquer "Mon Association" si l'utilisateur n'appartient à aucune association
+      if (link.id === "association" && !hasAssociation) return false;
       // Si c'est du mobile natif dans le layout Main, on applique le filtre drawer
       // Sinon (Web ou Subpage), on affiche tout ce qui est pertinent
       if (!isWeb && layoutType === "main" && link.hideInMobileDrawer)

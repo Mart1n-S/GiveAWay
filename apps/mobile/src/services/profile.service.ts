@@ -107,6 +107,21 @@ export const ProfileService = {
 
     useProfileStore.getState().setProfile(response.data);
 
+    // Sync AuthStore.user (photo, prénom, nom utilisés dans la navbar et les stores)
+    const authUser = useAuthStore.getState().user;
+    if (authUser) {
+      useAuthStore.getState().setUser({
+        ...authUser,
+        firstName: response.data.firstName,
+        lastName: response.data.lastName,
+        profilePicture: response.data.profilePicture,
+      });
+    }
+
+    // Invalider le cache AssociationStore : la photo du membre courant est périmée
+    const { useAssociationStore } = await import("../stores/association.store");
+    useAssociationStore.getState().invalidateCache();
+
     return response.data;
   },
 

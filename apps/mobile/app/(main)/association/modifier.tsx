@@ -11,22 +11,69 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Toast from "react-native-toast-message";
 import { isAxiosError } from "axios";
+import * as ImagePicker from "expo-image-picker";
+import { cssInterop } from "nativewind";
 
 import {
   UpdateAssociationSchema,
   UpdateAssociationFormValues,
   AssociationRole,
+  AssociationStatus,
+  type AssociationDocumentDto,
 } from "@repo/shared";
 import { FormInput, FormTextarea } from "@/components/form";
 import {
   Button,
   AddressAutocomplete,
+  AvatarButton,
   Text,
   colors,
 } from "@/components/ui";
+import { ConfirmModal } from "@/components/ui/confirm-modal/ConfirmModal";
+import {
+  MultipleDocumentsPicker,
+  type ReactNativeFile,
+} from "@/components/multiple-documents-picker/multiple-documents-picker";
 import { useAssociationStore } from "@/stores/association.store";
 import { useAuthStore } from "@/stores/auth.store";
+import * as AssociationService from "@/services/association.service";
 import { usePageTitle } from "@/hooks/usePageTitle";
+
+import ArrowLeftIconSource from "@assets/icons/ic_arrow_left.svg";
+import InfoIconSource from "@assets/icons/ic_info.svg";
+import TrashIconSource from "@assets/icons/ic_trash.svg";
+import AddIconSource from "@assets/icons/ic_add.svg";
+import DownloadIconSource from "@assets/icons/ic_download.svg";
+
+const iconConfig = {
+  className: {
+    target: "style",
+    nativeStyleToProp: { width: true, height: true, color: true },
+  },
+} as const;
+
+const ArrowLeftIcon = cssInterop(ArrowLeftIconSource, iconConfig);
+const InfoIcon = cssInterop(InfoIconSource, iconConfig);
+const TrashIcon = cssInterop(TrashIconSource, iconConfig);
+const AddIcon = cssInterop(AddIconSource, iconConfig);
+const DownloadIcon = cssInterop(DownloadIconSource, iconConfig);
+
+const CameraPlaceholder = () => <Text className="text-4xl">🏢</Text>;
+
+// ─── Helper ──────────────────────────────────────────────────────────────────
+
+function SensitiveFieldHint() {
+  return (
+    <View className="flex-row items-center gap-1.5 mt-1">
+      <InfoIcon className="w-3 h-3 text-orange-500 shrink-0" />
+      <Text className="text-xs text-orange-600">
+        Cette modification peut être vérifiée par un administrateur.
+      </Text>
+    </View>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function EditAssociationScreen() {
   const router = useRouter();
@@ -43,6 +90,22 @@ export default function EditAssociationScreen() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // ── État logo ──────────────────────────────────────────────────────────────
+  const [logoUri, setLogoUri] = useState<string | null>(
+    association?.logoUrl ?? null,
+  );
+
+  // ── État documents ─────────────────────────────────────────────────────────
+  const [deletedDocIds, setDeletedDocIds] = useState<Set<number>>(new Set());
+  const [docToDelete, setDocToDelete] =
+    useState<AssociationDocumentDto | null>(null);
+  const [newDocuments, setNewDocuments] = useState<ReactNativeFile[]>([]);
+
+  const activeDocuments = (association?.documents ?? []).filter(
+    (doc) => !deletedDocIds.has(doc.id),
+  );
+
+  // ── Formulaire ─────────────────────────────────────────────────────────────
   const {
     control,
     handleSubmit,
@@ -107,21 +170,99 @@ export default function EditAssociationScreen() {
     }
   }, [userRole]);
 
+  // Garde : association validée uniquement
+  useEffect(() => {
+    if (
+      !store.isLoading &&
+      store.association &&
+      store.association.status !== AssociationStatus.VALIDATED
+    ) {
+      Toast.show({
+        type: "info",
+        text1: "Association non validée",
+        text2:
+          "La modification des informations est disponible une fois l'association validée.",
+        visibilityTime: 10000,
+        onPress: () => Toast.hide(),
+      });
+      router.back();
+    }
+  }, [store.isLoading, store.association]);
+
+  // ── Gestion logo ───────────────────────────────────────────────────────────
+
+  const pickLogo = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+    });
+    if (!result.canceled) {
+      setLogoUri(result.assets[0].uri);
+    }
+  };
+
+  const removeLogo = () => setLogoUri(null);
+
+  // ── Gestion documents ──────────────────────────────────────────────────────
+
+  const handleConfirmDeleteDoc = () => {
+    if (!docToDelete) return;
+    setDeletedDocIds((prev) => new Set([...prev, docToDelete.id]));
+    setDocToDelete(null);
+  };
+
+  const handleDownloadDoc = async (doc: AssociationDocumentDto) => {
+    if (!associationId) return;
+    const filename = doc.fileUrl.split("/").pop() || `document-${doc.id}`;
+    try {
+      await AssociationService.downloadDocument(associationId, doc.id, filename);
+    } catch {
+      Toast.show({
+        type: "error",
+        text1: "Téléchargement impossible",
+        text2: "Une erreur est survenue lors du téléchargement.",
+        visibilityTime: 5000,
+        onPress: () => Toast.hide(),
+      });
+    }
+  };
+
+  // ── Soumission ─────────────────────────────────────────────────────────────
+
   const onSubmit = async (data: UpdateAssociationFormValues) => {
     if (!associationId) return;
     setIsSubmitting(true);
 
     try {
-      // On n'envoie que les champs non vides (évite d'écraser avec des chaînes vides)
       const dto: Record<string, unknown> = {};
+
       if (data.name?.trim()) dto.name = data.name.trim();
-      if (data.phone?.trim()) dto.phone = data.phone.trim();
-      if (data.website?.trim()) dto.website = data.website.trim();
-      if (data.description?.trim()) dto.description = data.description.trim();
-      if (data.object?.trim()) dto.object = data.object.trim();
+      if (data.phone !== undefined) dto.phone = data.phone ?? "";
+      if (data.website !== undefined) dto.website = data.website ?? "";
+      if (data.description !== undefined)
+        dto.description = data.description ?? "";
+      if (data.object !== undefined) dto.object = data.object ?? "";
       if (data.address) dto.address = data.address;
 
-      await store.updateAssociation(associationId, dto as any);
+      // Logo
+      const logoChanged = logoUri !== association?.logoUrl;
+      const hasNewLogo = logoChanged && !!logoUri; // nouveau fichier à uploader
+      const deletedLogo = logoChanged && !logoUri; // logo supprimé
+      if (deletedLogo) dto.logoUrl = ""; // signal de suppression
+
+      // Documents existants : envoyer les URLs restantes si au moins un doc supprimé
+      if (deletedDocIds.size > 0) {
+        dto.documentUrls = activeDocuments.map((d) => d.fileUrl);
+      }
+
+      await store.updateAssociation(
+        associationId,
+        dto as any,
+        hasNewLogo ? logoUri! : undefined,
+        newDocuments.length > 0 ? newDocuments : undefined,
+      );
 
       Toast.show({
         type: "success",
@@ -139,8 +280,10 @@ export default function EditAssociationScreen() {
         const apiError = error.response.data;
 
         if (apiError?.errors?.properties) {
-          const properties = apiError.errors.properties;
-          const mapServerErrors = (obj: Record<string, unknown>, path = "") => {
+          const mapServerErrors = (
+            obj: Record<string, unknown>,
+            path = "",
+          ) => {
             Object.keys(obj).forEach((key) => {
               const currentPath = path ? `${path}.${key}` : key;
               const field = obj[key] as Record<string, unknown>;
@@ -161,7 +304,7 @@ export default function EditAssociationScreen() {
               }
             });
           };
-          mapServerErrors(properties);
+          mapServerErrors(apiError.errors.properties);
           return;
         }
 
@@ -190,10 +333,11 @@ export default function EditAssociationScreen() {
     }
   };
 
-  // Chargement
+  // ── Chargement ─────────────────────────────────────────────────────────────
+
   if (store.isLoading && !association) {
     return (
-      <View className="flex-1 items-center justify-center bg-grey-50">
+      <View className="items-center justify-center flex-1 bg-grey-50">
         <ActivityIndicator size="large" color={colors.primary.default} />
       </View>
     );
@@ -201,13 +345,15 @@ export default function EditAssociationScreen() {
 
   if (!association) {
     return (
-      <View className="flex-1 items-center justify-center bg-grey-50 px-6">
+      <View className="items-center justify-center flex-1 px-6 bg-grey-50">
         <Text className="text-base font-medium text-center text-grey-600">
           Impossible de charger l'association.
         </Text>
       </View>
     );
   }
+
+  // ── Rendu ──────────────────────────────────────────────────────────────────
 
   return (
     <>
@@ -230,6 +376,29 @@ export default function EditAssociationScreen() {
         >
           <View className="w-full max-w-2xl gap-6 px-4">
 
+            {/* Bouton retour — web uniquement */}
+            {Platform.OS === "web" && (
+              <Button
+                variant="secondary"
+                onPress={() => router.back()}
+                className="self-start"
+                icon={
+                  <ArrowLeftIcon className="w-4 h-4 text-primary group-hover:text-primary-hover group-active:text-primary-active" />
+                }
+              >
+                Retour
+              </Button>
+            )}
+
+            {/* Bulle d'information sensible */}
+            <View className="flex-row items-start gap-3 p-4 border border-blue-200 rounded-lg bg-blue-50">
+              <InfoIcon className="w-5 h-5 mt-0.5 text-blue-600 shrink-0" />
+              <Text className="flex-1 text-sm leading-5 text-blue-700">
+                Certaines informations sensibles peuvent faire l'objet d'une
+                vérification par les équipes GiveAWay après modification.
+              </Text>
+            </View>
+
             {/* Erreur globale */}
             {errors.root?.message && (
               <View className="p-3 border rounded-md bg-error-30 border-error-100">
@@ -239,51 +408,100 @@ export default function EditAssociationScreen() {
               </View>
             )}
 
-            {/* Informations légales (lecture seule) */}
+            {/* ── Logo ── */}
+            <View className="gap-4 p-5 bg-white border rounded-lg border-grey-100">
+              <Text className="text-base font-bold text-grey-900">Logo</Text>
+
+              <View className="items-center gap-3">
+                <View className="relative">
+                  <AvatarButton
+                    size="xl"
+                    onPress={pickLogo}
+                    imageUrl={logoUri}
+                    initials={association.name.substring(0, 2).toUpperCase()}
+                    isGuest={!logoUri}
+                    guestIcon={<CameraPlaceholder />}
+                    accessibilityLabel={
+                      logoUri ? "Modifier le logo" : "Ajouter un logo"
+                    }
+                    className="bg-grey-100 border-grey-200"
+                  />
+
+                  {!logoUri ? (
+                    <View className="absolute bottom-0 right-0 items-center justify-center w-6 h-6 border-2 border-white rounded-full pointer-events-none bg-primary">
+                      <AddIcon className="w-4 h-4 text-white" />
+                    </View>
+                  ) : (
+                    <Button
+                      onPress={removeLogo}
+                      variant="primary"
+                      icon={<TrashIcon className="w-3 h-3 text-white" />}
+                      className="!absolute !bottom-0 !right-0 !w-6 !h-6 !p-0 bg-red-600 active:bg-red-800 active:border-white hover:bg-red-700 hover:border-white border-2 border-white !rounded-full web:focus-visible:ring-1 web:focus-visible:ring-focus web:focus-visible:ring-offset-1"
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      accessibilityLabel="Supprimer le logo"
+                    />
+                  )}
+                </View>
+
+                <Text className="text-sm text-grey-500">
+                  {logoUri ? "Appuyer pour modifier le logo" : "Ajouter un logo (optionnel)"}
+                </Text>
+              </View>
+            </View>
+
+            {/* ── Informations légales (readonly) ── */}
             {(association.siret || association.rna) && (
               <View className="gap-4 p-5 bg-white border rounded-lg border-grey-100">
                 <Text className="text-base font-bold text-grey-900">
                   Informations légales
                 </Text>
-                {association.siret && (
-                  <View className="gap-1">
-                    <Text className="text-xs font-semibold text-grey-500 uppercase tracking-wide">
-                      SIRET
-                    </Text>
-                    <Text className="text-sm text-grey-900 font-mono">
-                      {association.siret}
-                    </Text>
-                  </View>
-                )}
+
                 {association.rna && (
                   <View className="gap-1">
-                    <Text className="text-xs font-semibold text-grey-500 uppercase tracking-wide">
+                    <Text className="text-xs font-semibold tracking-wide uppercase text-grey-500">
                       RNA
                     </Text>
-                    <Text className="text-sm text-grey-900 font-mono">
+                    <Text className="font-mono text-sm text-grey-900">
                       {association.rna}
                     </Text>
                   </View>
                 )}
-                <Text className="text-xs text-grey-400">
-                  Ces informations ne sont pas modifiables ici.
-                </Text>
+
+                {association.siret && (
+                  <View className="gap-1">
+                    <Text className="text-xs font-semibold tracking-wide uppercase text-grey-500">
+                      SIRET
+                    </Text>
+                    <Text className="font-mono text-sm text-grey-900">
+                      {association.siret}
+                    </Text>
+                  </View>
+                )}
+
+                <View className="flex-row items-center gap-1.5">
+                  <InfoIcon className="w-3 h-3 text-grey-400 shrink-0" />
+                  <Text className="text-xs text-grey-400">
+                    Ces informations ne sont pas modifiables ici.
+                  </Text>
+                </View>
               </View>
             )}
 
-            {/* Informations générales */}
+            {/* ── Informations générales ── */}
             <View className="gap-4 p-5 bg-white border rounded-lg border-grey-100">
               <Text className="text-base font-bold text-grey-900">
                 Informations générales
               </Text>
 
-              <FormInput
-                control={control}
-                name="name"
-                label="Nom de l'association"
-                placeholder={association.name}
-                required
-              />
+              <View>
+                <FormInput
+                  control={control}
+                  name="name"
+                  label="Nom de l'association"
+                  required
+                />
+                <SensitiveFieldHint />
+              </View>
 
               <FormInput
                 control={control}
@@ -303,7 +521,7 @@ export default function EditAssociationScreen() {
               />
             </View>
 
-            {/* Description et objet */}
+            {/* ── Présentation ── */}
             <View className="gap-4 p-5 bg-white border rounded-lg border-grey-100">
               <Text className="text-base font-bold text-grey-900">
                 Présentation
@@ -318,17 +536,20 @@ export default function EditAssociationScreen() {
                 showCharacterCount
               />
 
-              <FormTextarea
-                control={control}
-                name="object"
-                label="Objet social"
-                placeholder="L'objet statutaire de l'association..."
-                maxLength={500}
-                showCharacterCount
-              />
+              <View>
+                <FormTextarea
+                  control={control}
+                  name="object"
+                  label="Objet social"
+                  placeholder="L'objet statutaire de l'association..."
+                  maxLength={500}
+                  showCharacterCount
+                />
+                <SensitiveFieldHint />
+              </View>
             </View>
 
-            {/* Adresse */}
+            {/* ── Adresse du siège ── */}
             <View className="gap-4 p-5 bg-white border rounded-lg border-grey-100">
               <Text className="text-base font-bold text-grey-900">
                 Adresse du siège
@@ -362,19 +583,131 @@ export default function EditAssociationScreen() {
               />
             </View>
 
-            {/* Bouton sauvegarder */}
-            <Button
-              onPress={handleSubmit(onSubmit)}
-              loading={isSubmitting}
-              className="w-full"
-            >
-              Sauvegarder les modifications
-            </Button>
+            {/* ── Documents justificatifs ── */}
+            <View className="gap-4 p-5 bg-white border rounded-lg border-grey-100">
+              <Text className="text-base font-bold text-grey-900">
+                Documents justificatifs
+              </Text>
+
+              {activeDocuments.length === 0 ? (
+                <Text className="text-sm text-grey-500">
+                  Aucun document associé.
+                </Text>
+              ) : (
+                <View className="gap-2">
+                  {activeDocuments.map((doc) => {
+                    const filename =
+                      doc.fileUrl.split("/").pop() || doc.type;
+                    const date = new Date(doc.createdAt).toLocaleDateString(
+                      "fr-FR",
+                      { day: "numeric", month: "short", year: "numeric" },
+                    );
+                    return (
+                      <View
+                        key={doc.id}
+                        className="flex-row items-center gap-3 p-3 border border-grey-100 rounded-lg bg-grey-50"
+                      >
+                        <View className="flex-1 gap-0.5 min-w-0">
+                          <Text
+                            className="text-sm font-medium text-grey-900"
+                            numberOfLines={1}
+                            ellipsizeMode="middle"
+                          >
+                            {filename}
+                          </Text>
+                          <Text className="text-xs text-grey-500">
+                            {doc.type} · {date}
+                          </Text>
+                        </View>
+
+                        <View className="flex-row items-center gap-1 shrink-0">
+                          {/* Télécharger */}
+                          <Button
+                            variant="tertiary"
+                            onPress={() => handleDownloadDoc(doc)}
+                            accessibilityLabel="Télécharger le document"
+                            className="hover:bg-grey-100 active:bg-grey-200"
+                            icon={
+                              <DownloadIcon className="w-4 h-4 text-primary group-hover:text-primary-hover group-active:text-primary-active" />
+                            }
+                          />
+                          {/* Supprimer */}
+                          <Button
+                            variant="tertiary"
+                            onPress={() => setDocToDelete(doc)}
+                            accessibilityLabel={`Supprimer le document ${doc.type}`}
+                            className="hover:bg-red-50 active:bg-red-100"
+                            icon={
+                              <TrashIcon className="w-4 h-4 text-red-500 group-hover:text-red-700 group-active:text-red-800" />
+                            }
+                          />
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+
+              {deletedDocIds.size > 0 && (
+                <View className="flex-row items-center gap-1.5 p-2 border border-orange-200 rounded-md bg-orange-50">
+                  <InfoIcon className="w-3 h-3 text-orange-500 shrink-0" />
+                  <Text className="text-xs text-orange-600">
+                    {deletedDocIds.size} document
+                    {deletedDocIds.size > 1 ? "s" : ""} sera
+                    {deletedDocIds.size > 1 ? "ont" : ""} supprimé
+                    {deletedDocIds.size > 1 ? "s" : ""} à la sauvegarde.
+                  </Text>
+                </View>
+              )}
+
+              <MultipleDocumentsPicker
+                value={newDocuments}
+                onChange={setNewDocuments}
+                maxFiles={5}
+                label="Ajouter de nouveaux documents"
+                helperText="Formats acceptés : PDF, JPEG, PNG, WEBP. Ces fichiers seront ajoutés aux documents existants."
+              />
+            </View>
+
+            {/* ── Boutons actions ── */}
+            <View className="gap-3">
+              <Button
+                onPress={handleSubmit(onSubmit)}
+                loading={isSubmitting}
+                className="w-full"
+              >
+                Sauvegarder les modifications
+              </Button>
+              <Button
+                variant="secondary"
+                onPress={() => router.back()}
+                disabled={isSubmitting}
+                className="w-full"
+              >
+                Annuler
+              </Button>
+            </View>
 
             <View className="h-10" />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Modal confirmation suppression document */}
+      <ConfirmModal
+        visible={!!docToDelete}
+        title="Supprimer ce document ?"
+        message={
+          docToDelete
+            ? `Êtes-vous sûr de vouloir supprimer ce document (${docToDelete.type}) ? Cette action sera appliquée à la sauvegarde.`
+            : ""
+        }
+        confirmLabel="Supprimer"
+        cancelLabel="Annuler"
+        destructive
+        onConfirm={handleConfirmDeleteDoc}
+        onCancel={() => setDocToDelete(null)}
+      />
     </>
   );
 }

@@ -1,5 +1,6 @@
 import { Controller, Control, FieldValues, Path } from "react-hook-form";
-import { Input, InputProps } from "@/components/ui";
+import { Input } from "@/components/ui/input/input";
+import { InputProps } from "@/components/ui/input/input.types";
 
 /**
  * Props du FormInput :

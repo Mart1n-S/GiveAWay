@@ -15,6 +15,7 @@ import { AuthService } from "@/services/auth.service";
 import InfoIconSource from "@assets/icons/ic_info.svg";
 import LockIconSource from "@assets/icons/ic_lock.svg";
 import UnlockIconSource from "@assets/icons/ic_unlock.svg";
+import ArrowLeftIconSource from "@assets/icons/ic_arrow_left.svg";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 const iconConfig = {
@@ -27,6 +28,7 @@ const iconConfig = {
 const InfoIcon = cssInterop(InfoIconSource, iconConfig);
 const LockIcon = cssInterop(LockIconSource, iconConfig);
 const UnlockIcon = cssInterop(UnlockIconSource, iconConfig);
+const ArrowLeftIcon = cssInterop(ArrowLeftIconSource, iconConfig);
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
@@ -148,6 +150,19 @@ export default function ChangePasswordScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View className="w-full max-w-2xl gap-6 px-4">
+            {/* Bouton retour — web uniquement */}
+            {Platform.OS === "web" && (
+              <Button
+                variant="secondary"
+                onPress={() => router.back()}
+                className="self-start"
+                icon={
+                  <ArrowLeftIcon className="w-4 h-4 text-primary group-hover:text-primary-hover group-active:text-primary-active" />
+                }
+              >
+                Retour
+              </Button>
+            )}
             {/* Bulle d'information */}
             <View className="flex-row gap-3 p-4 border border-blue-200 rounded-lg bg-blue-50">
               <InfoIcon className="w-5 h-5 mt-0.5 text-blue-600 shrink-0" />

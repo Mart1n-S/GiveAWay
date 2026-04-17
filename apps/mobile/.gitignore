@@ -47,4 +47,4 @@ yarn-error.*
 /playwright/.cache/
 /playwright/.auth/
 
-google-services.json
+google-services*

@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import "leaflet/dist/leaflet.css";
-import { MissionService } from "@/services/mission.service";
 import { MissionMarker } from "./MissionMarker.web";
 import { MARKER_SVG } from "./marker-icon.web";
-import type { MissionListQuery, MissionMapItem } from "@repo/shared";
+import type { MissionMapItem } from "@repo/shared";
 
 type ReactLeaflet = typeof import("react-leaflet");
 type LeafletLib = typeof import("leaflet");
@@ -11,7 +10,6 @@ type LeafletLib = typeof import("leaflet");
 type SC = any;
 
 const INITIAL_CENTER: [number, number] = [43.52916259033478, 5.442325981514346];
-const DEBOUNCE_MS = 1000;
 
 /** Cluster marker HTML */
 function clusterIconHtml(count: number): string {
@@ -37,13 +35,10 @@ function groupByCoords(items: MissionMapItem[]): MissionMapItem[][] {
 }
 
 interface MapProps {
-  /** Missions géolocalisées à afficher.
-   *  Si undefined : la carte fetch les missions elle-même (mode autonome). */
+  /** Missions géolocalisées à afficher. */
   missions?: MissionMapItem[];
   /** Indicateur de chargement externe */
   isLoading?: boolean;
-  /** Filtres actifs — utilisés seulement en mode autonome (pas de prop missions) */
-  filters?: MissionListQuery;
   /** ID de la mission sélectionnée */
   selectedMissionId?: number;
   /** Appelé quand l'utilisateur clique sur un marqueur */
@@ -55,20 +50,13 @@ interface MapProps {
 }
 
 export default function Map({
-  missions: missionsProp,
+  missions = [],
   isLoading: isLoadingProp = false,
-  filters,
   onVisibleMissionsChange,
   center,
 }: MapProps) {
   const [Leaflet, setLeaflet] = useState<ReactLeaflet | null>(null);
   const [L, setL] = useState<LeafletLib | null>(null);
-
-  // Missions locales (mode autonome — sans prop missions)
-  const [localMissions, setLocalMissions] = useState<MissionMapItem[]>([]);
-  const [fetchError, setFetchError] = useState(false);
-
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Supercluster state
   const [sc, setSc] = useState<SC>(null);
@@ -76,32 +64,6 @@ export default function Map({
     bounds: [number, number, number, number];
     zoom: number;
   } | null>(null);
-
-  // Utilise les missions fournies en props, ou celles fetchées localement
-  const missions = missionsProp ?? localMissions;
-
-  // ---------------------------------------------------------------- fetch autonome ---
-
-  const fetchMissions = useCallback(() => {
-    if (missionsProp !== undefined) return; // Contrôlé par le parent
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(async () => {
-      try {
-        const data = await MissionService.getMissionsForMap(filters ?? {});
-        setLocalMissions(data);
-        setFetchError(false);
-      } catch {
-        setFetchError(true);
-      }
-    }, DEBOUNCE_MS);
-  }, [missionsProp, filters]);
-
-  useEffect(() => {
-    fetchMissions();
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [fetchMissions]);
 
   // ---------------------------------------------------------------- supercluster ---
 
@@ -299,16 +261,8 @@ export default function Map({
 
   const { MapContainer, TileLayer } = Leaflet;
 
-  const showError = fetchError && missionsProp === undefined;
-
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", width: "100%", position: "relative" }}>
-      {showError && (
-        <div style={{ padding: "8px 12px", backgroundColor: "#FEE2E2", color: "#991B1B", fontSize: 13, textAlign: "center" }}>
-          Impossible de charger les missions. Vérifiez votre connexion.
-        </div>
-      )}
-
       {/* Indicateur de chargement externe */}
       {isLoadingProp && (
         <div style={{
