@@ -193,8 +193,8 @@ export class AssociationController {
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
   ) {
-    const pageNum = page ? parseInt(page, 10) : 1;
-    const limit = pageSize ? parseInt(pageSize, 10) : 3;
+    const pageNum = page ? Number.parseInt(page, 10) : 1;
+    const limit = pageSize ? Number.parseInt(pageSize, 10) : 3;
 
     return this.associationService.getAssociationMissions(
       associationId,

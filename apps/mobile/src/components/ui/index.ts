@@ -80,3 +80,4 @@ export * from "./search-input/SearchInput";
 export * from "./search-input/SearchInput.types";
 export * from "./mission-map/MissionMap";
 export * from "./mission-map/MissionMap.types";
+export * from "./verify-email-step/VerifyEmailStep";

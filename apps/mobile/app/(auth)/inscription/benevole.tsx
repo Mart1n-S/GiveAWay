@@ -31,6 +31,7 @@ import {
   colors,
   GoogleLoginButton,
 } from "@/components/ui";
+import { VerifyEmailStep } from "@/components/ui/verify-email-step/VerifyEmailStep";
 import { AuthService } from "@/services/auth.service";
 import { useGoogleAuth } from "@/hooks/useGoogleAuth";
 import { cssInterop } from "nativewind";
@@ -712,59 +713,16 @@ export default function RegisterBenevoleScreen() {
 
           {/* --- STEP 2 : VÉRIFICATION CODE --- */}
           {step === "VERIFY" && (
-            <View className="gap-6 mt-10">
-              <View className="items-center gap-2">
-                <Text className="text-2xl font-bold text-center text-grey-900">
-                  Vérifiez votre boîte mail
-                </Text>
-                <Text className="px-4 text-center text-grey-600">
-                  Nous avons envoyé un code de confirmation à :{"\n"}
-                  <Text className="font-bold text-primary">
-                    {registeredEmail}
-                  </Text>
-                </Text>
-              </View>
-
-              <FormInput
-                control={controlVerify}
-                name="code"
-                label="Code à 6 chiffres"
-                testID="input-verify-code"
-                helperText="Format : 123456"
-                keyboardType="number-pad"
-                maxLength={6}
-                required
-                autoFocus
-              />
-
-              <Button
-                testID="btn-submit-verify-code"
-                onPress={handleSubmitVerify(onVerifySubmit)}
-                loading={isSubmitting}
-                className="w-full"
-              >
-                Valider
-              </Button>
-
-              {/* --- SECTION RESEND AVEC BOUTON SECONDARY --- */}
-              <View className="items-center mt-2">
-                <Button
-                  variant="secondary"
-                  onPress={handleResendCode}
-                  disabled={resendTimer > 0}
-                  loading={isResending}
-                  className="w-full"
-                >
-                  {resendTimer > 0
-                    ? `Renvoyer le code (${resendTimer}s)`
-                    : "Je n'ai pas reçu le code"}
-                </Button>
-
-                <Text className="mt-4 text-xs text-center text-grey-600">
-                  Vérifiez également vos courriers indésirables (spams).
-                </Text>
-              </View>
-            </View>
+            <VerifyEmailStep
+              registeredEmail={registeredEmail}
+              control={controlVerify}
+              onSubmit={handleSubmitVerify(onVerifySubmit)}
+              isSubmitting={isSubmitting}
+              resendTimer={resendTimer}
+              isResending={isResending}
+              onResend={handleResendCode}
+              outerClassName="gap-6 mt-10"
+            />
           )}
 
           <View className="h-10" />

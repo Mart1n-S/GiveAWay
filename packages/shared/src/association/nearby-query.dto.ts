@@ -41,7 +41,7 @@ export const NearbyQuerySchema = z.object({
         val
           .split(",")
           .map(Number)
-          .filter((n) => !isNaN(n) && n > 0),
+          .filter((n) => !Number.isNaN(n) && n > 0),
       )
       .optional(),
   ),
@@ -50,7 +50,7 @@ export const NearbyQuerySchema = z.object({
     emptyToUndefined,
     z
       .string()
-      .refine((v) => !isNaN(Date.parse(v)), { message: "Date invalide (createdAfter)" })
+      .refine((v) => !Number.isNaN(Date.parse(v)), { message: "Date invalide (createdAfter)" })
       .transform((v) => new Date(v))
       .optional(),
   ),
@@ -59,7 +59,7 @@ export const NearbyQuerySchema = z.object({
     emptyToUndefined,
     z
       .string()
-      .refine((v) => !isNaN(Date.parse(v)), { message: "Date invalide (createdBefore)" })
+      .refine((v) => !Number.isNaN(Date.parse(v)), { message: "Date invalide (createdBefore)" })
       .transform((v) => new Date(v))
       .optional(),
   ),

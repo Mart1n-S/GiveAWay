@@ -12,6 +12,7 @@ import {
 import { z } from "zod";
 import { FormInput } from "@/components/form/";
 import { Button, colors } from "@/components/ui";
+import { VerifyEmailStep } from "@/components/ui/verify-email-step/VerifyEmailStep";
 import { AuthService } from "@/services/auth.service";
 import EmailIconSource from "@assets/icons/ic_email.svg";
 import { cssInterop } from "nativewind";
@@ -231,60 +232,15 @@ export default function DemandeVerificationEmailScreen() {
 
           {/* --- STEP 2 : VÉRIFICATION CODE --- */}
           {step === "VERIFY" && (
-            <View className="gap-6">
-              <View className="items-center gap-2">
-                <Text className="text-2xl font-bold text-center text-grey-900">
-                  Vérifiez votre boîte mail
-                </Text>
-                <Text className="px-4 text-center text-grey-600">
-                  Nous avons envoyé un code de confirmation à :{"\n"}
-                  <Text className="font-bold text-primary">
-                    {registeredEmail}
-                  </Text>
-                </Text>
-              </View>
-
-              <FormInput
-                control={controlVerify}
-                name="code"
-                label="Code à 6 chiffres"
-                testID="input-verify-code"
-                helperText="Format : 123456"
-                keyboardType="number-pad"
-                maxLength={6}
-                required
-                autoFocus
-              />
-
-              <Button
-                testID="btn-submit-verify-code"
-                onPress={handleSubmitVerify(onVerifySubmit)}
-                loading={isSubmitting}
-                className="w-full"
-              >
-                Valider
-              </Button>
-
-              <View className="items-center mt-2">
-                <Button
-                  variant="secondary"
-                  testID="btn-resend-code"
-                  onPress={() =>
-                    handleRequestOrResend({ email: registeredEmail })
-                  }
-                  disabled={resendTimer > 0}
-                  loading={isResending}
-                  className="w-full"
-                >
-                  {resendTimer > 0
-                    ? `Renvoyer le code (${resendTimer}s)`
-                    : "Je n'ai pas reçu le code"}
-                </Button>
-
-                <Text className="mt-4 text-xs text-center text-grey-600">
-                  Vérifiez également vos courriers indésirables (spams).
-                </Text>
-
+            <VerifyEmailStep
+              registeredEmail={registeredEmail}
+              control={controlVerify}
+              onSubmit={handleSubmitVerify(onVerifySubmit)}
+              isSubmitting={isSubmitting}
+              resendTimer={resendTimer}
+              isResending={isResending}
+              onResend={() => handleRequestOrResend({ email: registeredEmail })}
+              extraActions={
                 <Button
                   variant="tertiary"
                   testID="btn-change-email"
@@ -293,8 +249,8 @@ export default function DemandeVerificationEmailScreen() {
                 >
                   Changer d'adresse email
                 </Button>
-              </View>
-            </View>
+              }
+            />
           )}
         </View>
       </ScrollView>

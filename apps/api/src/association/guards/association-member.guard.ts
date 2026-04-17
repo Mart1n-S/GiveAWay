@@ -29,9 +29,9 @@ export class AssociationMemberGuard implements CanActivate {
       .getRequest<AssociationAuthenticatedRequest>();
 
     const userId = req.user?.id;
-    const associationId = parseInt(req.params?.associationId, 10);
+    const associationId = Number.parseInt(req.params?.associationId, 10);
 
-    if (!userId || isNaN(associationId)) {
+    if (!userId || Number.isNaN(associationId)) {
       throw new ForbiddenException('Accès refusé');
     }
 

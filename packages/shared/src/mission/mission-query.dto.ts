@@ -16,11 +16,11 @@ const emptyToUndefined = (val: unknown) =>
 const toIntArray = (val: unknown) => {
   if (val === undefined || val === "") return undefined;
   if (Array.isArray(val)) {
-    const nums = val.map(Number).filter((n) => !isNaN(n));
+    const nums = val.map(Number).filter((n) => !Number.isNaN(n));
     return nums.length ? nums : undefined;
   }
   if (typeof val === "string") {
-    const nums = val.split(",").map(Number).filter((n) => !isNaN(n));
+    const nums = val.split(",").map(Number).filter((n) => !Number.isNaN(n));
     return nums.length ? nums : undefined;
   }
   return undefined;
