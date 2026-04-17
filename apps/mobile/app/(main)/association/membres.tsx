@@ -318,18 +318,17 @@ export default function MembresScreen() {
 
   const { members, userRole, isLoading } = store;
 
-  const filteredMembers = members
-    ? searchQuery.trim()
-      ? members.filter((m) => {
-          const q = searchQuery.toLowerCase();
-          return (
-            m.firstName.toLowerCase().includes(q) ||
-            m.lastName.toLowerCase().includes(q) ||
-            m.email.toLowerCase().includes(q)
-          );
-        })
-      : members
-    : [];
+  const memberList = members ?? [];
+  const filteredMembers = searchQuery.trim()
+    ? memberList.filter((m) => {
+        const q = searchQuery.toLowerCase();
+        return (
+          m.firstName.toLowerCase().includes(q) ||
+          m.lastName.toLowerCase().includes(q) ||
+          m.email.toLowerCase().includes(q)
+        );
+      })
+    : memberList;
 
   const loadMembers = useCallback(
     async (forceRefresh = false) => {
@@ -443,6 +442,50 @@ export default function MembresScreen() {
     userRole === AssociationRole.OWNER || userRole === AssociationRole.ADMIN;
   const currentUserId = user?.id ?? -1;
 
+  const renderMemberList = (): React.ReactNode => {
+    if (!members || members.length === 0) {
+      return (
+        <View className="items-center gap-2 py-12">
+          <Text className="text-base font-medium text-grey-600">
+            Aucun membre pour le moment.
+          </Text>
+        </View>
+      );
+    }
+    if (filteredMembers.length === 0) {
+      return (
+        <View className="items-center gap-2 py-12">
+          <Text className="text-base font-medium text-grey-600">
+            Aucun membre ne correspond à votre recherche.
+          </Text>
+        </View>
+      );
+    }
+    return (
+      <View className="gap-3">
+        {filteredMembers.map((member) => (
+          <MemberCard
+            key={member.id}
+            member={member}
+            currentUserId={currentUserId}
+            userRole={userRole ?? AssociationRole.EDITOR}
+            onRoleChange={
+              userRole === AssociationRole.OWNER
+                ? handleRoleChange
+                : undefined
+            }
+            onRemove={
+              userRole === AssociationRole.OWNER ||
+              userRole === AssociationRole.ADMIN
+                ? setMemberToRemove
+                : undefined
+            }
+          />
+        ))}
+      </View>
+    );
+  };
+
   return (
     <>
       <Stack.Screen options={{ headerTitle: "Membres" }} />
@@ -508,41 +551,7 @@ export default function MembresScreen() {
           )}
 
           {/* Liste des membres */}
-          {!members || members.length === 0 ? (
-            <View className="items-center gap-2 py-12">
-              <Text className="text-base font-medium text-grey-600">
-                Aucun membre pour le moment.
-              </Text>
-            </View>
-          ) : filteredMembers.length === 0 ? (
-            <View className="items-center gap-2 py-12">
-              <Text className="text-base font-medium text-grey-600">
-                Aucun membre ne correspond à votre recherche.
-              </Text>
-            </View>
-          ) : (
-            <View className="gap-3">
-              {filteredMembers.map((member) => (
-                <MemberCard
-                  key={member.id}
-                  member={member}
-                  currentUserId={currentUserId}
-                  userRole={userRole ?? AssociationRole.EDITOR}
-                  onRoleChange={
-                    userRole === AssociationRole.OWNER
-                      ? handleRoleChange
-                      : undefined
-                  }
-                  onRemove={
-                    userRole === AssociationRole.OWNER ||
-                    userRole === AssociationRole.ADMIN
-                      ? setMemberToRemove
-                      : undefined
-                  }
-                />
-              ))}
-            </View>
-          )}
+          {renderMemberList()}
 
           {/* Info rôle */}
           {userRole === AssociationRole.ADMIN && (

@@ -214,7 +214,7 @@ interface MapProps {
   center?: { lat: number; lon: number };
 }
 
-export default function Map({
+export default function MapNative({
   missions = [],
   isLoading: isLoadingProp = false,
   onMissionSelect,

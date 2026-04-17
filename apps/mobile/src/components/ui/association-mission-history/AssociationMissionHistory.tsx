@@ -40,7 +40,7 @@ export function AssociationMissionHistory({
         </View>
       )}
 
-      {!loading && error && (
+      {!loading && !!error && (
         <View className="items-center gap-3 py-4">
           <Text className="text-sm text-center text-grey-500">{error}</Text>
           {onRetry && (

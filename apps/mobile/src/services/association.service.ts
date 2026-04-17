@@ -470,7 +470,7 @@ export async function downloadDocument(
     anchor.download = downloadName;
     document.body.appendChild(anchor);
     anchor.click();
-    document.body.removeChild(anchor);
+    anchor.remove();
     URL.revokeObjectURL(objectUrl);
     return;
   }

@@ -63,17 +63,23 @@ export class MissionService {
 
     // ── Types d'activités ───────────────────────────────────────────────────
     // Préfère le tableau (types) sur la valeur unique (type)
-    const activeTypes = types?.length ? types : type ? [type] : undefined;
+    let activeTypes: typeof types;
+    if (types?.length) {
+      activeTypes = types;
+    } else if (type) {
+      activeTypes = [type];
+    }
     if (activeTypes?.length) {
       where.type = { in: activeTypes as PrismaActivityType[] };
     }
 
     // ── Causes ─────────────────────────────────────────────────────────────
-    const activeCauseIds = causeIds?.length
-      ? causeIds
-      : causeId
-        ? [causeId]
-        : undefined;
+    let activeCauseIds: typeof causeIds;
+    if (causeIds?.length) {
+      activeCauseIds = causeIds;
+    } else if (causeId) {
+      activeCauseIds = [causeId];
+    }
     if (activeCauseIds?.length) {
       where.causes = { some: { causeId: { in: activeCauseIds } } };
     }
@@ -295,17 +301,23 @@ export class MissionService {
       }
 
       // Types
-      const activeTypes = types?.length ? types : type ? [type] : undefined;
+      let activeTypes: typeof types;
+      if (types?.length) {
+        activeTypes = types;
+      } else if (type) {
+        activeTypes = [type];
+      }
       if (activeTypes?.length) {
         where.type = { in: activeTypes as PrismaActivityType[] };
       }
 
       // Causes
-      const activeCauseIds = causeIds?.length
-        ? causeIds
-        : causeId
-          ? [causeId]
-          : undefined;
+      let activeCauseIds: typeof causeIds;
+      if (causeIds?.length) {
+        activeCauseIds = causeIds;
+      } else if (causeId) {
+        activeCauseIds = [causeId];
+      }
       if (activeCauseIds?.length) {
         where.causes = { some: { causeId: { in: activeCauseIds } } };
       }

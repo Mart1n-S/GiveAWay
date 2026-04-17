@@ -24,7 +24,7 @@ const LocalisationIcon = cssInterop(IconLocalisationSource, iconConfig);
 
 interface AddressAutocompleteProps {
   label?: string;
-  error?: FieldError | Merge<FieldError, FieldErrorsImpl<any>> | undefined;
+  error?: FieldError | Merge<FieldError, FieldErrorsImpl<any>>;
   onSelect: (address: AddressResult | undefined) => void;
   value?: AddressResult;
   required?: boolean;

@@ -271,7 +271,7 @@ function SectionTrigger({
         {label}
       </Text>
 
-      {badge && (
+      {!!badge && (
         <View className="bg-primary rounded-full px-1.5 py-0.5 min-w-[18px] items-center">
           <Text className="text-xs font-bold leading-none text-white">{badge}</Text>
         </View>
@@ -280,7 +280,7 @@ function SectionTrigger({
       <Text
         className={clsx(
           "text-xs transition-colors",
-          open ? "text-primary" : active ? "text-primary" : "text-grey-400",
+          open || active ? "text-primary" : "text-grey-400",
         )}
       >
         {open ? "▲" : "▼"}

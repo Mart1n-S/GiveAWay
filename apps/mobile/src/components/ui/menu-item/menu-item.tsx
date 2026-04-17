@@ -54,6 +54,15 @@ export function MenuItem({
     });
   }, [rightIcon, disabled, isDestructive, isActive]);
 
+  let bgClass: string;
+  if (isDestructive) {
+    bgClass = "bg-red-600 active:bg-red-800 hover:bg-red-700";
+  } else if (isActive) {
+    bgClass = "bg-white-active";
+  } else {
+    bgClass = "bg-transparent active:bg-white-active hover:bg-white-hover";
+  }
+
   return (
     <Pressable
       {...props}
@@ -64,11 +73,7 @@ export function MenuItem({
       className={clsx(
         "group flex-row items-center justify-between w-full px-4 py-3 rounded-lg",
 
-        isDestructive
-          ? "bg-red-600 active:bg-red-800 hover:bg-red-700"
-          : isActive
-            ? "bg-white-active"
-            : "bg-transparent active:bg-white-active hover:bg-white-hover",
+        bgClass,
 
         "web:outline-none",
         isDestructive

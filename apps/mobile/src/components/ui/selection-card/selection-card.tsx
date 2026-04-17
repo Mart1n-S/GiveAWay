@@ -64,8 +64,8 @@ export const SelectionCard = ({
 
       {/* --- LISTE A PUCES (Features) --- */}
       <View className="gap-3 mb-8">
-        {features.map((feature, index) => (
-          <View key={index} className="flex-row items-center">
+        {features.map((feature) => (
+          <View key={feature} className="flex-row items-center">
             {/* Puce orange */}
             <View className="w-2 h-2 mr-3 rounded-full bg-primary" />
             <Text className="flex-1 text-sm text-grey-700">{feature}</Text>

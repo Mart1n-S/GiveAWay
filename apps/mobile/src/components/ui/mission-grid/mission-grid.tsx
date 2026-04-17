@@ -36,9 +36,9 @@ export function MissionGrid({
           className,
         )}
       >
-        {Array.from({ length: 6 }).map((_, i) => (
+        {(["sk-0", "sk-1", "sk-2", "sk-3", "sk-4", "sk-5"] as const).map((id) => (
           <View
-            key={i}
+            key={id}
             className={clsx(
               "bg-grey-100 rounded-2xl h-64 animate-pulse",
               ITEM_CLASS,

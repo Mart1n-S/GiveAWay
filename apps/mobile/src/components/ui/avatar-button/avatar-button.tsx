@@ -33,11 +33,12 @@ export function AvatarButton({
   const avatarBaseUrl = process.env.EXPO_PUBLIC_API_URL_AVATAR ?? "";
 
   // 1. Calcul du label Accessibilité
-  const defaultA11yLabel = isGuest
-    ? "Menu profil, non connecté"
-    : initials
-      ? `Profil utilisateur ${initials}`
-      : "Mon profil";
+  let defaultA11yLabel: string;
+  if (isGuest) {
+    defaultA11yLabel = "Menu profil, non connecté";
+  } else {
+    defaultA11yLabel = initials ? `Profil utilisateur ${initials}` : "Mon profil";
+  }
 
   const renderContent = () => {
     // Cas 1 : Image

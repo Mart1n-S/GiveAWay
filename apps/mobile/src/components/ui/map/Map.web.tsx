@@ -6,9 +6,6 @@ import type { MissionMapItem } from "@repo/shared";
 
 type ReactLeaflet = typeof import("react-leaflet");
 type LeafletLib = typeof import("leaflet");
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SC = any;
-
 const INITIAL_CENTER: [number, number] = [43.52916259033478, 5.442325981514346];
 
 /** Cluster marker HTML */
@@ -49,7 +46,7 @@ interface MapProps {
   center?: { lat: number; lon: number };
 }
 
-export default function Map({
+export default function MapWeb({
   missions = [],
   isLoading: isLoadingProp = false,
   onVisibleMissionsChange,
@@ -59,7 +56,8 @@ export default function Map({
   const [L, setL] = useState<LeafletLib | null>(null);
 
   // Supercluster state
-  const [sc, setSc] = useState<SC>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [sc, setSc] = useState<any>(null);
   const [mapBounds, setMapBounds] = useState<{
     bounds: [number, number, number, number];
     zoom: number;
@@ -96,7 +94,7 @@ export default function Map({
     return sc.getClusters(
       [w - dw, s - dh, e + dw, n + dh],
       mapBounds.zoom,
-    ) as SC[];
+    ) as any[];
   }, [sc, mapBounds]);
 
   // Grouper les missions non-clusterisées par coordonnées exactes
@@ -104,9 +102,11 @@ export default function Map({
     if (!clusters) {
       return { clusterItems: [], missionGroups: groupByCoords(missions) };
     }
-    const clusterItemsList: SC[] = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const clusterItemsList: any[] = [];
     const raw: MissionMapItem[] = [];
-    clusters.forEach((item: SC) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    clusters.forEach((item: any) => {
       if (item.properties.cluster) {
         clusterItemsList.push(item);
       } else {
@@ -201,8 +201,10 @@ export default function Map({
       cluster,
       scInstance,
     }: {
-      cluster: SC;
-      scInstance: SC;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      cluster: any;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      scInstance: any;
     }) {
       const map = useMap();
       const [lng, lat] = cluster.geometry.coordinates;
@@ -294,7 +296,8 @@ export default function Map({
           {CenterController && <CenterController target={center} />}
 
           {/* Clusters géographiques */}
-          {clusterItems.map((item: SC) => (
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+          {clusterItems.map((item: any) => (
             ClusterMarker && (
               <ClusterMarker
                 key={`cluster-${item.properties.cluster_id}`}

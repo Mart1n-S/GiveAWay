@@ -103,11 +103,11 @@ export default function DemandeVerificationEmailScreen() {
         onPress: () => Toast.hide(),
       });
     } catch (error: unknown) {
-      const msg = isAxiosError(error)
-        ? Array.isArray(error.response?.data?.message)
-          ? error.response?.data?.message[0]
-          : error.response?.data?.message
-        : "Une erreur est survenue.";
+      let msg = "Une erreur est survenue.";
+      if (isAxiosError(error)) {
+        const apiMessage = error.response?.data?.message;
+        msg = Array.isArray(apiMessage) ? apiMessage[0] : (apiMessage ?? msg);
+      }
 
       Toast.show({
         type: "error",

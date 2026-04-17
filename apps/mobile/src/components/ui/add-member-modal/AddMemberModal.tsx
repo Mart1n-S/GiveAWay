@@ -30,7 +30,6 @@ export function AddMemberModal({
     control,
     handleSubmit,
     reset,
-    formState: { errors },
   } = useForm<AddMemberFormInput>({
     resolver: zodResolver(AddMemberSchema),
     defaultValues: { email: "" },

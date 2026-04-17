@@ -17,6 +17,22 @@ const iconConfig = {
 
 const BuildingIcon = cssInterop(BuildingIconSource, iconConfig);
 
+function HomeTabIcon({ color }: { readonly color: string }) {
+  return <HomeIcon className="w-7 h-7" color={color} />;
+}
+
+function MissionsTabIcon({ color }: { readonly color: string }) {
+  return <HandHeartIcon className="w-7 h-7" color={color} />;
+}
+
+function ProfilTabIcon({ color }: { readonly color: string }) {
+  return <UserIcon className="w-7 h-7" color={color} />;
+}
+
+function AssociationTabIcon({ color }: { readonly color: string }) {
+  return <BuildingIcon className="w-7 h-7" color={color} />;
+}
+
 const MOBILE_SUBPAGE_ROUTES = new Set([
   "/profil/modifier",
   "/profil/mot-de-passe",
@@ -79,9 +95,7 @@ export default function MainLayout() {
           name="index"
           options={{
             title: "Accueil",
-            tabBarIcon: ({ color }) => (
-              <HomeIcon className="w-7 h-7" color={color} />
-            ),
+            tabBarIcon: HomeTabIcon,
           }}
         />
 
@@ -89,9 +103,7 @@ export default function MainLayout() {
           name="missions"
           options={{
             title: "Missions",
-            tabBarIcon: ({ color }) => (
-              <HandHeartIcon className="w-7 h-7" color={color} />
-            ),
+            tabBarIcon: MissionsTabIcon,
           }}
         />
 
@@ -101,9 +113,7 @@ export default function MainLayout() {
             name="profil"
             options={{
               title: "Profil",
-              tabBarIcon: ({ color }) => (
-                <UserIcon className="w-7 h-7" color={color} />
-              ),
+              tabBarIcon: ProfilTabIcon,
             }}
           />
         ) : (
@@ -123,9 +133,7 @@ export default function MainLayout() {
             name="association"
             options={{
               title: "Association",
-              tabBarIcon: ({ color }) => (
-                <BuildingIcon className="w-7 h-7" color={color} />
-              ),
+              tabBarIcon: AssociationTabIcon,
             }}
           />
         ) : (

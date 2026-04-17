@@ -1,14 +1,14 @@
 import type { ComponentType } from "react";
 import type { AssociationMapItem } from "@repo/shared";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Any = any;
-
 interface AssociationMarkerWebProps {
   association: AssociationMapItem;
-  Marker: ComponentType<Any>;
-  Popup: ComponentType<Any>;
-  icon: Any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Marker: ComponentType<any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Popup: ComponentType<any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  icon: any;
 }
 
 const styles = {

@@ -175,7 +175,7 @@ export function MissionCard({
       <View className="px-4 py-3 border-t border-grey-100">
         <View className="flex-row flex-wrap items-center gap-x-4 gap-y-1">
           {/* Localisation */}
-          {city && (
+          {!!city && (
             <View className="flex-row items-center gap-1">
               <LocalisationIcon className="w-3.5 h-3.5 text-grey-400" />
               <Text className="text-xs text-grey-600">{city}</Text>
@@ -183,7 +183,7 @@ export function MissionCard({
           )}
 
           {/* Durée */}
-          {durationInt && (
+          {!!durationInt && (
             <View className="flex-row items-center gap-1">
               <ClockIcon className="w-3.5 h-3.5 text-grey-400" />
               <Text className="text-xs text-grey-600">
@@ -207,7 +207,7 @@ export function MissionCard({
           )}
 
           {/* Bénévoles recherchés */}
-          {volunteersNeeded && (
+          {!!volunteersNeeded && (
             <Text className="text-xs font-semibold text-primary">
               {volunteersNeeded} bénévole{volunteersNeeded > 1 ? "s" : ""}
             </Text>

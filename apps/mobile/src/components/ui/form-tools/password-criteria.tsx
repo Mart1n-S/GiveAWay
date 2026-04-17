@@ -22,34 +22,43 @@ export const PasswordCriteria = ({ password = "" }: PasswordCriteriaProps) => {
 
   return (
     <View className="flex-row flex-wrap gap-2 mt-2 mb-4">
-      {rules.map((rule, index) => {
+      {rules.map((rule) => {
         const isValid = rule.valid;
 
         // Classes du conteneur (Badge)
-        const containerClasses = clsx(
-          "px-2 py-1 rounded-md border",
-          isEmpty
-            ? "bg-grey-50 border-grey-200"
-            : isValid
-              ? "bg-green-50 border-green-200"
-              : "bg-red-50 border-red-200",
-        );
+        let bgClass: string;
+        if (isEmpty) {
+          bgClass = "bg-grey-50 border-grey-200";
+        } else if (isValid) {
+          bgClass = "bg-green-50 border-green-200";
+        } else {
+          bgClass = "bg-red-50 border-red-200";
+        }
+        const containerClasses = clsx("px-2 py-1 rounded-md border", bgClass);
 
         // Classes du texte
-        const textClasses = clsx(
-          "text-xs font-medium",
-          isEmpty
-            ? "text-grey-500"
-            : isValid
-              ? "text-green-700"
-              : "text-red-700",
-        );
+        let textColorClass: string;
+        if (isEmpty) {
+          textColorClass = "text-grey-500";
+        } else if (isValid) {
+          textColorClass = "text-green-700";
+        } else {
+          textColorClass = "text-red-700";
+        }
+        const textClasses = clsx("text-xs font-medium", textColorClass);
 
         // Icône (Puce, Check ou Croix)
-        const icon = isEmpty ? "• " : isValid ? "✓ " : "✕ ";
+        let icon: string;
+        if (isEmpty) {
+          icon = "• ";
+        } else if (isValid) {
+          icon = "✓ ";
+        } else {
+          icon = "✕ ";
+        }
 
         return (
-          <View key={index} className={containerClasses}>
+          <View key={rule.label} className={containerClasses}>
             <Text className={textClasses}>
               {icon}
               {rule.label}

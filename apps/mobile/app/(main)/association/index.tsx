@@ -383,7 +383,7 @@ export default function AssociationScreen() {
     setTransferLeaveMode(false);
 
     // Mettre à jour le rôle dans AuthStore (OWNER → ADMIN)
-    if (user && user.associations && associationId) {
+    if (user?.associations && associationId) {
       const updatedAssociations = user.associations.map((a) =>
         a.associationId === associationId
           ? { ...a, role: AssociationRole.ADMIN }
@@ -672,7 +672,7 @@ export default function AssociationScreen() {
                   numberOfLines={1}
                   ellipsizeMode="middle"
                 >
-                  {association.website.replace(/(https?:\/\/[^\/\s]+).*/, "$1")}
+                  {association.website.replace(/(https?:\/\/[^/\s]+).*/, "$1")}
                 </Text>
               </Pressable>
             )}

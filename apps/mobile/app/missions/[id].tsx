@@ -552,7 +552,7 @@ export default function MissionDetailScreen() {
             <View className="bg-white border-b border-grey-100">
               <View className="flex-row w-full max-w-4xl mx-auto">
                 {stats.map((s, i) => (
-                  <View key={i} className="flex-row flex-1">
+                  <View key={s.label} className="flex-row flex-1">
                     {i > 0 && <View className="w-px bg-grey-100" />}
                     <View className="flex-1 items-center py-4 gap-0.5">
                       <s.Icon className="w-4 h-4 text-grey-400" />

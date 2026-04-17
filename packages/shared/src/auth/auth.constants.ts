@@ -38,7 +38,7 @@ export const NAME_MAX_LENGTH = 50;
  * \- = tiret
  * \' = apostrophe
  */
-export const NAME_REGEX = /^[a-zA-ZÀ-ÿ\s\-\']+$/;
+export const NAME_REGEX = /^[a-zA-ZÀ-ÿ\s\-']+$/;
 
 /**
  * Fonction utilitaire pour formater les Prénoms (Title Case)
@@ -47,7 +47,7 @@ export const NAME_REGEX = /^[a-zA-ZÀ-ÿ\s\-\']+$/;
 export const formatFirstName = (val: string) => {
   if (!val) return val;
 
-  return val.toLowerCase().replaceAll(/(?:^|[\s\-\'])([a-zA-ZÀ-ÿ])/g, (match) => {
+  return val.toLowerCase().replaceAll(/(?:^|[\s\-'])([a-zA-ZÀ-ÿ])/g, (match) => {
     return match.toUpperCase();
   });
 };

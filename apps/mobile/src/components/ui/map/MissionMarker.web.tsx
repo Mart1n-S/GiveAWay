@@ -3,15 +3,16 @@ import { useState } from "react";
 import { useRouter } from "expo-router";
 import type { MissionMapItem } from "@repo/shared";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Any = any;
-
 interface MissionMarkerProps {
   missions: MissionMapItem[];
-  Marker: ComponentType<Any>;
-  Popup: ComponentType<Any>;
-  useMap: () => Any;
-  icon: Any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Marker: ComponentType<any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Popup: ComponentType<any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  useMap: () => any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  icon: any;
 }
 
 const MAX_DESC_LENGTH = 110;
@@ -191,7 +192,8 @@ interface PopupContentProps {
   missions: MissionMapItem[];
   currentIndex: number;
   setCurrentIndex: (fn: (i: number) => number) => void;
-  useMap: () => Any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  useMap: () => any;
 }
 
 function PopupContent({ missions, currentIndex, setCurrentIndex, useMap }: PopupContentProps) {
@@ -233,7 +235,7 @@ function PopupContent({ missions, currentIndex, setCurrentIndex, useMap }: Popup
         </div>
       </div>
 
-      <div style={S.divider} role="separator" />
+      <hr style={S.divider} />
 
       {current.city && (
         <div style={S.city}>
@@ -248,7 +250,6 @@ function PopupContent({ missions, currentIndex, setCurrentIndex, useMap }: Popup
       {missions.length > 1 && (
         <div
           style={S.nav}
-          role="group"
           aria-label={`Mission ${currentIndex + 1} sur ${missions.length}`}
         >
           <button

@@ -75,12 +75,21 @@ export function MissionDetailSidebar({
   volunteersNeeded,
   hasRegistration,
 }: MissionDetailSidebarProps) {
+  let dateText = "";
+  if (startDate && endDate) {
+    dateText = `Du ${formatDate(startDate)} au ${formatDate(endDate)}`;
+  } else if (startDate) {
+    dateText = `À partir du ${formatDate(startDate)}`;
+  } else if (endDate) {
+    dateText = `Jusqu'au ${formatDate(endDate)}`;
+  }
+
   return (
     <View className="gap-6">
       {/* Bloc métadonnées */}
       <View className="bg-grey-50 rounded-2xl p-4 gap-3">
         {/* Localisation */}
-        {city && (
+        {!!city && (
           <MetaRow icon={LocalisationIcon}>
             <Text className="text-sm text-grey-700">
               {[street, city].filter(Boolean).join(", ")}
@@ -89,7 +98,7 @@ export function MissionDetailSidebar({
         )}
 
         {/* Durée + fréquence */}
-        {durationInt && (
+        {!!durationInt && (
           <MetaRow icon={ClockIcon}>
             <Text className="text-sm text-grey-700">
               {formatDuration(durationInt)}
@@ -104,17 +113,13 @@ export function MissionDetailSidebar({
         {(startDate || endDate) && (
           <MetaRow icon={CalendarIcon}>
             <Text className="text-sm text-grey-700">
-              {startDate && endDate
-                ? `Du ${formatDate(startDate)} au ${formatDate(endDate)}`
-                : startDate
-                  ? `À partir du ${formatDate(startDate)}`
-                  : `Jusqu'au ${formatDate(endDate!)}`}
+              {dateText}
             </Text>
           </MetaRow>
         )}
 
         {/* Inscrits / places */}
-        {volunteersNeeded && (
+        {!!volunteersNeeded && (
           <MetaRow icon={HandHeartIcon}>
             <Text className="text-sm text-grey-700">
               <Text className="font-semibold text-primary">
@@ -137,19 +142,19 @@ export function MissionDetailSidebar({
       )}
 
       {/* Bloc association */}
-      {(association.description || association.website) && (
+      {!!(association.description || association.website) && (
         <View className="border border-grey-200 rounded-2xl p-4 gap-3">
           <Text className="text-base font-bold text-grey-900">
             {association.name}
           </Text>
 
-          {association.description && (
+          {!!association.description && (
             <Text className="text-sm leading-6 text-grey-700">
               {association.description}
             </Text>
           )}
 
-          {association.website && (
+          {!!association.website && (
             <Button
               variant="secondary"
               onPress={() => Linking.openURL(association.website!)}
