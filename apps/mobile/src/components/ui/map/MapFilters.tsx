@@ -154,7 +154,7 @@ export function MapFilters({ onChange, floating = true, categories = [] }: MapFi
       {/* Suggestions */}
       {suggestions.length > 0 && (
         <View style={styles.suggestions}>
-          {suggestions.map((sug) => (
+          {suggestions.map((sug, i) => (
             <TouchableOpacity
               key={sug.label}
               style={[
