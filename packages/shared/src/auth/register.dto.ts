@@ -96,7 +96,7 @@ export const BaseUserSchema = z.object({
         message: "L'âge doit être un nombre entier",
       })
       .refine((value) => value >= 18, {
-        message: "Vous devez avoir au moins 18 ans pour vous inscrire",
+        message: "Vous devez avoir au moins 18 ans",
       })
       .refine((value) => value <= 100, {
         message: "Veuillez entrer un âge valide inférieur à 100 ans",

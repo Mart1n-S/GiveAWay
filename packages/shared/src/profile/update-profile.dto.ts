@@ -1,65 +1,18 @@
 import { z } from "zod";
 import { AddressSchema } from "../address/address.dto";
-import {
-  NO_HTML_TAGS,
-  NAME_REGEX,
-  formatFirstName as FORMAT_FIRST_NAME,
-} from "../auth/auth.constants";
+import { NO_HTML_TAGS } from "../auth/auth.constants";
+import { BaseUserSchema, preprocessAddress } from "../auth/register.dto";
 import {
   AvailabilityFrequency,
   AvailabilityTime,
   AvailabilityType,
 } from "./availability.enums";
 
-export const UpdateProfileSchema = z.object({
-  firstName: z
-    .string()
-    .trim()
-    .min(1, { message: "Le prénom est obligatoire" })
-    .min(2, { message: "Le prénom est trop court (2 caractères minimum)" })
-    .max(50, { message: "Le prénom est trop long (50 caractères maximum)" })
-    .regex(NAME_REGEX, {
-      message:
-        "Le prénom doit contenir uniquement des lettres, espaces, tirets ou apostrophes",
-    })
-    .transform(FORMAT_FIRST_NAME),
-
-  lastName: z
-    .string()
-    .trim()
-    .min(1, { message: "Le nom est obligatoire" })
-    .min(2, { message: "Le nom est trop court (2 caractères minimum)" })
-    .max(50, { message: "Le nom est trop long (50 caractères maximum)" })
-    .regex(NAME_REGEX, {
-      message:
-        "Le nom doit contenir uniquement des lettres, espaces, tirets ou apostrophes",
-    })
-    .transform((val) => val.toUpperCase()),
-
-  age: z.preprocess(
-    (val) => {
-      if (typeof val === "number") return String(val);
-      return val;
-    },
-    z
-      .string()
-      .trim()
-      .min(1, { message: "L'âge est obligatoire" })
-      .transform((value) => Number(value))
-      .refine((value) => !Number.isNaN(value), {
-        message: "L'âge doit être un nombre valide",
-      })
-      .refine((value) => Number.isInteger(value), {
-        message: "L'âge doit être un nombre entier",
-      })
-      .refine((value) => value >= 18, {
-        message: "Vous devez avoir au moins 18 ans",
-      })
-      .refine((value) => value <= 100, {
-        message: "Veuillez entrer un âge valide inférieur à 100 ans",
-      }),
-  ),
-
+export const UpdateProfileSchema = BaseUserSchema.pick({
+  firstName: true,
+  lastName: true,
+  age: true,
+}).extend({
   biography: z
     .string()
     .trim()
@@ -74,17 +27,7 @@ export const UpdateProfileSchema = z.object({
 
   profilePicture: z.string().nullable().optional(),
 
-  address: z.preprocess((val) => {
-    // Si c'est une string (cas du Multipart), on parse le JSON
-    if (typeof val === "string") {
-      try {
-        return JSON.parse(val);
-      } catch {
-        return val; // Si c'est pas du JSON valide, on laisse Zod échouer après
-      }
-    }
-    return val;
-  }, AddressSchema),
+  address: z.preprocess(preprocessAddress, AddressSchema),
 
   availability: z
     .preprocess(
@@ -173,6 +116,7 @@ export const UpdateProfileSchema = z.object({
         .optional(),
     )
     .optional(),
+
   removeProfilePicture: z.preprocess(
     (val) => val === "true" || val === true,
     z.boolean().optional(),
