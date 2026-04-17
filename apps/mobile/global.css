@@ -1,3 +1,21 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* 1. On rend le conteneur global invisible aux clics (pour ne pas bloquer le reste de l'app) */
+div[data-testid="toastAnimatedContainer"] {
+    pointer-events: none !important;
+}
+
+/* 2. On réactive les clics uniquement sur le composant (le toast lui-même) */
+/* Cela cible le premier div enfant qui contient ton style */
+div[data-testid="toastAnimatedContainer"]>div {
+    pointer-events: auto !important;
+}
+
+/* 3. Sécurité : si le toast est en train de disparaître (opacity 0), 
+      on s'assure qu'il ne capte plus rien du tout */
+div[data-testid="toastAnimatedContainer"][style*="opacity: 0"] {
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
