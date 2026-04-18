@@ -45,6 +45,8 @@ function isMobileSubpageRoute(pathname: string): boolean {
   if (MOBILE_SUBPAGE_ROUTES.has(pathname)) return true;
   // Routes dynamiques : /missions/:id
   if (/^\/missions\/\d+/.test(pathname)) return true;
+  // Toutes les sous-pages association/missions
+  if (pathname.startsWith("/association/missions")) return true;
   return false;
 }
 

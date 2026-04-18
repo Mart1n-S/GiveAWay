@@ -25,6 +25,22 @@ export const MISSION_STATUSES = [
 ] as const;
 export type MissionStatus = (typeof MISSION_STATUSES)[number];
 
+/** Statuts visibles dans le tableau de bord association (exclut DELETED) */
+export const MANAGED_MISSION_STATUSES = [
+  "ACTIVE",
+  "ARCHIVED",
+] as const;
+export type ManagedMissionStatus = (typeof MANAGED_MISSION_STATUSES)[number];
+
+/** Onglets du tableau de bord association */
+export const MISSION_DASHBOARD_TABS = [
+  "active",
+  "upcoming",
+  "past",
+  "archived",
+] as const;
+export type MissionDashboardTab = (typeof MISSION_DASHBOARD_TABS)[number];
+
 export const MISSION_AVAILABILITY_TYPES = [
   "REMOTE",
   "ON_SITE",
@@ -39,5 +55,6 @@ export interface MissionBase {
   title: string;
   description: string;
   type: ActivityType;
-  availabilityType: MissionAvailabilityType;
+  /** null autorisé pour les missions de type INFO (simple information) */
+  availabilityType: MissionAvailabilityType | null;
 }

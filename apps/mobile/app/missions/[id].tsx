@@ -20,6 +20,7 @@ import type {
   ActivityType,
 } from "@repo/shared";
 import { MissionService } from "@/services/mission.service";
+import { useAuthStore } from "@/stores/auth.store";
 import { Text, Button, TagBadge, colors } from "@/components/ui";
 import { MissionMap } from "@/components/ui/mission-map";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -147,7 +148,7 @@ const TYPE_CONFIG: Record<
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
-function Skeleton({ className = "" }: { className?: string }) {
+function Skeleton({ className = "" }: { readonly className?: string }) {
   const anim = useRef(new Animated.Value(0.5)).current;
   useEffect(() => {
     const loop = Animated.loop(
@@ -219,9 +220,9 @@ function ErrorScreen({
   onRetry,
   onBack,
 }: {
-  type: "network" | "notfound" | null;
-  onRetry: () => void;
-  onBack: () => void;
+  readonly type: "network" | "notfound" | null;
+  readonly onRetry: () => void;
+  readonly onBack: () => void;
 }) {
   const isNotFound = type === "notfound";
   return (
@@ -258,7 +259,7 @@ function ErrorScreen({
 
 // ─── Helper components ────────────────────────────────────────────────────────
 
-function SectionLabel({ label }: { label: string }) {
+function SectionLabel({ label }: { readonly label: string }) {
   return (
     <Text className="text-xs font-semibold tracking-wider uppercase text-grey-700">
       {label}
@@ -274,8 +275,8 @@ function MetaRow({
   icon: Icon,
   children,
 }: {
-  icon: ReturnType<typeof cssInterop>;
-  children: React.ReactNode;
+  readonly icon: ReturnType<typeof cssInterop>;
+  readonly children: React.ReactNode;
 }) {
   return (
     <View className="flex-row items-start gap-3">
@@ -292,9 +293,9 @@ function TagGroup({
   items,
   variant,
 }: {
-  label: string;
-  items: { id: number; label: string }[];
-  variant: "orange" | "green" | "blue" | "surface" | "red";
+  readonly label: string;
+  readonly items: { readonly id: number; readonly label: string }[];
+  readonly variant: "orange" | "green" | "blue" | "surface" | "red";
 }) {
   if (items.length === 0) return null;
   return (
@@ -320,6 +321,7 @@ export default function MissionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const user = useAuthStore((state) => state.user);
 
   const [mission, setMission] = useState<MissionDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -364,9 +366,21 @@ export default function MissionDetailScreen() {
     [mission?.startDate, mission?.endDate],
   );
 
+  const isAssociationMember = useMemo(
+    () =>
+      mission != null &&
+      (user?.associations ?? []).some(
+        (a) => a.associationId === mission.association.id,
+      ),
+    [mission, user?.associations],
+  );
+
   const canRegister = useMemo(
-    () => mission?.hasRegistration === true && mission?.status === "ACTIVE",
-    [mission?.hasRegistration, mission?.status],
+    () =>
+      !isAssociationMember &&
+      mission?.hasRegistration === true &&
+      mission?.status === "ACTIVE",
+    [isAssociationMember, mission?.hasRegistration, mission?.status],
   );
 
   const isFull = useMemo(
@@ -411,7 +425,45 @@ export default function MissionDetailScreen() {
   const hasAddress = mission.address !== null;
   const mapLat = mission.address?.latitude ?? null;
   const mapLng = mission.address?.longitude ?? null;
-  const ctaBottomOffset = canRegister ? insets.bottom + 84 : 32;
+  const showCta = canRegister || isAssociationMember;
+
+  let ctaButton: React.ReactNode;
+  if (isAssociationMember) {
+    ctaButton = (
+      <Button
+        testID="btn-manage-mission"
+        variant="secondary"
+        onPress={() => {
+          router.navigate("/association/missions" as any);
+          setTimeout(() => {
+            router.push(`/association/missions/${mission.id}` as any);
+          }, 0);
+        }}
+        className="w-full"
+      >
+        Gérer cette mission
+      </Button>
+    );
+  } else if (isFull) {
+    ctaButton = (
+      <Button
+        testID="btn-mission-full"
+        variant="primary"
+        disabled
+        onPress={() => {}}
+        className="w-full"
+      >
+        Complet — toutes les places sont prises
+      </Button>
+    );
+  } else {
+    ctaButton = (
+      <Button testID="btn-candidater" variant="primary" onPress={() => {}} className="w-full">
+        Candidater à cette mission
+      </Button>
+    );
+  }
+  const ctaBottomOffset = showCta ? insets.bottom + 84 : 32;
 
   const assocInitials = mission.association.name
     .split(" ")
@@ -424,14 +476,18 @@ export default function MissionDetailScreen() {
     value: string;
     label: string;
   }> = [
-    {
-      Icon: HandHeartIcon,
-      value:
-        mission.volunteersNeeded != null
-          ? `${mission.participantsCount} / ${mission.volunteersNeeded}`
-          : String(mission.participantsCount),
-      label: "bénévole" + (mission.participantsCount > 1 ? "s" : ""),
-    },
+    ...(mission.hasRegistration
+      ? [
+          {
+            Icon: HandHeartIcon,
+            value:
+              mission.volunteersNeeded != null
+                ? `${mission.participantsCount} / ${mission.volunteersNeeded}`
+                : String(mission.participantsCount),
+            label: "bénévole" + (mission.participantsCount > 1 ? "s" : ""),
+          },
+        ]
+      : []),
     ...(formattedDuration
       ? [{ Icon: ClockIcon, value: formattedDuration, label: "durée" }]
       : []),
@@ -644,16 +700,18 @@ export default function MissionDetailScreen() {
                   <SectionLabel label="Informations pratiques" />
 
                   {/* Modalité (+ adresse inline si sur place ou hybride) */}
-                  <MetaRow icon={LocalisationIcon}>
-                    <Text className="text-sm font-medium text-grey-900">
-                      {AVAILABILITY_LABELS[mission.availabilityType]}
-                    </Text>
-                    {mission.availabilityType !== "REMOTE" && hasAddress && (
-                      <Text className="text-xs text-grey-700 mt-0.5">
-                        {formatAddress(mission.address!)}
+                  {mission.availabilityType && (
+                    <MetaRow icon={LocalisationIcon}>
+                      <Text className="text-sm font-medium text-grey-900">
+                        {AVAILABILITY_LABELS[mission.availabilityType]}
                       </Text>
-                    )}
-                  </MetaRow>
+                      {mission.availabilityType !== "REMOTE" && hasAddress && (
+                        <Text className="text-xs text-grey-700 mt-0.5">
+                          {formatAddress(mission.address!)}
+                        </Text>
+                      )}
+                    </MetaRow>
+                  )}
 
                   {/* Adresse séparée pour les missions à distance */}
                   {mission.availabilityType === "REMOTE" && hasAddress && (
@@ -715,7 +773,7 @@ export default function MissionDetailScreen() {
         </ScrollView>
 
         {/* ─────────────────────────────────────── CTA FIXE ── */}
-        {canRegister && (
+        {showCta && (
           <View
             testID="mission-detail-cta"
             className="absolute bottom-0 left-0 right-0 px-4 bg-white border-t border-grey-100"
@@ -725,21 +783,7 @@ export default function MissionDetailScreen() {
             }}
           >
             <View className="w-full max-w-4xl mx-auto">
-              {isFull ? (
-                <Button
-                  testID="btn-mission-full"
-                  variant="primary"
-                  disabled
-                  onPress={() => {}}
-                  className="w-full"
-                >
-                  Complet — toutes les places sont prises
-                </Button>
-              ) : (
-                <Button testID="btn-candidater" variant="primary" onPress={() => {}} className="w-full">
-                  Candidater à cette mission
-                </Button>
-              )}
+              {ctaButton}
             </View>
           </View>
         )}

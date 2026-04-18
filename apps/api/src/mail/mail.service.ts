@@ -248,6 +248,120 @@ export class MailService {
     );
   }
 
+  private getMissionDeletedTemplate(
+    userName: string,
+    missionTitle: string,
+    associationName: string,
+  ): string {
+    const content = `
+      <h1 style="margin: 0 0 16px 0; color: #1e293b; font-size: 22px; font-weight: 700; text-align: center;">Mission annulée 📢</h1>
+      <p style="text-align: center; margin-bottom: 24px;">Bonjour <b>${userName}</b>,</p>
+      <p style="text-align: center; margin-bottom: 24px;">
+        Nous vous informons que la mission <b>${missionTitle}</b> proposée par <b>${associationName}</b> a été annulée.
+      </p>
+      <p style="text-align: center; margin-bottom: 32px; color: #64748b;">
+        Votre inscription à cette mission a été automatiquement supprimée. Nous vous invitons à consulter d'autres missions disponibles sur GiveAWay.
+      </p>
+      <div style="border-top: 1px solid #f1f5f9; padding-top: 24px; font-size: 13px; color: #94a3b8; text-align: center;">
+        Merci pour votre engagement bénévole !
+      </div>
+    `;
+    return this.getEmailWrapper(content);
+  }
+
+  private getMissionUpdatedTemplate(
+    userName: string,
+    missionTitle: string,
+    associationName: string,
+    changes: string[],
+  ): string {
+    const changesList = changes
+      .map((c) => `<li style="margin-bottom: 8px; color: #334155;">${c}</li>`)
+      .join('');
+
+    const content = `
+      <h1 style="margin: 0 0 16px 0; color: #1e293b; font-size: 22px; font-weight: 700; text-align: center;">Mission modifiée ✏️</h1>
+      <p style="text-align: center; margin-bottom: 24px;">Bonjour <b>${userName}</b>,</p>
+      <p style="text-align: center; margin-bottom: 16px;">
+        Des informations importantes concernant la mission <b>${missionTitle}</b> proposée par <b>${associationName}</b> ont été modifiées :
+      </p>
+      <ul style="margin: 0 0 32px 0; padding: 0 0 0 20px;">
+        ${changesList}
+      </ul>
+      <p style="text-align: center; margin-bottom: 32px; color: #64748b;">
+        Nous vous invitons à consulter les détails mis à jour directement sur GiveAWay.
+      </p>
+      <div style="border-top: 1px solid #f1f5f9; padding-top: 24px; font-size: 13px; color: #94a3b8; text-align: center;">
+        Merci pour votre engagement bénévole !
+      </div>
+    `;
+    return this.getEmailWrapper(content);
+  }
+
+  async sendMissionDeletedEmail(
+    email: string,
+    userName: string,
+    missionTitle: string,
+    associationName: string,
+  ) {
+    if (
+      this.config.get('NODE_ENV') === 'test' ||
+      this.config.get('USE_DETERMINISTIC_OTP') === 'true'
+    ) {
+      console.log(
+        `\n📨 [MAIL SERVICE] Mission supprimée — notif pour : ${email}`,
+      );
+      console.log(
+        `📋 Mission : ${missionTitle} | Association : ${associationName}\n`,
+      );
+      return;
+    }
+
+    const html = this.getMissionDeletedTemplate(
+      userName,
+      missionTitle,
+      associationName,
+    );
+    return this.sendApiEmail(
+      email,
+      `La mission "${missionTitle}" a été annulée`,
+      html,
+    );
+  }
+
+  async sendMissionUpdatedEmail(
+    email: string,
+    userName: string,
+    missionTitle: string,
+    associationName: string,
+    changes: string[],
+  ) {
+    if (
+      this.config.get('NODE_ENV') === 'test' ||
+      this.config.get('USE_DETERMINISTIC_OTP') === 'true'
+    ) {
+      console.log(
+        `\n📨 [MAIL SERVICE] Mission modifiée — notif pour : ${email}`,
+      );
+      console.log(
+        `📋 Mission : ${missionTitle} | Changements : ${changes.join(', ')}\n`,
+      );
+      return;
+    }
+
+    const html = this.getMissionUpdatedTemplate(
+      userName,
+      missionTitle,
+      associationName,
+      changes,
+    );
+    return this.sendApiEmail(
+      email,
+      `Mise à jour de la mission "${missionTitle}"`,
+      html,
+    );
+  }
+
   async sendPasswordResetEmail(email: string, token: string) {
     if (
       this.config.get('NODE_ENV') === 'test' ||

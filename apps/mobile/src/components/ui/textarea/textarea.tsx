@@ -21,6 +21,7 @@ export function TextArea({
   errorMessage,
   error = false,
   disabled = false,
+  required = false,
   maxLength,
   showCharacterCount = true,
   containerClassName,
@@ -43,6 +44,10 @@ export function TextArea({
 
   const inputRef = useRef<TextInput>(null);
   const isError = error || !!errorMessage;
+
+  let borderClass = "border-grey-600";
+  if (isError) borderClass = "border-error-100";
+  else if (isFocused) borderClass = "border-primary";
 
   const uniqueId = useId();
   const inputId = id ?? `textarea-${uniqueId}`;
@@ -112,6 +117,7 @@ export function TextArea({
             )}
           >
             {label}
+            {required && <Text className="text-error-100"> *</Text>}
           </Text>
         ) : (
           <View />
@@ -145,14 +151,7 @@ export function TextArea({
           // COULEURS
           disabled
             ? "bg-grey-100 border-grey-600"
-            : [
-                "bg-white",
-                isError
-                  ? "border-error-100"
-                  : isFocused
-                    ? "border-primary"
-                    : "border-grey-600",
-              ],
+            : ["bg-white", borderClass],
 
           // FOCUS WEB
           isWeb &&
