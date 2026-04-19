@@ -31,11 +31,15 @@ export default function NotificationsScreen() {
   const [emailNotifications, setEmailNotifications] = useState(
     profile?.emailNotifications ?? false,
   );
+  const [matchNotifications, setMatchNotifications] = useState(
+    profile?.matchNotifications ?? false,
+  );
 
   // État réel de la permission OS — source de vérité
   const [pushGranted, setPushGranted] = useState<boolean | null>(null);
 
   const [emailError, setEmailError] = useState<string | undefined>(undefined);
+  const [matchError, setMatchError] = useState<string | undefined>(undefined);
   const [globalError, setGlobalError] = useState<string | undefined>(undefined);
 
   const checkPushPermission = useCallback(async () => {
@@ -96,6 +100,37 @@ export default function NotificationsScreen() {
     setEmailError(undefined);
     setEmailNotifications(newValue);
     await saveEmailNotifications(newValue);
+  };
+
+  const saveMatchNotifications = async (newValue: boolean) => {
+    try {
+      await ProfileService.updateNotifications({ matchNotifications: newValue });
+    } catch (error: unknown) {
+      setMatchNotifications(!newValue);
+
+      if (isAxiosError(error) && error.response) {
+        const status = error.response.status;
+        const message: string =
+          error.response.data?.message || "Une erreur est survenue.";
+
+        if (status === 400) {
+          setMatchError(message);
+          return;
+        }
+        setGlobalError(message);
+      } else {
+        setGlobalError(
+          "Impossible de contacter le serveur. Vérifiez votre connexion.",
+        );
+      }
+    }
+  };
+
+  const handleMatchToggle = async (newValue: boolean) => {
+    setGlobalError(undefined);
+    setMatchError(undefined);
+    setMatchNotifications(newValue);
+    await saveMatchNotifications(newValue);
   };
 
   return (
@@ -164,6 +199,40 @@ export default function NotificationsScreen() {
               value={emailNotifications}
               onValueChange={handleEmailToggle}
               errorMessage={emailError}
+            />
+          </View>
+
+          {/* Missions personnalisées */}
+          <View className="overflow-hidden bg-white border rounded-lg border-grey-100">
+            <View className="px-5 pt-4 pb-2">
+              <Text className="text-base font-bold text-grey-900">
+                Missions personnalisées
+              </Text>
+            </View>
+
+            <View className="h-[1px] mx-5 bg-grey-100" />
+
+            {/* Bulle d'info ambre */}
+            <View className="flex-row gap-3 mx-5 mt-4 p-3 border border-amber-200 rounded-lg bg-amber-50">
+              <InfoIcon className="w-5 h-5 mt-0.5 text-amber-600 shrink-0" />
+              <Text className="flex-1 text-xs text-amber-700">
+                Même sans suivre une association, si une nouvelle mission
+                correspond à vos causes, compétences ou disponibilités, nous
+                pouvons vous en informer.
+              </Text>
+            </View>
+
+            <ToggleRow
+              testID="toggle-match-notifications"
+              label={
+                Platform.OS === "web"
+                  ? "Suggérer des missions par e-mail"
+                  : "Suggérer des missions par e-mail et notifications push"
+              }
+              description="Recevez des suggestions adaptées à votre profil"
+              value={matchNotifications}
+              onValueChange={handleMatchToggle}
+              errorMessage={matchError}
             />
           </View>
 

@@ -19,6 +19,7 @@ export interface User {
   status: UserStatus;
 
   emailNotifications: boolean;
+  matchNotifications: boolean;
 
   createdAt: Date | string;
   updatedAt: Date | string;

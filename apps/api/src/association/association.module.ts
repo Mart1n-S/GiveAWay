@@ -9,9 +9,10 @@ import { AssociationFollowService } from './association-follow.service';
 import { AssociationMemberGuard } from './guards/association-member.guard';
 import { AssociationRoleGuard } from './guards/association-role.guard';
 import { NotificationModule } from '../notification/notification.module';
+import { MatchingModule } from '../matching/matching.module';
 
 @Module({
-  imports: [ConfigModule, NotificationModule],
+  imports: [ConfigModule, NotificationModule, MatchingModule],
   controllers: [
     AssociationController,
     AssociationMissionsController,

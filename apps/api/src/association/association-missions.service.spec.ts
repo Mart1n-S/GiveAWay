@@ -8,6 +8,7 @@ import { AssociationMissionsService } from './association-missions.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import { NotificationService } from '../notification/notification.service';
+import { MatchingService } from '../matching/matching.service';
 import {
   AssociationStatus,
   MissionStatus,
@@ -82,6 +83,7 @@ const mockPrisma = {
   missionPublicType: { deleteMany: jest.fn(), createMany: jest.fn() },
   missionVolunteerType: { deleteMany: jest.fn(), createMany: jest.fn() },
   userAssociationFollow: { findMany: jest.fn().mockResolvedValue([]) },
+  user: { findMany: jest.fn().mockResolvedValue([]) },
   $transaction: jest.fn(),
 };
 
@@ -112,6 +114,14 @@ describe('AssociationMissionsService', () => {
         { provide: PrismaService, useValue: mockPrisma },
         { provide: MailService, useValue: mockMail },
         { provide: NotificationService, useValue: mockNotifications },
+        {
+          provide: MatchingService,
+          useValue: {
+            scoreUserMission: jest
+              .fn()
+              .mockReturnValue({ total: 0, isMatch: false }),
+          },
+        },
       ],
     }).compile();
 

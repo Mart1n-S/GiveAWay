@@ -35,6 +35,7 @@ const basePrismaUser: UserWithRelations = {
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-06-01'),
   emailNotifications: true,
+  matchNotifications: false,
   pushToken: null,
   address: {
     id: 10,

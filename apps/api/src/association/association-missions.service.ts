@@ -27,6 +27,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import { NotificationService } from '../notification/notification.service';
+import { MatchingService } from '../matching/matching.service';
 
 // Type interne pour le résultat de la requête Prisma avec relations
 type MissionWithRelations = Prisma.MissionGetPayload<{
@@ -49,12 +50,32 @@ const MISSION_INCLUDE = {
   _count: { select: { participants: true } },
 } as const;
 
+// Type pour les candidats au matching (query Prisma avec relations)
+type CandidateUser = {
+  id: number;
+  email: string;
+  firstName: string;
+  pushToken: string | null;
+  emailNotifications: boolean;
+  skills: { skill: { id: number } }[];
+  causes: { cause: { id: number } }[];
+  availability: { type: string; timeSlot: string[] } | null;
+  address: { latitude: unknown; longitude: unknown } | null;
+  participations: {
+    mission: {
+      causes: { cause: { id: number } }[];
+      skills: { skill: { id: number } }[];
+    };
+  }[];
+};
+
 @Injectable()
 export class AssociationMissionsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mail: MailService,
     private readonly notifications: NotificationService,
+    private readonly matching: MatchingService,
   ) {}
 
   // ----------------------------------------------------------------
@@ -139,8 +160,9 @@ export class AssociationMissionsService {
 
     const result = this.mapToDto(mission);
 
-    // Fire-and-forget: notifie les abonnés de l'association
+    // Fire-and-forget: notifie les abonnés et les utilisateurs matchants
     void this.notifyFollowers(associationId, mission.title, mission.id);
+    void this.notifyMatchingUsers(associationId, mission);
 
     return result;
   }
@@ -802,6 +824,95 @@ export class AssociationMissionsService {
   // ----------------------------------------------------------------
   // Helpers privés
   // ----------------------------------------------------------------
+
+  private async notifyMatchingUsers(
+    associationId: number,
+    mission: MissionWithRelations,
+  ): Promise<void> {
+    // Chargement des candidats :
+    // - matchNotifications activé, compte ACTIVE
+    // - Pas déjà notifiés via follow (évite double notification)
+    // - Pas membres de l'association
+    // - Filtre profil vide : au moins une compétence ou une cause renseignée
+    const candidates = (await this.prisma.user.findMany({
+      where: {
+        matchNotifications: true,
+        status: 'ACTIVE',
+        OR: [{ skills: { some: {} } }, { causes: { some: {} } }],
+        NOT: [
+          { follows: { some: { associationId } } },
+          { associations: { some: { associationId } } },
+        ],
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        pushToken: true,
+        emailNotifications: true,
+        skills: { select: { skill: { select: { id: true } } } },
+        causes: { select: { cause: { select: { id: true } } } },
+        availability: { select: { type: true, timeSlot: true } },
+        address: { select: { latitude: true, longitude: true } },
+        participations: {
+          where: { mission: { status: 'ACTIVE' } },
+          select: {
+            mission: {
+              select: {
+                causes: { select: { cause: { select: { id: true } } } },
+                skills: { select: { skill: { select: { id: true } } } },
+              },
+            },
+          },
+          take: 10,
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    })) as unknown as CandidateUser[];
+
+    const matched = candidates
+      .map((user) => ({
+        user,
+        score: this.matching.scoreUserMission(user, mission),
+      }))
+      .filter(({ score }) => score.isMatch);
+
+    if (matched.length === 0) return;
+
+    // Push notifications
+    const pushMessages = matched
+      .filter(({ user }) => !!user.pushToken)
+      .map(({ user }) => ({
+        to: user.pushToken,
+        title: 'Mission pour vous',
+        body: mission.title,
+        data: { missionId: mission.id },
+        sound: 'default' as const,
+      }));
+
+    if (pushMessages.length > 0) {
+      await this.notifications.sendPushNotifications(pushMessages);
+    }
+
+    // Emails
+    const association = await this.prisma.association.findUnique({
+      where: { id: associationId },
+      select: { name: true },
+    });
+
+    Promise.allSettled(
+      matched
+        .filter(({ user }) => user.emailNotifications && user.email)
+        .map(({ user }) =>
+          this.mail.sendNewMissionEmail(
+            user.email,
+            user.firstName,
+            mission.title,
+            association?.name ?? '',
+          ),
+        ),
+    );
+  }
 
   private async notifyFollowers(
     associationId: number,

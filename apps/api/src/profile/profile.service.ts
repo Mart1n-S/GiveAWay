@@ -258,13 +258,6 @@ export class ProfileService {
   ): Promise<User> {
     const { prisma } = this.authService;
 
-    // Vérification défensive des types (double sécurité après ZodValidationPipe)
-    if (typeof dto.emailNotifications !== 'boolean') {
-      throw new BadRequestException(
-        'Les préférences de notifications doivent être des booléens',
-      );
-    }
-
     // Vérification que l'utilisateur existe et est actif
     const user = await prisma.user.findUnique({ where: { id: userId } });
 
@@ -282,7 +275,12 @@ export class ProfileService {
     await prisma.user.update({
       where: { id: userId },
       data: {
-        emailNotifications: dto.emailNotifications,
+        ...(dto.emailNotifications !== undefined && {
+          emailNotifications: dto.emailNotifications,
+        }),
+        ...(dto.matchNotifications !== undefined && {
+          matchNotifications: dto.matchNotifications,
+        }),
       },
     });
 
