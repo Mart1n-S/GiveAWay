@@ -7,13 +7,20 @@ import {
 import {
   AssociationMissionItem,
   AssociationMissionDashboard,
+  AssociationMissionStats,
+  MissionStatsByType,
+  MissionStatsByMonth,
+  MissionStatsTopItem,
+  StatsQueryDto,
   CreateMissionDto,
   UpdateMissionDto,
+  ActivityType,
 } from '@repo/shared';
 import {
   MissionStatus,
   AssociationStatus,
   Prisma,
+  ActivityType as PrismaActivityType,
 } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
@@ -197,6 +204,195 @@ export class AssociationMissionsService {
         past: past.length,
         archived: archived.length,
       },
+    };
+  }
+
+  // ----------------------------------------------------------------
+  // GET STATISTICS — KPIs, par type, par mois, top missions
+  // ----------------------------------------------------------------
+  async getStats(
+    associationId: number,
+    query: StatsQueryDto,
+  ): Promise<AssociationMissionStats> {
+    const MONTHS_FR = [
+      'Jan',
+      'Fév',
+      'Mar',
+      'Avr',
+      'Mai',
+      'Jun',
+      'Jul',
+      'Aoû',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Déc',
+    ];
+
+    const TYPE_LABELS: Record<string, string> = {
+      MISSION: 'Mission',
+      EVENT: 'Événement',
+      COLLECT: 'Collecte',
+      INFO: 'Information',
+    };
+
+    const dateFilter =
+      query.startDate || query.endDate
+        ? {
+            createdAt: {
+              ...(query.startDate && { gte: new Date(query.startDate) }),
+              ...(query.endDate && { lte: new Date(query.endDate) }),
+            },
+          }
+        : {};
+
+    const where: Prisma.MissionWhereInput = {
+      associationId,
+      status: { not: MissionStatus.DELETED },
+      ...(query.missionType && {
+        type: query.missionType as PrismaActivityType,
+      }),
+      ...dateFilter,
+    };
+
+    const missions = await this.prisma.mission.findMany({
+      where,
+      include: { _count: { select: { participants: true } } },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const now = new Date();
+    let activeMissions = 0;
+    let pastMissions = 0;
+    let archivedMissions = 0;
+    let totalParticipants = 0;
+
+    const typeMap = new Map<string, { count: number; participants: number }>();
+    const monthMap = new Map<
+      string,
+      { missions: number; participants: number }
+    >();
+
+    for (const m of missions) {
+      const pCount = m._count.participants;
+      totalParticipants += pCount;
+
+      if (m.status === MissionStatus.ARCHIVED) {
+        archivedMissions++;
+      } else if (m.endDate && m.endDate < now) {
+        pastMissions++;
+      } else {
+        activeMissions++;
+      }
+
+      const typeEntry = typeMap.get(m.type) ?? { count: 0, participants: 0 };
+      typeMap.set(m.type, {
+        count: typeEntry.count + 1,
+        participants: typeEntry.participants + pCount,
+      });
+
+      const d = m.createdAt;
+      const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const monthEntry = monthMap.get(monthKey) ?? {
+        missions: 0,
+        participants: 0,
+      };
+      monthMap.set(monthKey, {
+        missions: monthEntry.missions + 1,
+        participants: monthEntry.participants + pCount,
+      });
+    }
+
+    const byType: MissionStatsByType[] = Array.from(typeMap.entries()).map(
+      ([type, data]) => ({
+        type: type as ActivityType,
+        label: TYPE_LABELS[type] ?? type,
+        count: data.count,
+        participants: data.participants,
+      }),
+    );
+
+    const byMonth: MissionStatsByMonth[] = Array.from(monthMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, data]) => {
+        const [year, month] = key.split('-');
+        return {
+          month: key,
+          label: `${MONTHS_FR[parseInt(month, 10) - 1]} ${year}`,
+          missions: data.missions,
+          participants: data.participants,
+        };
+      });
+
+    // Tendance des inscriptions basée sur MissionParticipant.createdAt
+    const missionIds = missions.map((m) => m.id);
+    const participantRows =
+      missionIds.length > 0
+        ? await this.prisma.missionParticipant.findMany({
+            where: {
+              missionId: { in: missionIds },
+              ...(query.startDate || query.endDate
+                ? {
+                    createdAt: {
+                      ...(query.startDate && {
+                        gte: new Date(query.startDate),
+                      }),
+                      ...(query.endDate && { lte: new Date(query.endDate) }),
+                    },
+                  }
+                : {}),
+            },
+            select: { createdAt: true },
+          })
+        : [];
+
+    const partMonthMap = new Map<string, number>();
+    for (const p of participantRows) {
+      const d = p.createdAt;
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      partMonthMap.set(key, (partMonthMap.get(key) ?? 0) + 1);
+    }
+
+    const participationByMonth: MissionStatsByMonth[] = Array.from(
+      partMonthMap.entries(),
+    )
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, count]) => {
+        const [year, month] = key.split('-');
+        return {
+          month: key,
+          label: `${MONTHS_FR[parseInt(month, 10) - 1]} ${year}`,
+          missions: 0,
+          participants: count,
+        };
+      });
+
+    const topMissions: MissionStatsTopItem[] = [...missions]
+      .sort((a, b) => b._count.participants - a._count.participants)
+      .slice(0, 5)
+      .map((m) => ({
+        id: m.id,
+        title: m.title,
+        participantsCount: m._count.participants,
+        type: m.type as ActivityType,
+      }));
+
+    return {
+      summary: {
+        totalMissions: missions.length,
+        activeMissions,
+        pastMissions,
+        archivedMissions,
+        totalParticipants,
+        averageParticipantsPerMission:
+          missions.length > 0
+            ? Math.round((totalParticipants / missions.length) * 10) / 10
+            : 0,
+      },
+      byType,
+      byMonth,
+      participationByMonth,
+      topMissions,
     };
   }
 

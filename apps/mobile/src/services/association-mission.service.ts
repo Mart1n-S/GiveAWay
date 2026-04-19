@@ -4,6 +4,8 @@ import { api } from "../lib/axios";
 import type {
   AssociationMissionDashboard,
   AssociationMissionItem,
+  AssociationMissionStats,
+  StatsQueryDto,
   CreateMissionFormValues,
   UpdateMissionFormValues,
 } from "@repo/shared";
@@ -44,6 +46,25 @@ export const AssociationMissionService = {
       return data;
     } catch (err) {
       return handleDisplayError(err, "Impossible de charger le tableau de bord.");
+    }
+  },
+
+  getStats: async (
+    associationId: number,
+    query?: StatsQueryDto,
+  ): Promise<AssociationMissionStats> => {
+    try {
+      const params = new URLSearchParams();
+      if (query?.startDate) params.append("startDate", query.startDate);
+      if (query?.endDate) params.append("endDate", query.endDate);
+      if (query?.missionType) params.append("missionType", query.missionType);
+      const qs = params.toString();
+      const { data } = await api.get<AssociationMissionStats>(
+        `${base(associationId)}/statistics${qs ? `?${qs}` : ""}`,
+      );
+      return data;
+    } catch (err) {
+      return handleDisplayError(err, "Impossible de charger les statistiques.");
     }
   },
 

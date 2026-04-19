@@ -13,6 +13,7 @@ import {
   createTestMission,
 } from './prisma-test-helper';
 import {
+  ActivityType,
   AssociationRole,
   AssociationStatus,
   MissionStatus,
@@ -714,6 +715,173 @@ describe('AssociationMissions Module (E2E)', () => {
         .delete(`/associations/${associationId}/missions/99999`)
         .set('Authorization', `Bearer ${ownerToken}`)
         .expect(404);
+    });
+  });
+
+  // ===========================================================================
+  // GET /associations/:associationId/missions/statistics
+  // ===========================================================================
+  describe('GET /associations/:associationId/missions/statistics', () => {
+    it('✅ 200 — owner obtient les statistiques (structure complète)', async () => {
+      const res = await request(httpServer)
+        .get(`/associations/${associationId}/missions/statistics`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+
+      const body = res.body;
+      expect(body.summary).toBeDefined();
+      expect(typeof body.summary.totalMissions).toBe('number');
+      expect(typeof body.summary.totalParticipants).toBe('number');
+      expect(typeof body.summary.activeMissions).toBe('number');
+      expect(typeof body.summary.pastMissions).toBe('number');
+      expect(typeof body.summary.archivedMissions).toBe('number');
+      expect(typeof body.summary.averageParticipantsPerMission).toBe('number');
+      expect(Array.isArray(body.byType)).toBe(true);
+      expect(Array.isArray(body.byMonth)).toBe(true);
+      expect(Array.isArray(body.participationByMonth)).toBe(true);
+      expect(Array.isArray(body.topMissions)).toBe(true);
+    });
+
+    it('✅ 200 — admin obtient les statistiques', async () => {
+      await request(httpServer)
+        .get(`/associations/${associationId}/missions/statistics`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+    });
+
+    it('✅ 200 — editor obtient les statistiques', async () => {
+      await request(httpServer)
+        .get(`/associations/${associationId}/missions/statistics`)
+        .set('Authorization', `Bearer ${editorToken}`)
+        .expect(200);
+    });
+
+    it('✅ 200 — totalMissions = 0 si aucune mission', async () => {
+      const res = await request(httpServer)
+        .get(`/associations/${associationId}/missions/statistics`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+
+      expect(res.body.summary.totalMissions).toBe(0);
+      expect(res.body.topMissions).toHaveLength(0);
+      expect(res.body.byType).toHaveLength(0);
+    });
+
+    it('✅ 200 — totalMissions reflète les missions créées', async () => {
+      await createTestMission(associationId, { type: ActivityType.MISSION });
+      await createTestMission(associationId, { type: ActivityType.EVENT });
+
+      const res = await request(httpServer)
+        .get(`/associations/${associationId}/missions/statistics`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+
+      expect(res.body.summary.totalMissions).toBe(2);
+    });
+
+    it('✅ 200 — filtre par missionType réduit le total', async () => {
+      await createTestMission(associationId, { type: ActivityType.MISSION });
+      await createTestMission(associationId, { type: ActivityType.EVENT });
+
+      const res = await request(httpServer)
+        .get(
+          `/associations/${associationId}/missions/statistics?missionType=MISSION`,
+        )
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+
+      expect(res.body.summary.totalMissions).toBe(1);
+    });
+
+    it('✅ 200 — byType contient les bonnes entrées', async () => {
+      await createTestMission(associationId, { type: ActivityType.MISSION });
+      await createTestMission(associationId, { type: ActivityType.COLLECT });
+
+      const res = await request(httpServer)
+        .get(`/associations/${associationId}/missions/statistics`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+
+      const types = (res.body.byType as any[]).map((t: any) => t.type);
+      expect(types).toContain('MISSION');
+      expect(types).toContain('COLLECT');
+    });
+
+    it('✅ 200 — byMonth contient une entrée par mois de création', async () => {
+      await createTestMission(associationId);
+      await createTestMission(associationId);
+
+      const res = await request(httpServer)
+        .get(`/associations/${associationId}/missions/statistics`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+
+      const byMonth = res.body.byMonth as any[];
+      expect(byMonth.length).toBeGreaterThanOrEqual(1);
+      expect(byMonth[0]).toHaveProperty('month');
+      expect(byMonth[0]).toHaveProperty('label');
+      expect(byMonth[0]).toHaveProperty('missions');
+    });
+
+    it('✅ 200 — filtre par date passée retourne 0 mission', async () => {
+      await createTestMission(associationId);
+
+      const res = await request(httpServer)
+        .get(
+          `/associations/${associationId}/missions/statistics?startDate=2000-01-01&endDate=2000-12-31`,
+        )
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+
+      expect(res.body.summary.totalMissions).toBe(0);
+    });
+
+    it('✅ 200 — topMissions est limité à 5 entrées', async () => {
+      await Promise.all(
+        Array.from({ length: 6 }, () => createTestMission(associationId)),
+      );
+
+      const res = await request(httpServer)
+        .get(`/associations/${associationId}/missions/statistics`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+
+      expect(res.body.topMissions.length).toBeLessThanOrEqual(5);
+    });
+
+    it('✅ 200 — missions DELETED exclues des statistiques', async () => {
+      await createTestMission(associationId, {
+        status: MissionStatus.DELETED,
+      });
+
+      const res = await request(httpServer)
+        .get(`/associations/${associationId}/missions/statistics`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+
+      expect(res.body.summary.totalMissions).toBe(0);
+    });
+
+    it('❌ 401 — sans token', async () => {
+      await request(httpServer)
+        .get(`/associations/${associationId}/missions/statistics`)
+        .expect(401);
+    });
+
+    it('❌ 403 — outsider non-membre', async () => {
+      await request(httpServer)
+        .get(`/associations/${associationId}/missions/statistics`)
+        .set('Authorization', `Bearer ${outsiderToken}`)
+        .expect(403);
+    });
+
+    it('❌ 400 — missionType invalide', async () => {
+      await request(httpServer)
+        .get(
+          `/associations/${associationId}/missions/statistics?missionType=INVALID_TYPE`,
+        )
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(400);
     });
   });
 });

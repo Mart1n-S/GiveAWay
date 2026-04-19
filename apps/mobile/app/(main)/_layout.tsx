@@ -39,6 +39,7 @@ const MOBILE_SUBPAGE_ROUTES = new Set([
   "/profil/notifications",
   "/association/modifier",
   "/association/membres",
+  "/association/statistiques",
 ]);
 
 function isMobileSubpageRoute(pathname: string): boolean {

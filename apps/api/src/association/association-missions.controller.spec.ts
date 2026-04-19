@@ -12,6 +12,7 @@ import { AssociationRoleGuard } from './guards/association-role.guard';
 import type {
   AssociationMissionItem,
   AssociationMissionDashboard,
+  AssociationMissionStats,
   CreateMissionDto,
   UpdateMissionDto,
 } from '@repo/shared';
@@ -51,11 +52,35 @@ const mockDashboard: AssociationMissionDashboard = {
   counts: { active: 1, upcoming: 0, past: 0, archived: 0 },
 };
 
+// ── Fixture stats ─────────────────────────────────────────────────
+
+const mockStats: AssociationMissionStats = {
+  summary: {
+    totalMissions: 3,
+    activeMissions: 1,
+    pastMissions: 1,
+    archivedMissions: 1,
+    totalParticipants: 10,
+    averageParticipantsPerMission: 3.3,
+  },
+  byType: [{ type: 'MISSION', label: 'Mission', count: 3, participants: 10 }],
+  byMonth: [
+    { month: '2025-01', label: 'Jan 2025', missions: 3, participants: 10 },
+  ],
+  participationByMonth: [
+    { month: '2025-01', label: 'Jan 2025', missions: 0, participants: 5 },
+  ],
+  topMissions: [
+    { id: 1, title: 'Top Mission', participantsCount: 5, type: 'MISSION' },
+  ],
+};
+
 // ── Mock service ──────────────────────────────────────────────────
 
 const mockService = {
   create: jest.fn(),
   getDashboard: jest.fn(),
+  getStats: jest.fn(),
   findOne: jest.fn(),
   update: jest.fn(),
   archive: jest.fn(),
@@ -167,6 +192,69 @@ describe('AssociationMissionsController', () => {
       mockService.getDashboard.mockRejectedValue(new Error('DB error'));
 
       await expect(controller.getDashboard(1)).rejects.toThrow('DB error');
+    });
+  });
+
+  // ── getStats ─────────────────────────────────────────────────────
+  describe('getStats', () => {
+    it('✅ délègue au service et retourne les statistiques', async () => {
+      mockService.getStats.mockResolvedValue(mockStats);
+
+      const result = await controller.getStats(1, {});
+
+      expect(mockService.getStats).toHaveBeenCalledWith(1, {});
+      expect(result).toEqual(mockStats);
+    });
+
+    it('✅ transmet correctement les filtres au service', async () => {
+      mockService.getStats.mockResolvedValue(mockStats);
+      const query = {
+        startDate: '2025-01-01',
+        endDate: '2025-12-31',
+        missionType: 'MISSION' as any,
+      };
+
+      await controller.getStats(1, query);
+
+      expect(mockService.getStats).toHaveBeenCalledWith(1, query);
+    });
+
+    it('✅ retourne des statistiques vides si aucune mission', async () => {
+      const empty: AssociationMissionStats = {
+        summary: {
+          totalMissions: 0,
+          activeMissions: 0,
+          pastMissions: 0,
+          archivedMissions: 0,
+          totalParticipants: 0,
+          averageParticipantsPerMission: 0,
+        },
+        byType: [],
+        byMonth: [],
+        participationByMonth: [],
+        topMissions: [],
+      };
+      mockService.getStats.mockResolvedValue(empty);
+
+      const result = await controller.getStats(1, {});
+
+      expect(result.summary.totalMissions).toBe(0);
+      expect(result.byType).toHaveLength(0);
+      expect(result.topMissions).toHaveLength(0);
+    });
+
+    it('✅ fonctionne sans aucun filtre (query vide)', async () => {
+      mockService.getStats.mockResolvedValue(mockStats);
+
+      await controller.getStats(42, {});
+
+      expect(mockService.getStats).toHaveBeenCalledWith(42, {});
+    });
+
+    it('❌ propage une erreur du service', async () => {
+      mockService.getStats.mockRejectedValue(new Error('DB error'));
+
+      await expect(controller.getStats(1, {})).rejects.toThrow('DB error');
     });
   });
 

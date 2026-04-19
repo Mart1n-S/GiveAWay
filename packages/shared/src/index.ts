@@ -36,6 +36,7 @@ export * from "./mission/mission-query.dto";
 export * from "./mission/create-mission.dto";
 export * from "./mission/update-mission.dto";
 export * from "./mission/association-mission.dto";
+export * from "./mission/association-mission-stats.dto";
 export * from "./association/association-map.dto";
 export * from "./association/association-category.dto";
 export * from "./association/nearby-query.dto";

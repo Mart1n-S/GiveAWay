@@ -9,16 +9,20 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import {
   AssociationMissionItem,
   AssociationMissionDashboard,
+  AssociationMissionStats,
   CreateMissionDto,
   CreateMissionSchema,
   UpdateMissionDto,
   UpdateMissionSchema,
+  StatsQueryDto,
+  StatsQuerySchema,
 } from '@repo/shared';
 import { AssociationRole } from '../generated/prisma/client';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -64,6 +68,21 @@ export class AssociationMissionsController {
     @Param('associationId', ParseIntPipe) associationId: number,
   ): Promise<AssociationMissionDashboard> {
     return this.service.getDashboard(associationId);
+  }
+
+  /**
+   * GET /associations/:associationId/missions/statistics
+   * Retourne les KPIs et statistiques globales des missions de l'association.
+   * Filtres optionnels : startDate, endDate, missionType.
+   * IMPORTANT : doit être déclaré AVANT :missionId.
+   */
+  @Get('statistics')
+  @HttpCode(HttpStatus.OK)
+  async getStats(
+    @Param('associationId', ParseIntPipe) associationId: number,
+    @Query(new ZodValidationPipe(StatsQuerySchema)) query: StatsQueryDto,
+  ): Promise<AssociationMissionStats> {
+    return this.service.getStats(associationId, query);
   }
 
   /**

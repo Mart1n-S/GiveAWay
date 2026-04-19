@@ -41,6 +41,20 @@ const makeMission = (overrides: Partial<any> = {}): any => ({
   ...overrides,
 });
 
+// ── Fixture stats ─────────────────────────────────────────────────
+
+const makeStatsMission = (overrides: Partial<any> = {}): any => ({
+  id: 1,
+  associationId: 10,
+  title: 'Mission stats',
+  type: ActivityType.MISSION,
+  status: MissionStatus.ACTIVE,
+  endDate: null,
+  createdAt: new Date('2025-03-15'),
+  _count: { participants: 0 },
+  ...overrides,
+});
+
 // ── Mock PrismaService ────────────────────────────────────────────
 
 const mockPrisma = {
@@ -587,6 +601,214 @@ describe('AssociationMissionsService', () => {
       await expect(service.unarchive(10, 999)).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  // ── getStats ─────────────────────────────────────────────────────
+  describe('getStats', () => {
+    const setupStats = (
+      missions: any[],
+      participants: { createdAt: Date }[] = [],
+    ) => {
+      mockPrisma.mission.findMany.mockResolvedValue(missions);
+      mockPrisma.missionParticipant.findMany.mockResolvedValue(participants);
+    };
+
+    it('✅ retourne un résumé vide si aucune mission', async () => {
+      setupStats([]);
+
+      const result = await service.getStats(10, {});
+
+      expect(result.summary.totalMissions).toBe(0);
+      expect(result.summary.totalParticipants).toBe(0);
+      expect(result.summary.averageParticipantsPerMission).toBe(0);
+      expect(result.byType).toHaveLength(0);
+      expect(result.byMonth).toHaveLength(0);
+      expect(result.topMissions).toHaveLength(0);
+    });
+
+    it('✅ calcule correctement le total des missions et participants', async () => {
+      setupStats([
+        makeStatsMission({ id: 1, _count: { participants: 3 } }),
+        makeStatsMission({ id: 2, _count: { participants: 5 } }),
+      ]);
+
+      const result = await service.getStats(10, {});
+
+      expect(result.summary.totalMissions).toBe(2);
+      expect(result.summary.totalParticipants).toBe(8);
+      expect(result.summary.averageParticipantsPerMission).toBe(4);
+    });
+
+    it('✅ classe correctement les missions par statut', async () => {
+      const pastDate = new Date(Date.now() - 86400000 * 7);
+      setupStats([
+        makeStatsMission({ id: 1, status: MissionStatus.ACTIVE }),
+        makeStatsMission({ id: 2, status: MissionStatus.ARCHIVED }),
+        makeStatsMission({
+          id: 3,
+          status: MissionStatus.ACTIVE,
+          endDate: pastDate,
+        }),
+      ]);
+
+      const result = await service.getStats(10, {});
+
+      expect(result.summary.activeMissions).toBe(1);
+      expect(result.summary.archivedMissions).toBe(1);
+      expect(result.summary.pastMissions).toBe(1);
+    });
+
+    it('✅ regroupe les missions par type avec le bon label', async () => {
+      setupStats([
+        makeStatsMission({
+          id: 1,
+          type: ActivityType.MISSION,
+          _count: { participants: 2 },
+        }),
+        makeStatsMission({
+          id: 2,
+          type: ActivityType.MISSION,
+          _count: { participants: 1 },
+        }),
+        makeStatsMission({
+          id: 3,
+          type: ActivityType.EVENT,
+          _count: { participants: 0 },
+        }),
+      ]);
+
+      const result = await service.getStats(10, {});
+
+      const missionType = result.byType.find((t) => t.type === 'MISSION');
+      const eventType = result.byType.find((t) => t.type === 'EVENT');
+      expect(missionType?.count).toBe(2);
+      expect(missionType?.participants).toBe(3);
+      expect(missionType?.label).toBe('Mission');
+      expect(eventType?.count).toBe(1);
+      expect(eventType?.label).toBe('Événement');
+    });
+
+    it('✅ regroupe les missions par mois de création', async () => {
+      setupStats([
+        makeStatsMission({ id: 1, createdAt: new Date('2025-01-10') }),
+        makeStatsMission({ id: 2, createdAt: new Date('2025-01-20') }),
+        makeStatsMission({ id: 3, createdAt: new Date('2025-03-05') }),
+      ]);
+
+      const result = await service.getStats(10, {});
+
+      expect(result.byMonth).toHaveLength(2);
+      const jan = result.byMonth.find((m) => m.month === '2025-01');
+      expect(jan?.missions).toBe(2);
+      expect(jan?.label).toBe('Jan 2025');
+      const mar = result.byMonth.find((m) => m.month === '2025-03');
+      expect(mar?.missions).toBe(1);
+    });
+
+    it('✅ calcule la tendance des inscriptions par mois (participationByMonth)', async () => {
+      setupStats(
+        [makeStatsMission({ id: 1 })],
+        [
+          { createdAt: new Date('2025-02-10') },
+          { createdAt: new Date('2025-02-20') },
+          { createdAt: new Date('2025-03-15') },
+        ],
+      );
+
+      const result = await service.getStats(10, {});
+
+      const feb = result.participationByMonth.find(
+        (m) => m.month === '2025-02',
+      );
+      expect(feb?.participants).toBe(2);
+      const mar = result.participationByMonth.find(
+        (m) => m.month === '2025-03',
+      );
+      expect(mar?.participants).toBe(1);
+    });
+
+    it('✅ retourne au maximum 5 missions dans topMissions, triées par participants décroissant', async () => {
+      const missions = Array.from({ length: 7 }, (_, i) =>
+        makeStatsMission({
+          id: i + 1,
+          title: `Mission ${i + 1}`,
+          _count: { participants: 7 - i },
+        }),
+      );
+      setupStats(missions);
+
+      const result = await service.getStats(10, {});
+
+      expect(result.topMissions).toHaveLength(5);
+      expect(result.topMissions[0].participantsCount).toBe(7);
+      expect(result.topMissions[4].participantsCount).toBe(3);
+    });
+
+    it('✅ applique le filtre missionType dans la requête Prisma', async () => {
+      setupStats([makeStatsMission({ type: ActivityType.EVENT })]);
+
+      await service.getStats(10, { missionType: 'EVENT' });
+
+      expect(mockPrisma.mission.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ type: ActivityType.EVENT }),
+        }),
+      );
+    });
+
+    it('✅ applique les filtres startDate et endDate dans la requête Prisma', async () => {
+      setupStats([]);
+
+      await service.getStats(10, {
+        startDate: '2025-01-01',
+        endDate: '2025-06-30',
+      });
+
+      expect(mockPrisma.mission.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            createdAt: expect.objectContaining({
+              gte: expect.any(Date),
+              lte: expect.any(Date),
+            }),
+          }),
+        }),
+      );
+    });
+
+    it('✅ ne filtre pas par date si aucun filtre fourni', async () => {
+      setupStats([]);
+
+      await service.getStats(10, {});
+
+      expect(mockPrisma.mission.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.not.objectContaining({ createdAt: expect.anything() }),
+        }),
+      );
+    });
+
+    it('✅ ne requête pas missionParticipant si aucune mission retournée', async () => {
+      setupStats([]);
+
+      await service.getStats(10, {});
+
+      expect(mockPrisma.missionParticipant.findMany).not.toHaveBeenCalled();
+    });
+
+    it('✅ byMonth est trié chronologiquement', async () => {
+      setupStats([
+        makeStatsMission({ id: 1, createdAt: new Date('2025-03-01') }),
+        makeStatsMission({ id: 2, createdAt: new Date('2025-01-01') }),
+        makeStatsMission({ id: 3, createdAt: new Date('2025-02-01') }),
+      ]);
+
+      const result = await service.getStats(10, {});
+
+      expect(result.byMonth[0].month).toBe('2025-01');
+      expect(result.byMonth[1].month).toBe('2025-02');
+      expect(result.byMonth[2].month).toBe('2025-03');
     });
   });
 

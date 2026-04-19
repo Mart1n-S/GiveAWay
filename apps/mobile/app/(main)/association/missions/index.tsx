@@ -42,7 +42,7 @@ function MissionsHeaderRight({ onPress }: { readonly onPress: () => void }) {
   return (
     <Button
       onPress={onPress}
-      className="h-9 px-3 mr-2"
+      className="px-3 mr-2 h-9"
       icon={<AddIcon className="w-4 h-4 text-white" />}
     >
       Créer
@@ -59,7 +59,7 @@ const EMPTY_COUNTS: AssociationMissionDashboard["counts"] = {
 
 export default function MissionsDashboardScreen() {
   const router = useRouter();
-  usePageTitle("Mes missions");
+  usePageTitle("Gestion des missions");
 
   const user = useAuthStore((state) => state.user);
   const associationId = user?.associations?.[0]?.associationId ?? null;
@@ -172,8 +172,8 @@ export default function MissionsDashboardScreen() {
 
   if (!associationId) {
     return (
-      <View className="flex-1 items-center justify-center px-6">
-        <Text className="text-base text-grey-500 text-center">
+      <View className="items-center justify-center flex-1 px-6">
+        <Text className="text-base text-center text-grey-500">
           Vous n'êtes membre d'aucune association.
         </Text>
       </View>
@@ -182,7 +182,7 @@ export default function MissionsDashboardScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center">
+      <View className="items-center justify-center flex-1">
         <ActivityIndicator size="large" color={colors.primary.default} />
       </View>
     );
@@ -192,7 +192,7 @@ export default function MissionsDashboardScreen() {
     <>
       <Stack.Screen
         options={{
-          headerTitle: "Mes missions",
+          headerTitle: "Gestion des missions",
           headerShown: Platform.OS !== "web",
           headerRight: () => (
             <MissionsHeaderRight
@@ -205,10 +205,10 @@ export default function MissionsDashboardScreen() {
         <View className="bg-white border-b border-grey-100">
           {Platform.OS === "web" && (
             <View className="flex-row items-center justify-between px-4 pt-4 pb-2">
-              <Text className="text-xl font-bold text-grey-900">Mes missions</Text>
+              <Text className="text-xl font-bold text-grey-900">Gestion des missions</Text>
               <Button
                 onPress={() => router.push("/association/missions/creer" as any)}
-                className="h-9 px-3"
+                className="px-3 h-9"
                 icon={<AddIcon className="w-4 h-4 text-white" />}
               >
                 Créer
@@ -248,8 +248,8 @@ export default function MissionsDashboardScreen() {
           )}
           ListEmptyComponent={
             search.trim() ? (
-              <View className="items-center justify-center py-16 px-8">
-                <Text className="text-base text-grey-500 text-center">
+              <View className="items-center justify-center px-8 py-16">
+                <Text className="text-base text-center text-grey-500">
                   Aucune mission ne correspond à « {search} ».
                 </Text>
               </View>

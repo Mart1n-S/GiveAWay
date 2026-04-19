@@ -852,6 +852,27 @@ export default function AssociationScreen() {
                 </Button>
               )}
 
+              {(isOwner || isAdmin) && (
+                <Button
+                  testID="btn-statistics"
+                  variant="secondary"
+                  onPress={
+                    isValidated
+                      ? () => router.push("/association/statistiques" as any)
+                      : handleLockedAction
+                  }
+                  disabled={!isValidated}
+                  icon={
+                    isValidated ? undefined : (
+                      <InfoIcon className="w-4 h-4 text-grey-disabledText" />
+                    )
+                  }
+                  className="w-full"
+                >
+                  Statistiques
+                </Button>
+              )}
+
               {isOwner && (
                 <Pressable
                   testID="btn-transfer-owner"
