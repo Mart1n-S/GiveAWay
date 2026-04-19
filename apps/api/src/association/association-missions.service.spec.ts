@@ -7,6 +7,7 @@ import {
 import { AssociationMissionsService } from './association-missions.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
+import { NotificationService } from '../notification/notification.service';
 import {
   AssociationStatus,
   MissionStatus,
@@ -80,6 +81,7 @@ const mockPrisma = {
   missionCause: { deleteMany: jest.fn(), createMany: jest.fn() },
   missionPublicType: { deleteMany: jest.fn(), createMany: jest.fn() },
   missionVolunteerType: { deleteMany: jest.fn(), createMany: jest.fn() },
+  userAssociationFollow: { findMany: jest.fn().mockResolvedValue([]) },
   $transaction: jest.fn(),
 };
 
@@ -89,6 +91,13 @@ const mockMail = {
   sendMissionDeletedEmail: jest.fn().mockResolvedValue(undefined),
   sendMissionUpdatedEmail: jest.fn().mockResolvedValue(undefined),
   sendParticipantRemovedEmail: jest.fn().mockResolvedValue(undefined),
+  sendNewMissionEmail: jest.fn().mockResolvedValue(undefined),
+};
+
+// ── Mock NotificationService ──────────────────────────────────────
+
+const mockNotifications = {
+  sendPushNotifications: jest.fn().mockResolvedValue(undefined),
 };
 
 // ── Suite ─────────────────────────────────────────────────────────
@@ -102,6 +111,7 @@ describe('AssociationMissionsService', () => {
         AssociationMissionsService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: MailService, useValue: mockMail },
+        { provide: NotificationService, useValue: mockNotifications },
       ],
     }).compile();
 
@@ -247,6 +257,132 @@ describe('AssociationMissionsService', () => {
       await service.create(10, withAddress);
 
       expect(mockPrisma.address.create).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── create — notifyFollowers (fire-and-forget) ───────────────────
+  describe('create — notifyFollowers', () => {
+    const dto: any = {
+      title: 'Nouvelle mission',
+      description: 'Description suffisamment longue.',
+      type: 'MISSION',
+      availabilityType: 'REMOTE',
+      hasRegistration: true,
+    };
+
+    const setupCreate = () => {
+      mockPrisma.association.findUnique.mockResolvedValueOnce({
+        status: AssociationStatus.VALIDATED,
+      });
+      mockPrisma.mission.create.mockResolvedValue(
+        makeMission({ title: dto.title }),
+      );
+    };
+
+    it('✅ envoie une notification push aux abonnés ayant un pushToken', async () => {
+      setupCreate();
+      mockPrisma.userAssociationFollow.findMany.mockResolvedValue([
+        {
+          user: {
+            pushToken: 'ExponentPushToken[abc]',
+            email: 'a@test.com',
+            firstName: 'Alice',
+            emailNotifications: false,
+          },
+        },
+      ]);
+      mockPrisma.association.findUnique.mockResolvedValue({
+        name: 'Asso Test',
+      });
+
+      await service.create(10, dto);
+      // laisser les promises fire-and-forget se résoudre
+      await new Promise((resolve) => {
+        process.nextTick(resolve);
+      });
+
+      expect(mockNotifications.sendPushNotifications).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ to: 'ExponentPushToken[abc]' }),
+        ]),
+      );
+    });
+
+    it("✅ n'envoie pas de push si aucun abonné n'a de pushToken", async () => {
+      setupCreate();
+      mockPrisma.userAssociationFollow.findMany.mockResolvedValue([
+        {
+          user: {
+            pushToken: null,
+            email: 'a@test.com',
+            firstName: 'Alice',
+            emailNotifications: false,
+          },
+        },
+      ]);
+      mockPrisma.association.findUnique.mockResolvedValue({
+        name: 'Asso Test',
+      });
+
+      await service.create(10, dto);
+      await new Promise((resolve) => {
+        process.nextTick(resolve);
+      });
+
+      expect(mockNotifications.sendPushNotifications).not.toHaveBeenCalled();
+    });
+
+    it('✅ envoie un email aux abonnés ayant emailNotifications=true', async () => {
+      setupCreate();
+      mockPrisma.userAssociationFollow.findMany.mockResolvedValue([
+        {
+          user: {
+            pushToken: null,
+            email: 'b@test.com',
+            firstName: 'Bob',
+            emailNotifications: true,
+          },
+        },
+      ]);
+      mockPrisma.association.findUnique.mockResolvedValue({
+        name: 'Asso Test',
+      });
+
+      await service.create(10, dto);
+      await new Promise((resolve) => {
+        process.nextTick(resolve);
+      });
+
+      expect(mockMail.sendNewMissionEmail).toHaveBeenCalledWith(
+        'b@test.com',
+        'Bob',
+        dto.title,
+        'Asso Test',
+      );
+    });
+
+    it("✅ n'envoie pas d'email si emailNotifications=false", async () => {
+      setupCreate();
+      mockPrisma.userAssociationFollow.findMany.mockResolvedValue([
+        {
+          user: {
+            pushToken: null,
+            email: 'c@test.com',
+            firstName: 'Carol',
+            emailNotifications: false,
+          },
+        },
+      ]);
+      mockPrisma.association.findUnique.mockResolvedValue({
+        name: 'Asso Test',
+      });
+
+      await service.create(10, dto);
+      await new Promise((resolve) => {
+        process.nextTick(resolve);
+      });
+
+      expect(mockMail.sendNewMissionEmail).not.toHaveBeenCalled();
     });
   });
 

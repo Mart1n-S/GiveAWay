@@ -5,6 +5,7 @@ import {
   UpdateProfileDto,
   DeleteAccountDto,
   UpdateNotificationsDto,
+  RegisterPushTokenDto,
 } from "@repo/shared";
 import { useProfileStore } from "../stores/profile.store";
 import { Platform } from "react-native";
@@ -152,5 +153,9 @@ export const ProfileService = {
 
     // Nettoyage du store local après suppression
     useAuthStore.getState().logout();
+  },
+
+  registerPushToken: async (dto: RegisterPushTokenDto): Promise<void> => {
+    await api.patch("/profile/push-token", dto);
   },
 };

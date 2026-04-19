@@ -16,6 +16,7 @@ import type {
   TransferOwnerDto,
   AssociationPublicListResponse,
   AssociationPublicProfile,
+  FollowStatusResponse,
 } from "@repo/shared";
 
 export interface PublicAssociationListQuery {
@@ -489,6 +490,37 @@ export async function deleteDocument(
     .filter((d) => d.id !== documentId)
     .map((d) => d.fileUrl);
   return updateAssociation(associationId, { documentUrls: remainingUrls });
+}
+
+/**
+ * GET /associations/:id/follow
+ * Retourne si l'utilisateur connecté suit l'association.
+ */
+export async function getFollowStatus(
+  associationId: number,
+): Promise<FollowStatusResponse> {
+  const { data } = await api.get<FollowStatusResponse>(
+    `/associations/${associationId}/follow`,
+  );
+  return data;
+}
+
+/**
+ * POST /associations/:id/follow
+ * Abonne l'utilisateur connecté aux nouvelles missions de l'association.
+ */
+export async function followAssociation(associationId: number): Promise<void> {
+  await api.post(`/associations/${associationId}/follow`);
+}
+
+/**
+ * DELETE /associations/:id/follow
+ * Désabonne l'utilisateur connecté.
+ */
+export async function unfollowAssociation(
+  associationId: number,
+): Promise<void> {
+  await api.delete(`/associations/${associationId}/follow`);
 }
 
 /**

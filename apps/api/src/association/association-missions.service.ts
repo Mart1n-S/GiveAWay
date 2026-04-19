@@ -26,6 +26,7 @@ import {
 } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
+import { NotificationService } from '../notification/notification.service';
 
 // Type interne pour le résultat de la requête Prisma avec relations
 type MissionWithRelations = Prisma.MissionGetPayload<{
@@ -53,6 +54,7 @@ export class AssociationMissionsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mail: MailService,
+    private readonly notifications: NotificationService,
   ) {}
 
   // ----------------------------------------------------------------
@@ -135,7 +137,12 @@ export class AssociationMissionsService {
       include: MISSION_INCLUDE,
     });
 
-    return this.mapToDto(mission);
+    const result = this.mapToDto(mission);
+
+    // Fire-and-forget: notifie les abonnés de l'association
+    void this.notifyFollowers(associationId, mission.title, mission.id);
+
+    return result;
   }
 
   // ----------------------------------------------------------------
@@ -795,6 +802,69 @@ export class AssociationMissionsService {
   // ----------------------------------------------------------------
   // Helpers privés
   // ----------------------------------------------------------------
+
+  private async notifyFollowers(
+    associationId: number,
+    missionTitle: string,
+    missionId: number,
+  ): Promise<void> {
+    const [follows, association] = await Promise.all([
+      this.prisma.userAssociationFollow.findMany({
+        where: { associationId },
+        select: {
+          user: {
+            select: {
+              pushToken: true,
+              email: true,
+              firstName: true,
+              emailNotifications: true,
+            },
+          },
+        },
+      }),
+      this.prisma.association.findUnique({
+        where: { id: associationId },
+        select: { name: true },
+      }),
+    ]);
+
+    const associationName = association?.name ?? 'Une association';
+
+    // Push notifications
+    const tokens = follows
+      .map((f) => f.user.pushToken)
+      .filter((t): t is string => t !== null && t !== undefined);
+
+    if (tokens.length > 0) {
+      await this.notifications.sendPushNotifications(
+        tokens.map((token) => ({
+          to: token,
+          title: associationName,
+          body: missionTitle,
+          data: { missionId },
+          sound: 'default' as const,
+        })),
+      );
+    }
+
+    // Emails — uniquement pour les abonnés ayant activé les emails
+    const emailFollowers = follows.filter(
+      (f) => f.user.emailNotifications && f.user.email,
+    );
+
+    if (emailFollowers.length > 0) {
+      Promise.allSettled(
+        emailFollowers.map((f) =>
+          this.mail.sendNewMissionEmail(
+            f.user.email,
+            f.user.firstName,
+            missionTitle,
+            associationName,
+          ),
+        ),
+      );
+    }
+  }
 
   private async verifyOwnership(
     associationId: number,

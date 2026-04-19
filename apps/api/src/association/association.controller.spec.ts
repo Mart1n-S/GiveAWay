@@ -152,9 +152,9 @@ describe('AssociationController', () => {
         undefined, // city
         undefined, // lat
         undefined, // lng
-        10,        // radius par défaut
-        1,         // page par défaut
-        12,        // pageSize par défaut
+        10, // radius par défaut
+        1, // page par défaut
+        12, // pageSize par défaut
       );
       expect(result).toEqual(mockPublicList);
     });
@@ -162,7 +162,15 @@ describe('AssociationController', () => {
     it('✅ Doit convertir les params string en types appropriés', async () => {
       mockAssociationService.findPublicList.mockResolvedValue(mockPublicList);
 
-      await controller.getPublicList('croix', 'Paris', '48.85', '2.35', '20', '2', '6');
+      await controller.getPublicList(
+        'croix',
+        'Paris',
+        '48.85',
+        '2.35',
+        '20',
+        '2',
+        '6',
+      );
 
       expect(mockAssociationService.findPublicList).toHaveBeenCalledWith(
         'croix',

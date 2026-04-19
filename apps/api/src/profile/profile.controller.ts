@@ -23,6 +23,8 @@ import {
   UpdateProfileSchema,
   UpdateNotificationsDto,
   UpdateNotificationsSchema,
+  RegisterPushTokenDto,
+  RegisterPushTokenSchema,
   User,
 } from '@repo/shared';
 import { AuthenticatedRequest } from '../common/interfaces/authenticated-request.interface';
@@ -111,6 +113,24 @@ export class ProfileController {
     }
 
     return this.profileService.updateNotifications(req.user.id, dto);
+  }
+
+  /**
+   * PATCH /profile/push-token
+   * Enregistre ou met à jour le token de notification push de l'appareil
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Patch('push-token')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async savePushToken(
+    @Req() req: AuthenticatedRequest,
+    @Body(new ZodValidationPipe(RegisterPushTokenSchema))
+    dto: RegisterPushTokenDto,
+  ): Promise<void> {
+    if (!req.user.id) {
+      throw new UnauthorizedException('Utilisateur non identifié');
+    }
+    await this.profileService.savePushToken(req.user.id, dto);
   }
 
   /**

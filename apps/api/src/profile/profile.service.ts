@@ -14,6 +14,7 @@ import {
   UpdateProfileDto,
   DeleteAccountDto,
   UpdateNotificationsDto,
+  RegisterPushTokenDto,
 } from '@repo/shared';
 import { Response } from 'express';
 import { verify } from 'argon2';
@@ -286,6 +287,17 @@ export class ProfileService {
     });
 
     return this.getProfile(userId);
+  }
+
+  async savePushToken(
+    userId: number,
+    dto: RegisterPushTokenDto,
+  ): Promise<void> {
+    const { prisma } = this.authService;
+    await prisma.user.update({
+      where: { id: userId },
+      data: { pushToken: dto.pushToken },
+    });
   }
 
   /**

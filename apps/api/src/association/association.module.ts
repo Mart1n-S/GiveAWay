@@ -4,15 +4,23 @@ import { AssociationController } from './association.controller';
 import { AssociationService } from './association.service';
 import { AssociationMissionsController } from './association-missions.controller';
 import { AssociationMissionsService } from './association-missions.service';
+import { AssociationFollowController } from './association-follow.controller';
+import { AssociationFollowService } from './association-follow.service';
 import { AssociationMemberGuard } from './guards/association-member.guard';
 import { AssociationRoleGuard } from './guards/association-role.guard';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
-  imports: [ConfigModule],
-  controllers: [AssociationController, AssociationMissionsController],
+  imports: [ConfigModule, NotificationModule],
+  controllers: [
+    AssociationController,
+    AssociationMissionsController,
+    AssociationFollowController,
+  ],
   providers: [
     AssociationService,
     AssociationMissionsService,
+    AssociationFollowService,
     AssociationMemberGuard,
     AssociationRoleGuard,
   ],

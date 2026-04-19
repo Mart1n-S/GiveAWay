@@ -13,6 +13,7 @@ export const mockUserComplete = {
   emailVerifiedAt: new Date(),
   status: UserStatus.ACTIVE,
   emailNotifications: false,
+  pushToken: null,
   createdAt: new Date(),
   updatedAt: new Date(),
   address: {

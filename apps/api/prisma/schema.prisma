@@ -118,6 +118,7 @@ model User {
   status             UserStatus @default(PENDING)
 
   emailNotifications Boolean   @default(false) @map("email_notifications")
+  pushToken          String?   @map("push_token")
 
   termsAcceptedAt DateTime  @default(now()) @map("terms_accepted_at")
 
@@ -137,6 +138,7 @@ model User {
   causes        UserCause[]
   availability  UserAvailability?
   participations MissionParticipant[]
+  follows        UserAssociationFollow[]
 
   @@map("users")
 }
@@ -366,6 +368,7 @@ model Association {
   members              AssociationUser[]
   missions             Mission[]
   documents            AssociationDocument[]
+  followers            UserAssociationFollow[]
 
   @@map("associations")
 }
@@ -392,6 +395,17 @@ model AssociationUser {
   associationId Int             @map("association_id")
   association   Association     @relation(fields: [associationId], references: [id], onDelete: Cascade) // Ajout cascade
   @@map("association_users")
+}
+
+model UserAssociationFollow {
+  userId        Int         @map("user_id")
+  associationId Int         @map("association_id")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  @@id([userId, associationId])
+  @@map("user_association_follows")
 }
 
 // --- ADMINISTRATION ---
