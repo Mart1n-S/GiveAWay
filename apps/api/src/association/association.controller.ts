@@ -33,6 +33,8 @@ import {
   AssociationMapItem,
   NearbyQueryDto,
   NearbyQuerySchema,
+  AssociationPublicProfile,
+  AssociationPublicListResponse,
 } from '@repo/shared';
 import { AssociationRole } from '../generated/prisma/client';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -49,6 +51,57 @@ import { AssociationRoles } from './guards/association-roles.decorator';
 @Controller('associations')
 export class AssociationController {
   constructor(private readonly associationService: AssociationService) {}
+
+  /**
+   * GET /associations/public
+   * Liste paginée et filtrable des associations validées.
+   * Route publique — aucune authentification requise.
+   *
+   * Params optionnels :
+   *   search    — filtre par nom (insensible à la casse)
+   *   city      — filtre par ville
+   *   lat, lng  — géolocalisation
+   *   radius    — rayon en km (défaut 10)
+   *   page, pageSize
+   *
+   * IMPORTANT : doit être déclaré AVANT :associationId
+   */
+  @Get('public')
+  @HttpCode(HttpStatus.OK)
+  async getPublicList(
+    @Query('search') search?: string,
+    @Query('city') city?: string,
+    @Query('lat') lat?: string,
+    @Query('lng') lng?: string,
+    @Query('radius') radius?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ): Promise<AssociationPublicListResponse> {
+    return this.associationService.findPublicList(
+      search || undefined,
+      city || undefined,
+      lat ? parseFloat(lat) : undefined,
+      lng ? parseFloat(lng) : undefined,
+      radius ? parseFloat(radius) : 10,
+      page ? parseInt(page, 10) : 1,
+      pageSize ? parseInt(pageSize, 10) : 12,
+    );
+  }
+
+  /**
+   * GET /associations/public/:associationId
+   * Profil public d'une association validée.
+   * Route publique — aucune authentification requise.
+   *
+   * IMPORTANT : doit être déclaré AVANT :associationId générique
+   */
+  @Get('public/:associationId')
+  @HttpCode(HttpStatus.OK)
+  async getPublicProfile(
+    @Param('associationId', ParseIntPipe) associationId: number,
+  ): Promise<AssociationPublicProfile> {
+    return this.associationService.findPublicProfile(associationId);
+  }
 
   /**
    * GET /associations/nearby

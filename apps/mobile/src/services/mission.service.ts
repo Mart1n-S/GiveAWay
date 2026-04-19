@@ -33,6 +33,9 @@ function buildParams(query: MissionListQuery): Record<string, string> {
   if (query.hasAvailableSpots !== undefined) {
     p.hasAvailableSpots = String(query.hasAvailableSpots);
   }
+  if (query.associationId !== undefined) {
+    p.associationId = String(query.associationId);
+  }
 
   // Préfère les tableaux aux valeurs singulières
   if (query.types?.length) {

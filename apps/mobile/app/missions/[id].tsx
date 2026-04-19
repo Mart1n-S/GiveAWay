@@ -6,6 +6,7 @@ import {
   Platform,
   Image,
   Linking,
+  Pressable,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, Stack, useRouter } from "expo-router";
@@ -354,6 +355,10 @@ export default function MissionDetailScreen() {
     else router.push("/missions");
   };
 
+  const handleAssociationPress = () => {
+    router.push(`/associations/${mission?.association.id}`);
+  };
+
   // ─── Mémoïsation ────────────────────────────────────────────────────────────
 
   const formattedDuration = useMemo(
@@ -566,7 +571,9 @@ export default function MissionDetailScreen() {
                       <ArrowLeftIcon className="w-5 h-5 text-primary group-hover:text-primary-hover group-active:text-primary-active" />
                     }
                     accessibilityLabel="Retour"
-                  />
+                  >
+                    Retour
+                  </Button>
                 </View>
               )}
 
@@ -661,9 +668,19 @@ export default function MissionDetailScreen() {
                       </View>
                     )}
                     <View className="flex-1 gap-1">
-                      <Text testID="mission-detail-association" className="text-base font-bold text-grey-900">
-                        {mission.association.name}
-                      </Text>
+                      <Pressable
+                        onPress={handleAssociationPress}
+                        className="self-start rounded-md web:cursor-pointer"
+                        accessibilityRole="button"
+                        accessibilityLabel={`Voir le profil de ${mission.association.name}`}
+                      >
+                        <Text
+                          testID="mission-detail-association"
+                          className="text-base font-bold underline text-primary"
+                        >
+                          {mission.association.name}
+                        </Text>
+                      </Pressable>
                       {mission.association.description && (
                         <Text
                           className="text-sm leading-5 text-grey-700"

@@ -10,7 +10,8 @@ export interface NavLink {
     | "logout"
     | "hand-heart"
     | "gestion"
-    | "building";
+    | "building"
+    | "associations";
   isDestructive?: boolean;
   hideInMobileDrawer?: boolean;
   testID?: string;
@@ -30,6 +31,12 @@ export const PUBLIC_LINKS: NavLink[] = [
     label: "Missions",
     href: "/missions",
     iconName: "hand-heart",
+  },
+  {
+    id: "associations",
+    label: "Associations",
+    href: "/associations",
+    iconName: "building",
   },
 ];
 

@@ -117,6 +117,9 @@ const mockAssociationWithDoc = {
 const mockPrisma = {
   association: {
     findUnique: jest.fn(),
+    findMany: jest.fn(),
+    findFirst: jest.fn(),
+    count: jest.fn(),
     update: jest.fn(),
   },
   associationUser: {
@@ -820,6 +823,204 @@ describe('AssociationService', () => {
           mockUser1.id,
         ),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ===========================================================================
+  // findPublicList
+  // ===========================================================================
+  describe('findPublicList', () => {
+    const makeRawAssociation = (overrides = {}) => ({
+      id: 1,
+      name: 'Croix-Rouge Paris',
+      description: 'Association humanitaire',
+      logoUrl: null,
+      website: null,
+      address: { city: 'Paris' },
+      category: { name: 'Humanitaire' },
+      _count: { missions: 3 },
+      ...overrides,
+    });
+
+    beforeEach(() => {
+      mockPrisma.$transaction.mockImplementation(
+        (queries: Promise<unknown>[]) => Promise.all(queries),
+      );
+    });
+
+    it('✅ Retourne une liste paginée avec les champs mappés', async () => {
+      mockPrisma.association.findMany.mockResolvedValue([makeRawAssociation()]);
+      mockPrisma.association.count.mockResolvedValue(1);
+
+      const result = await service.findPublicList();
+
+      expect(result.associations).toHaveLength(1);
+      expect(result.associations[0].id).toBe(1);
+      expect(result.associations[0].name).toBe('Croix-Rouge Paris');
+      expect(result.associations[0].category).toBe('Humanitaire');
+      expect(result.associations[0].city).toBe('Paris');
+      expect(result.associations[0].activeMissionsCount).toBe(3);
+      expect(result.total).toBe(1);
+      expect(result.page).toBe(1);
+      expect(result.pageSize).toBe(12);
+    });
+
+    it('✅ Retourne un résultat vide si aucune association validée', async () => {
+      mockPrisma.association.findMany.mockResolvedValue([]);
+      mockPrisma.association.count.mockResolvedValue(0);
+
+      const result = await service.findPublicList();
+
+      expect(result.associations).toHaveLength(0);
+      expect(result.total).toBe(0);
+    });
+
+    it('✅ Filtre par nom (search insensible à la casse)', async () => {
+      mockPrisma.association.findMany.mockResolvedValue([]);
+      mockPrisma.association.count.mockResolvedValue(0);
+
+      await service.findPublicList('croix');
+
+      const callArgs = mockPrisma.association.findMany.mock.calls[0][0];
+      expect(callArgs.where.name).toEqual({
+        contains: 'croix',
+        mode: 'insensitive',
+      });
+    });
+
+    it('✅ Filtre par ville (city insensible à la casse)', async () => {
+      mockPrisma.association.findMany.mockResolvedValue([]);
+      mockPrisma.association.count.mockResolvedValue(0);
+
+      await service.findPublicList(undefined, 'paris');
+
+      const callArgs = mockPrisma.association.findMany.mock.calls[0][0];
+      expect(callArgs.where.address).toEqual({
+        city: { contains: 'paris', mode: 'insensitive' },
+      });
+    });
+
+    it('✅ Filtre par rayon géographique en appelant $queryRaw', async () => {
+      mockPrisma.$queryRaw.mockResolvedValue([{ id: 1 }, { id: 2 }]);
+      mockPrisma.association.findMany.mockResolvedValue([]);
+      mockPrisma.association.count.mockResolvedValue(0);
+
+      await service.findPublicList(undefined, undefined, 48.85, 2.35, 10);
+
+      expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
+      const callArgs = mockPrisma.association.findMany.mock.calls[0][0];
+      expect(callArgs.where.id).toEqual({ in: [1, 2] });
+    });
+
+    it('✅ Retourne null pour category et city si relations absentes', async () => {
+      const raw = { ...makeRawAssociation(), category: null, address: null };
+      mockPrisma.association.findMany.mockResolvedValue([raw]);
+      mockPrisma.association.count.mockResolvedValue(1);
+
+      const result = await service.findPublicList();
+
+      expect(result.associations[0].category).toBeNull();
+      expect(result.associations[0].city).toBeNull();
+    });
+
+    it('✅ Calcule correctement le skip selon la page', async () => {
+      mockPrisma.association.findMany.mockResolvedValue([]);
+      mockPrisma.association.count.mockResolvedValue(0);
+
+      await service.findPublicList(undefined, undefined, undefined, undefined, 10, 3, 6);
+
+      const callArgs = mockPrisma.association.findMany.mock.calls[0][0];
+      expect(callArgs.skip).toBe(12); // (3-1) * 6
+      expect(callArgs.take).toBe(6);
+    });
+  });
+
+  // ===========================================================================
+  // findPublicProfile
+  // ===========================================================================
+  describe('findPublicProfile', () => {
+    const makePublicAssociation = (overrides = {}) => ({
+      id: 42,
+      name: 'Les Restos du Cœur',
+      description: 'Aide alimentaire',
+      object: 'Objet statutaire',
+      legalStatus: 'Association loi 1901',
+      logoUrl: null,
+      website: null,
+      phone: null,
+      createdAt: new Date('2024-01-01'),
+      updatedAt: new Date('2024-01-01'),
+      address: {
+        id: 1,
+        street: '10 rue de la Paix',
+        postalCode: '75001',
+        city: 'Paris',
+        latitude: '48.85',
+        longitude: '2.35',
+      },
+      category: { name: 'Aide alimentaire' },
+      _count: { missions: 5 },
+      ...overrides,
+    });
+
+    it('✅ Retourne le profil public avec tous les champs mappés', async () => {
+      mockPrisma.association.findFirst.mockResolvedValue(makePublicAssociation());
+
+      const result = await service.findPublicProfile(42);
+
+      expect(result.id).toBe(42);
+      expect(result.name).toBe('Les Restos du Cœur');
+      expect(result.category).toBe('Aide alimentaire');
+      expect(result.address?.city).toBe('Paris');
+      expect(result.address?.latitude).toBe(48.85);
+      expect(result.address?.longitude).toBe(2.35);
+      expect(typeof result.address?.latitude).toBe('number');
+      expect(result.activeMissionsCount).toBe(5);
+    });
+
+    it("❌ Lève NotFoundException si l'association est introuvable ou non validée", async () => {
+      mockPrisma.association.findFirst.mockResolvedValue(null);
+
+      await expect(service.findPublicProfile(999)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('✅ Recherche uniquement les associations avec status VALIDATED', async () => {
+      mockPrisma.association.findFirst.mockResolvedValue(makePublicAssociation());
+
+      await service.findPublicProfile(42);
+
+      const callArgs = mockPrisma.association.findFirst.mock.calls[0][0];
+      expect(callArgs.where).toMatchObject({ id: 42, status: 'VALIDATED' });
+    });
+
+    it('✅ Retourne null pour address si absente', async () => {
+      mockPrisma.association.findFirst.mockResolvedValue(
+        makePublicAssociation({ address: null }),
+      );
+
+      const result = await service.findPublicProfile(42);
+
+      expect(result.address).toBeNull();
+    });
+
+    it('✅ Retourne null pour category si absente', async () => {
+      mockPrisma.association.findFirst.mockResolvedValue(
+        makePublicAssociation({ category: null }),
+      );
+
+      const result = await service.findPublicProfile(42);
+
+      expect(result.category).toBeNull();
+    });
+
+    it('✅ Retourne createdAt en string ISO', async () => {
+      mockPrisma.association.findFirst.mockResolvedValue(makePublicAssociation());
+
+      const result = await service.findPublicProfile(42);
+
+      expect(typeof result.createdAt).toBe('string');
     });
   });
 

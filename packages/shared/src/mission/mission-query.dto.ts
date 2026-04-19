@@ -130,6 +130,12 @@ export const MissionListQuerySchema = z.object({
     emptyToUndefined,
     z.enum(["nearby", "remote"]).optional(),
   ),
+
+  /** Filtre par association */
+  associationId: z.preprocess(
+    toNumber,
+    z.number().int().min(1).optional(),
+  ),
 });
 
 export type MissionListQueryDto = z.output<typeof MissionListQuerySchema>;

@@ -19,6 +19,9 @@ import {
   AssociationStatus,
   AssociationMapItem,
   NearbyQueryDto,
+  AssociationPublicItem,
+  AssociationPublicProfile,
+  AssociationPublicListResponse,
 } from '@repo/shared';
 import {
   AssociationRole as PrismaAssociationRole,
@@ -698,6 +701,139 @@ export class AssociationService {
           createdAt: d.createdAt.toISOString(),
         }),
       ),
+    };
+  }
+
+  // ----------------------------------------------------------------
+  // GET — liste publique des associations (sans auth)
+  // ----------------------------------------------------------------
+  async findPublicList(
+    search?: string,
+    city?: string,
+    lat?: number,
+    lng?: number,
+    radius = 10,
+    page = 1,
+    pageSize = 12,
+  ): Promise<AssociationPublicListResponse> {
+    const skip = (page - 1) * pageSize;
+
+    const where: Prisma.AssociationWhereInput = {
+      status: 'VALIDATED',
+    };
+
+    if (search) {
+      where.name = { contains: search, mode: 'insensitive' };
+    }
+
+    if (city) {
+      where.address = { city: { contains: city, mode: 'insensitive' } };
+    }
+
+    // Si coordonnées fournies : filtre par rayon via sous-requête Haversine
+    let idsInRadius: number[] | undefined;
+    if (lat !== undefined && lng !== undefined) {
+      const rows = await this.prisma.$queryRaw<{ id: number }[]>`
+        SELECT a.id FROM associations a
+        JOIN addresses addr ON a.address_id = addr.id
+        WHERE a.status = 'VALIDATED'
+          AND addr.latitude IS NOT NULL AND addr.longitude IS NOT NULL
+          AND (
+            6371 * acos(
+              LEAST(1.0,
+                cos(radians(${lat}::float)) * cos(radians(addr.latitude::float))
+                * cos(radians(addr.longitude::float) - radians(${lng}::float))
+                + sin(radians(${lat}::float)) * sin(radians(addr.latitude::float))
+              )
+            )
+          ) <= ${radius}
+      `;
+      idsInRadius = rows.map((r) => r.id);
+      where.id = { in: idsInRadius };
+    }
+
+    const [rawList, total] = await this.prisma.$transaction([
+      this.prisma.association.findMany({
+        where,
+        skip,
+        take: pageSize,
+        orderBy: { name: 'asc' },
+        include: {
+          address: { select: { city: true } },
+          category: { select: { name: true } },
+          _count: {
+            select: { missions: { where: { status: 'ACTIVE' } } },
+          },
+        },
+      }),
+      this.prisma.association.count({ where }),
+    ]);
+
+    const associations: AssociationPublicItem[] = rawList.map((a) => ({
+      id: a.id,
+      name: a.name,
+      description: a.description ?? null,
+      logoUrl: a.logoUrl ?? null,
+      website: a.website ?? null,
+      category:
+        (a as { category?: { name: string } | null }).category?.name ?? null,
+      city: (a as { address?: { city: string } | null }).address?.city ?? null,
+      activeMissionsCount: (a as { _count: { missions: number } })._count
+        .missions,
+    }));
+
+    return { associations, total, page, pageSize };
+  }
+
+  // ----------------------------------------------------------------
+  // GET — profil public d'une association (sans auth)
+  // ----------------------------------------------------------------
+  async findPublicProfile(
+    associationId: number,
+  ): Promise<AssociationPublicProfile> {
+    const association = await this.prisma.association.findFirst({
+      where: { id: associationId, status: 'VALIDATED' },
+      include: {
+        address: true,
+        category: { select: { name: true } },
+        _count: {
+          select: { missions: { where: { status: 'ACTIVE' } } },
+        },
+      },
+    });
+
+    if (!association) {
+      throw new NotFoundException('Association introuvable');
+    }
+
+    return {
+      id: association.id,
+      name: association.name,
+      description: association.description ?? null,
+      object: association.object ?? null,
+      legalStatus: association.legalStatus ?? null,
+      logoUrl: association.logoUrl ?? null,
+      website: association.website ?? null,
+      phone: association.phone ?? null,
+      category:
+        (association as { category?: { name: string } | null }).category
+          ?.name ?? null,
+      address: association.address
+        ? {
+            street: association.address.street,
+            postalCode: association.address.postalCode,
+            city: association.address.city,
+            latitude: association.address.latitude
+              ? Number(association.address.latitude)
+              : null,
+            longitude: association.address.longitude
+              ? Number(association.address.longitude)
+              : null,
+          }
+        : null,
+      activeMissionsCount: (association as { _count: { missions: number } })
+        ._count.missions,
+      createdAt: association.createdAt.toISOString(),
     };
   }
 

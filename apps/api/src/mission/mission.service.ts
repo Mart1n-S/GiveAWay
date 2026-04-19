@@ -46,11 +46,17 @@ export class MissionService {
       startDateTo,
       hasAvailableSpots,
       locationMode,
+      associationId,
     } = query;
 
     const where: Prisma.MissionWhereInput = {
       status: MissionStatus.ACTIVE,
     };
+
+    // ── Association ─────────────────────────────────────────────────────────
+    if (associationId) {
+      where.associationId = associationId;
+    }
 
     // ── Mode localisation ───────────────────────────────────────────────────
     if (locationMode === 'remote') {

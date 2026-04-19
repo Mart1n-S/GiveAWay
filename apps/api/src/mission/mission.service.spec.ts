@@ -377,6 +377,28 @@ describe('MissionService', () => {
       expect(whereArg.startDate.lte).toEqual(new Date('2026-12-31'));
     });
 
+    it('✅ Doit filtrer par associationId quand fourni', async () => {
+      mockPrismaService.mission.findMany.mockResolvedValue([]);
+      mockPrismaService.mission.count.mockResolvedValue(0);
+
+      await service.findAll({ ...defaultQuery, associationId: 5 });
+
+      const whereArg =
+        mockPrismaService.mission.findMany.mock.calls[0][0].where;
+      expect(whereArg.associationId).toBe(5);
+    });
+
+    it('✅ Ne doit pas ajouter de filtre associationId si absent', async () => {
+      mockPrismaService.mission.findMany.mockResolvedValue([]);
+      mockPrismaService.mission.count.mockResolvedValue(0);
+
+      await service.findAll(defaultQuery);
+
+      const whereArg =
+        mockPrismaService.mission.findMany.mock.calls[0][0].where;
+      expect(whereArg.associationId).toBeUndefined();
+    });
+
     it('✅ Doit filtrer en mode REMOTE (locationMode=remote)', async () => {
       mockPrismaService.mission.findMany.mockResolvedValue([]);
       mockPrismaService.mission.count.mockResolvedValue(0);

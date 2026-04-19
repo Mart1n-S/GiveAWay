@@ -30,6 +30,8 @@ export interface MissionListQuery {
   hasAvailableSpots?: boolean;
   /** nearby = ON_SITE + HYBRID, remote = REMOTE uniquement */
   locationMode?: 'nearby' | 'remote';
+  /** Filtre par association */
+  associationId?: number;
 }
 
 /** Résumé d'une mission pour le listing */

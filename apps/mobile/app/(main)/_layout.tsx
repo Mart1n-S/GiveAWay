@@ -1,21 +1,9 @@
 import { Tabs, usePathname } from "expo-router";
 import { Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { cssInterop } from "nativewind";
 import { colors } from "@/components/ui";
-import { AppShell, HomeIcon, UserIcon, HandHeartIcon } from "@/components/layouts/AppShell";
+import { AppShell, HomeIcon, UserIcon, HandHeartIcon, BuildingIcon } from "@/components/layouts/AppShell";
 import { useAuthStore } from "@/stores/auth.store";
-
-import BuildingIconSource from "@assets/icons/ic_building.svg";
-
-const iconConfig = {
-  className: {
-    target: "style",
-    nativeStyleToProp: { width: true, height: true, color: true },
-  },
-} as const;
-
-const BuildingIcon = cssInterop(BuildingIconSource, iconConfig);
 
 function HomeTabIcon({ color }: { readonly color: string }) {
   return <HomeIcon className="w-7 h-7" color={color} />;
@@ -33,6 +21,10 @@ function AssociationTabIcon({ color }: { readonly color: string }) {
   return <BuildingIcon className="w-7 h-7" color={color} />;
 }
 
+function AssociationsTabIcon({ color }: { readonly color: string }) {
+  return <BuildingIcon className="w-7 h-7" color={color} />;
+}
+
 const MOBILE_SUBPAGE_ROUTES = new Set([
   "/profil/modifier",
   "/profil/mot-de-passe",
@@ -46,6 +38,8 @@ function isMobileSubpageRoute(pathname: string): boolean {
   if (MOBILE_SUBPAGE_ROUTES.has(pathname)) return true;
   // Routes dynamiques : /missions/:id
   if (/^\/missions\/\d+/.test(pathname)) return true;
+  // Profil public d'association : /associations/:id
+  if (/^\/associations\/\d+/.test(pathname)) return true;
   // Toutes les sous-pages association/missions
   if (pathname.startsWith("/association/missions")) return true;
   return false;
@@ -110,6 +104,15 @@ export default function MainLayout() {
           }}
         />
 
+        <Tabs.Screen
+          name="associations"
+          options={{
+            title: "Associations",
+            tabBarIcon: AssociationsTabIcon,
+            href: Platform.OS !== "web" ? null : undefined,
+          }}
+        />
+
         {/* Onglet Profil (connecté uniquement) */}
         {isAuthenticated ? (
           <Tabs.Screen
@@ -135,7 +138,7 @@ export default function MainLayout() {
           <Tabs.Screen
             name="association"
             options={{
-              title: "Association",
+              title: "Mon Association",
               tabBarIcon: AssociationTabIcon,
             }}
           />
