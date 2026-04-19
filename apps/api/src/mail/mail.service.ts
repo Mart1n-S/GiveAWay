@@ -362,6 +362,58 @@ export class MailService {
     );
   }
 
+  private getParticipantRemovedTemplate(
+    userName: string,
+    missionTitle: string,
+    associationName: string,
+  ): string {
+    const content = `
+      <h1 style="margin: 0 0 16px 0; color: #1e293b; font-size: 22px; font-weight: 700; text-align: center;">Retrait de la mission ❌</h1>
+      <p style="text-align: center; margin-bottom: 24px;">Bonjour <b>${userName}</b>,</p>
+      <p style="text-align: center; margin-bottom: 24px;">
+        Nous vous informons que votre participation à la mission <b>${missionTitle}</b> proposée par <b>${associationName}</b> a été annulée par l'association.
+      </p>
+      <p style="text-align: center; margin-bottom: 32px; color: #64748b;">
+        Si vous avez des questions, vous pouvez contacter directement l'association. Nous vous invitons à consulter d'autres missions disponibles sur GiveAWay.
+      </p>
+      <div style="border-top: 1px solid #f1f5f9; padding-top: 24px; font-size: 13px; color: #94a3b8; text-align: center;">
+        Merci pour votre engagement bénévole !
+      </div>
+    `;
+    return this.getEmailWrapper(content);
+  }
+
+  async sendParticipantRemovedEmail(
+    email: string,
+    userName: string,
+    missionTitle: string,
+    associationName: string,
+  ) {
+    if (
+      this.config.get('NODE_ENV') === 'test' ||
+      this.config.get('USE_DETERMINISTIC_OTP') === 'true'
+    ) {
+      console.log(
+        `\n📨 [MAIL SERVICE] Participant retiré — notif pour : ${email}`,
+      );
+      console.log(
+        `📋 Mission : ${missionTitle} | Association : ${associationName}\n`,
+      );
+      return;
+    }
+
+    const html = this.getParticipantRemovedTemplate(
+      userName,
+      missionTitle,
+      associationName,
+    );
+    return this.sendApiEmail(
+      email,
+      `Votre participation à "${missionTitle}" a été annulée`,
+      html,
+    );
+  }
+
   async sendPasswordResetEmail(email: string, token: string) {
     if (
       this.config.get('NODE_ENV') === 'test' ||

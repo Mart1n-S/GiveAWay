@@ -15,11 +15,13 @@ import { Button } from "@/components/ui/button/button";
 import { MissionStatusBadge } from "@/components/ui/mission-status-badge/MissionStatusBadge";
 import { MissionActionBar } from "@/components/ui/mission-action-bar/MissionActionBar";
 import { ConfirmModal } from "@/components/ui/confirm-modal/ConfirmModal";
+import { MissionParticipantCard } from "@/components/ui/mission-participant-card/mission-participant-card";
+import { ParticipantProfileModal } from "@/components/ui/participant-profile-modal/participant-profile-modal";
 import { colors } from "@/components/ui/theme/tokens";
 import { useAuthStore } from "@/stores/auth.store";
 import { AssociationMissionService } from "@/services/association-mission.service";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import type { AssociationMissionItem } from "@repo/shared";
+import type { AssociationMissionItem, MissionParticipantProfile, MissionParticipantsResponse } from "@repo/shared";
 
 import ArrowLeftIconSource from "@assets/icons/ic_arrow_left.svg";
 import CalendarIconSource from "@assets/icons/ic_calendar.svg";
@@ -102,6 +104,12 @@ export default function MissionDetailScreen() {
   const [actionLoading, setActionLoading] = useState(false);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
 
+  const [participantsData, setParticipantsData] = useState<MissionParticipantsResponse | null>(null);
+  const [participantsLoading, setParticipantsLoading] = useState(false);
+  const [selectedParticipant, setSelectedParticipant] = useState<MissionParticipantProfile | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<number | null>(null);
+  const [removeLoading, setRemoveLoading] = useState(false);
+
   const id = Number(missionId);
 
   const load = useCallback(
@@ -117,7 +125,7 @@ export default function MissionDetailScreen() {
           type: "error",
           text1: "Erreur",
           text2: "Impossible de charger la mission.",
-          visibilityTime: 5000,
+          visibilityTime: 10000,
           onPress: () => Toast.hide(),
         });
       } finally {
@@ -128,9 +136,28 @@ export default function MissionDetailScreen() {
     [associationId, id],
   );
 
+  const loadParticipants = useCallback(async () => {
+    if (!associationId || !id) return;
+    setParticipantsLoading(true);
+    try {
+      const data = await AssociationMissionService.getParticipants(associationId, id);
+      setParticipantsData(data);
+    } catch {
+      // error already shown by service
+    } finally {
+      setParticipantsLoading(false);
+    }
+  }, [associationId, id]);
+
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (mission?.hasRegistration) {
+      loadParticipants();
+    }
+  }, [mission?.hasRegistration, loadParticipants]);
 
   const runAction = async (action: ConfirmAction) => {
     if (!associationId || !id) return;
@@ -149,7 +176,7 @@ export default function MissionDetailScreen() {
       Toast.show({
         type: "success",
         text1: action === "unarchive" ? "Mission désarchivée" : "Action effectuée",
-        visibilityTime: 3000,
+        visibilityTime: 10000,
         onPress: () => Toast.hide(),
       });
       await load();
@@ -163,6 +190,33 @@ export default function MissionDetailScreen() {
       });
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handleRemoveParticipant = async (userId: number) => {
+    if (!associationId || !id) return;
+    setRemoveLoading(true);
+    setRemoveTarget(null);
+    try {
+      await AssociationMissionService.removeParticipant(associationId, id, userId);
+      Toast.show({
+        type: "success",
+        text1: "Participant retiré",
+        text2: "Un email de notification lui a été envoyé.",
+        visibilityTime: 10000,
+        onPress: () => Toast.hide(),
+      });
+      await Promise.all([load(), loadParticipants()]);
+    } catch (err) {
+      Toast.show({
+        type: "error",
+        text1: "Erreur",
+        text2: err instanceof Error ? err.message : "Impossible de retirer ce participant.",
+        visibilityTime: 10000,
+        onPress: () => Toast.hide(),
+      });
+    } finally {
+      setRemoveLoading(false);
     }
   };
 
@@ -192,7 +246,7 @@ export default function MissionDetailScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center">
+      <View className="items-center justify-center flex-1">
         <ActivityIndicator size="large" color={colors.primary.default} />
       </View>
     );
@@ -200,8 +254,8 @@ export default function MissionDetailScreen() {
 
   if (!mission) {
     return (
-      <View className="flex-1 items-center justify-center px-6 gap-4">
-        <Text className="text-base text-grey-500 text-center">
+      <View className="items-center justify-center flex-1 gap-4 px-6">
+        <Text className="text-base text-center text-grey-500">
           Mission introuvable.
         </Text>
         <Button variant="secondary" onPress={() => router.back()}>
@@ -247,7 +301,7 @@ export default function MissionDetailScreen() {
             />
           }
         >
-          <View className="gap-4 max-w-2xl w-full mx-auto">
+          <View className="w-full max-w-2xl gap-4 mx-auto">
             {Platform.OS === "web" && (
               <Button
                 variant="secondary"
@@ -262,7 +316,7 @@ export default function MissionDetailScreen() {
             )}
 
             {/* Header card */}
-            <View className="bg-white rounded-xl border border-grey-100 p-4 gap-3">
+            <View className="gap-3 p-4 bg-white border rounded-xl border-grey-100">
               <View className="flex-row items-start justify-between gap-2">
                 <Text className="flex-1 text-xl font-bold text-grey-900">
                   {mission.title}
@@ -270,7 +324,7 @@ export default function MissionDetailScreen() {
                 <MissionStatusBadge status={mission.status} size="md" />
               </View>
 
-              <View className="flex-row items-center gap-2 flex-wrap">
+              <View className="flex-row flex-wrap items-center gap-2">
                 <View className="bg-grey-50 border border-grey-100 rounded-full px-2 py-0.5">
                   <Text className="text-xs text-grey-600">
                     {ACTIVITY_LABELS[mission.type] ?? mission.type}
@@ -287,18 +341,18 @@ export default function MissionDetailScreen() {
             </View>
 
             {/* Description */}
-            <View className="bg-white rounded-xl border border-grey-100 p-4 gap-2">
+            <View className="gap-2 p-4 bg-white border rounded-xl border-grey-100">
               <Text className="text-base font-semibold text-grey-900">
                 Description
               </Text>
-              <Text className="text-sm text-grey-600 leading-5">
+              <Text className="text-sm leading-5 text-grey-600">
                 {mission.description}
               </Text>
             </View>
 
             {/* Infos */}
             {(showDates || showLocation || mission.hasRegistration) && (
-              <View className="bg-white rounded-xl border border-grey-100 p-4 gap-3">
+              <View className="gap-3 p-4 bg-white border rounded-xl border-grey-100">
                 <Text className="text-base font-semibold text-grey-900">
                   Informations
                 </Text>
@@ -354,7 +408,7 @@ export default function MissionDetailScreen() {
 
             {/* Tags */}
             {(mission.skills.length > 0 || mission.causes.length > 0) && (
-              <View className="bg-white rounded-xl border border-grey-100 p-4 gap-3">
+              <View className="gap-3 p-4 bg-white border rounded-xl border-grey-100">
                 {mission.skills.length > 0 && (
                   <View className="gap-2">
                     <Text className="text-sm font-semibold text-grey-800">
@@ -364,9 +418,9 @@ export default function MissionDetailScreen() {
                       {mission.skills.map((s) => (
                         <View
                           key={s.id}
-                          className="bg-badge-blue-bg rounded-full px-3 py-1"
+                          className="px-3 py-1 rounded-full bg-badge-blue-bg"
                         >
-                          <Text className="text-xs text-badge-blue-text font-medium">
+                          <Text className="text-xs font-medium text-badge-blue-text">
                             {s.label}
                           </Text>
                         </View>
@@ -383,9 +437,9 @@ export default function MissionDetailScreen() {
                       {mission.causes.map((c) => (
                         <View
                           key={c.id}
-                          className="bg-badge-orange-bg rounded-full px-3 py-1"
+                          className="px-3 py-1 rounded-full bg-badge-orange-bg"
                         >
-                          <Text className="text-xs text-badge-orange-text font-medium">
+                          <Text className="text-xs font-medium text-badge-orange-text">
                             {c.label}
                           </Text>
                         </View>
@@ -398,13 +452,57 @@ export default function MissionDetailScreen() {
 
             {/* Warnings */}
             {mission.warnings && mission.warnings.length > 0 && (
-              <View className="bg-orange-50 border border-orange-200 rounded-xl p-4 gap-2">
+              <View className="gap-2 p-4 border border-orange-200 bg-orange-50 rounded-xl">
                 {mission.warnings.map((w) => (
                   <View key={w} className="flex-row items-start gap-2">
                     <WarningIcon className="w-4 h-4 text-orange-600 mt-0.5" />
                     <Text className="flex-1 text-sm text-orange-700">{w}</Text>
                   </View>
                 ))}
+              </View>
+            )}
+
+            {/* Section participants */}
+            {mission.hasRegistration && (
+              <View className="gap-3">
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-base font-semibold text-grey-900">
+                    Participants
+                    {participantsData != null && (
+                      <Text className="font-normal text-grey-500">
+                        {" "}({participantsData.total})
+                      </Text>
+                    )}
+                  </Text>
+                  {!participantsData?.canRemove && (
+                    <View className="bg-grey-100 rounded-full px-2 py-0.5">
+                      <Text className="text-xs text-grey-500">Lecture seule</Text>
+                    </View>
+                  )}
+                </View>
+
+                {participantsLoading ? (
+                  <View className="items-center py-6">
+                    <ActivityIndicator color={colors.primary.default} />
+                  </View>
+                ) : participantsData?.participants.length === 0 ? (
+                  <View className="items-center gap-2 p-6 bg-white border rounded-xl border-grey-100">
+                    <UsersIcon className="w-8 h-8 text-grey-300" />
+                    <Text className="text-sm text-center text-grey-500">
+                      Aucun bénévole inscrit pour le moment.
+                    </Text>
+                  </View>
+                ) : (
+                  participantsData?.participants.map((p) => (
+                    <MissionParticipantCard
+                      key={p.userId}
+                      participant={p}
+                      canRemove={participantsData.canRemove}
+                      onRemove={(userId) => setRemoveTarget(userId)}
+                      onViewProfile={(participant) => setSelectedParticipant(participant)}
+                    />
+                  ))
+                )}
               </View>
             )}
           </View>
@@ -433,6 +531,30 @@ export default function MissionDetailScreen() {
           onCancel={() => setConfirmAction(null)}
         />
       )}
+
+      {removeTarget != null && (
+        <ConfirmModal
+          visible
+          title="Retirer ce bénévole ?"
+          message="Le bénévole sera retiré de la mission et recevra un email de notification."
+          confirmLabel="Retirer"
+          cancelLabel="Annuler"
+          destructive
+          loading={removeLoading}
+          onConfirm={() => handleRemoveParticipant(removeTarget)}
+          onCancel={() => setRemoveTarget(null)}
+        />
+      )}
+
+      <ParticipantProfileModal
+        participant={selectedParticipant}
+        canRemove={participantsData?.canRemove ?? false}
+        onRemove={(userId: number) => {
+          setSelectedParticipant(null);
+          setRemoveTarget(userId);
+        }}
+        onClose={() => setSelectedParticipant(null)}
+      />
     </>
   );
 }

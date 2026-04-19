@@ -194,16 +194,11 @@ export default function MissionsDashboardScreen() {
         options={{
           headerTitle: "Gestion des missions",
           headerShown: Platform.OS !== "web",
-          headerRight: () => (
-            <MissionsHeaderRight
-              onPress={() => router.push("/association/missions/creer" as any)}
-            />
-          ),
         }}
       />
       <View className="flex-1 bg-grey-50">
         <View className="bg-white border-b border-grey-100">
-          {Platform.OS === "web" && (
+          {Platform.OS === "web" ? (
             <View className="flex-row items-center justify-between px-4 pt-4 pb-2">
               <Text className="text-xl font-bold text-grey-900">Gestion des missions</Text>
               <Button
@@ -213,6 +208,12 @@ export default function MissionsDashboardScreen() {
               >
                 Créer
               </Button>
+            </View>
+          ) : (
+            <View className="flex-row justify-end px-4 pt-3 pb-1">
+              <MissionsHeaderRight
+                onPress={() => router.push("/association/missions/creer" as any)}
+              />
             </View>
           )}
           <View className="px-4 pb-3">

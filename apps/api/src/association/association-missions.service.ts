@@ -15,6 +15,8 @@ import {
   CreateMissionDto,
   UpdateMissionDto,
   ActivityType,
+  MissionParticipantsResponse,
+  MissionParticipantProfile,
 } from '@repo/shared';
 import {
   MissionStatus,
@@ -318,7 +320,7 @@ export class AssociationMissionsService {
         const [year, month] = key.split('-');
         return {
           month: key,
-          label: `${MONTHS_FR[parseInt(month, 10) - 1]} ${year}`,
+          label: `${MONTHS_FR[Number.parseInt(month, 10) - 1]} ${year}`,
           missions: data.missions,
           participants: data.participants,
         };
@@ -361,7 +363,7 @@ export class AssociationMissionsService {
         const [year, month] = key.split('-');
         return {
           month: key,
-          label: `${MONTHS_FR[parseInt(month, 10) - 1]} ${year}`,
+          label: `${MONTHS_FR[Number.parseInt(month, 10) - 1]} ${year}`,
           missions: 0,
           participants: count,
         };
@@ -434,10 +436,9 @@ export class AssociationMissionsService {
       if (dto.address !== undefined) {
         const prev = mission.address;
         const changed =
-          !prev ||
-          dto.address?.street !== prev.street ||
-          dto.address?.postalCode !== prev.postalCode ||
-          dto.address?.city !== prev.city;
+          dto.address?.street !== prev?.street ||
+          dto.address?.postalCode !== prev?.postalCode ||
+          dto.address?.city !== prev?.city;
         if (changed) {
           warnings.push(
             "L'adresse a été modifiée. Des bénévoles sont déjà inscrits à cette mission.",
@@ -466,12 +467,10 @@ export class AssociationMissionsService {
       await this.verifyRefIds('volunteerType', dto.volunteerTypeIds);
     }
 
-    const addressId =
-      dto.address !== undefined
-        ? dto.address
-          ? await this.upsertAddress(dto.address)
-          : null
-        : undefined;
+    let addressId: number | null | undefined;
+    if (dto.address !== undefined) {
+      addressId = dto.address ? await this.upsertAddress(dto.address) : null;
+    }
 
     const updated = await this.prisma.$transaction(async (tx) => {
       if (dto.skillIds !== undefined) {
@@ -668,6 +667,129 @@ export class AssociationMissionsService {
       where: { id: missionId },
       data: { status: MissionStatus.DELETED },
     });
+  }
+
+  // ----------------------------------------------------------------
+  // GET PARTICIPANTS — liste des inscrits avec extrait de profil
+  // ----------------------------------------------------------------
+  async getParticipants(
+    associationId: number,
+    missionId: number,
+  ): Promise<MissionParticipantsResponse> {
+    const mission = await this.verifyOwnership(associationId, missionId);
+
+    const now = new Date();
+    const isArchived = mission.status === MissionStatus.ARCHIVED;
+    const isPast = !!(mission.endDate && mission.endDate < now);
+    const canRemove = !isArchived && !isPast;
+
+    const rows = await this.prisma.missionParticipant.findMany({
+      where: { missionId },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        user: {
+          include: {
+            skills: { include: { skill: true } },
+            causes: { include: { cause: true } },
+            availability: true,
+          },
+        },
+      },
+    });
+
+    const userIds = rows.map((r) => r.userId);
+
+    const completedCounts =
+      userIds.length > 0
+        ? await this.prisma.missionParticipant.groupBy({
+            by: ['userId'],
+            where: {
+              userId: { in: userIds },
+              missionId: { not: missionId },
+              mission: {
+                associationId,
+                endDate: { lt: now },
+                status: { not: MissionStatus.DELETED },
+              },
+            },
+            _count: { userId: true },
+          })
+        : [];
+
+    const countMap = new Map(
+      completedCounts.map((r) => [r.userId, r._count.userId]),
+    );
+
+    const participants: MissionParticipantProfile[] = rows.map((r) => ({
+      userId: r.userId,
+      firstName: r.user.firstName,
+      lastName: r.user.lastName,
+      age: r.user.age,
+      profilePicture: r.user.profilePicture,
+      skills: r.user.skills.map((s) => s.skill),
+      causes: r.user.causes.map((c) => c.cause),
+      availability: r.user.availability
+        ? {
+            frequency: r.user.availability.frequency as any,
+            timeSlots: r.user.availability.timeSlot as any,
+            type: r.user.availability.type as any,
+          }
+        : null,
+      completedMissionsCount: countMap.get(r.userId) ?? 0,
+      joinedAt: r.createdAt,
+    }));
+
+    return { participants, total: participants.length, canRemove };
+  }
+
+  // ----------------------------------------------------------------
+  // REMOVE PARTICIPANT — retire un bénévole et l'en notifie
+  // ----------------------------------------------------------------
+  async removeParticipant(
+    associationId: number,
+    missionId: number,
+    userId: number,
+  ): Promise<void> {
+    const mission = await this.verifyOwnership(associationId, missionId);
+
+    const now = new Date();
+    if (
+      mission.status === MissionStatus.ARCHIVED ||
+      (mission.endDate && mission.endDate < now)
+    ) {
+      throw new ForbiddenException(
+        "Impossible de retirer un participant d'une mission terminée ou archivée",
+      );
+    }
+
+    const participant = await this.prisma.missionParticipant.findUnique({
+      where: { missionId_userId: { missionId, userId } },
+      include: { user: { select: { email: true, firstName: true } } },
+    });
+
+    if (!participant) {
+      throw new NotFoundException(
+        `L'utilisateur #${userId} n'est pas inscrit à cette mission`,
+      );
+    }
+
+    const association = await this.prisma.association.findUnique({
+      where: { id: associationId },
+      select: { name: true },
+    });
+
+    await this.prisma.missionParticipant.delete({
+      where: { missionId_userId: { missionId, userId } },
+    });
+
+    Promise.allSettled([
+      this.mail.sendParticipantRemovedEmail(
+        participant.user.email,
+        participant.user.firstName,
+        mission.title,
+        association?.name ?? '',
+      ),
+    ]);
   }
 
   // ----------------------------------------------------------------

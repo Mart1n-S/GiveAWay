@@ -23,6 +23,7 @@ import {
   UpdateMissionSchema,
   StatsQueryDto,
   StatsQuerySchema,
+  MissionParticipantsResponse,
 } from '@repo/shared';
 import { AssociationRole } from '../generated/prisma/client';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -165,5 +166,40 @@ export class AssociationMissionsController {
     @Param('missionId', ParseIntPipe) missionId: number,
   ): Promise<void> {
     return this.service.delete(associationId, missionId);
+  }
+
+  /**
+   * GET /associations/:associationId/missions/:missionId/participants
+   * Liste les participants inscrits avec leur extrait de profil.
+   * Accessible à tous les membres de l'association.
+   */
+  @Get(':missionId/participants')
+  @HttpCode(HttpStatus.OK)
+  async getParticipants(
+    @Param('associationId', ParseIntPipe) associationId: number,
+    @Param('missionId', ParseIntPipe) missionId: number,
+  ): Promise<MissionParticipantsResponse> {
+    return this.service.getParticipants(associationId, missionId);
+  }
+
+  /**
+   * DELETE /associations/:associationId/missions/:missionId/participants/:userId
+   * Retire un participant d'une mission active (pas archivée ni terminée).
+   * Requiert le rôle OWNER, ADMIN ou EDITOR.
+   */
+  @Delete(':missionId/participants/:userId')
+  @AssociationRoles(
+    AssociationRole.OWNER,
+    AssociationRole.ADMIN,
+    AssociationRole.EDITOR,
+  )
+  @UseGuards(AssociationRoleGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async removeParticipant(
+    @Param('associationId', ParseIntPipe) associationId: number,
+    @Param('missionId', ParseIntPipe) missionId: number,
+    @Param('userId', ParseIntPipe) userId: number,
+  ): Promise<void> {
+    return this.service.removeParticipant(associationId, missionId, userId);
   }
 }

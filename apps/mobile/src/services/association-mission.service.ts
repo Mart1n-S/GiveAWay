@@ -8,6 +8,7 @@ import type {
   StatsQueryDto,
   CreateMissionFormValues,
   UpdateMissionFormValues,
+  MissionParticipantsResponse,
 } from "@repo/shared";
 
 function base(associationId: number) {
@@ -59,9 +60,10 @@ export const AssociationMissionService = {
       if (query?.endDate) params.append("endDate", query.endDate);
       if (query?.missionType) params.append("missionType", query.missionType);
       const qs = params.toString();
-      const { data } = await api.get<AssociationMissionStats>(
-        `${base(associationId)}/statistics${qs ? `?${qs}` : ""}`,
-      );
+      const url = qs
+        ? `${base(associationId)}/statistics?${qs}`
+        : `${base(associationId)}/statistics`;
+      const { data } = await api.get<AssociationMissionStats>(url);
       return data;
     } catch (err) {
       return handleDisplayError(err, "Impossible de charger les statistiques.");
@@ -141,6 +143,34 @@ export const AssociationMissionService = {
       await api.delete(`${base(associationId)}/${missionId}`);
     } catch (err) {
       throw new Error(extractApiMessage(err, "Suppression impossible."));
+    }
+  },
+
+  getParticipants: async (
+    associationId: number,
+    missionId: number,
+  ): Promise<MissionParticipantsResponse> => {
+    try {
+      const { data } = await api.get<MissionParticipantsResponse>(
+        `${base(associationId)}/${missionId}/participants`,
+      );
+      return data;
+    } catch (err) {
+      return handleDisplayError(err, "Impossible de charger les participants.");
+    }
+  },
+
+  removeParticipant: async (
+    associationId: number,
+    missionId: number,
+    userId: number,
+  ): Promise<void> => {
+    try {
+      await api.delete(
+        `${base(associationId)}/${missionId}/participants/${userId}`,
+      );
+    } catch (err) {
+      throw new Error(extractApiMessage(err, "Impossible de retirer ce participant."));
     }
   },
 };

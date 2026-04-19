@@ -15,6 +15,7 @@ import type {
   AssociationMissionStats,
   CreateMissionDto,
   UpdateMissionDto,
+  MissionParticipantsResponse,
 } from '@repo/shared';
 
 // ── Fixtures ──────────────────────────────────────────────────────
@@ -86,6 +87,8 @@ const mockService = {
   archive: jest.fn(),
   unarchive: jest.fn(),
   delete: jest.fn(),
+  getParticipants: jest.fn(),
+  removeParticipant: jest.fn(),
 };
 
 // ── Suite ─────────────────────────────────────────────────────────
@@ -436,6 +439,123 @@ describe('AssociationMissionsController', () => {
       );
 
       await expect(controller.remove(1, 999)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  // ── getParticipants ──────────────────────────────────────────────
+  describe('getParticipants', () => {
+    const mockParticipantsResponse: MissionParticipantsResponse = {
+      participants: [
+        {
+          userId: 42,
+          firstName: 'Alice',
+          lastName: 'Dupont',
+          age: 28,
+          profilePicture: null,
+          skills: [{ id: 1, label: 'Communication' }],
+          causes: [{ id: 2, label: 'Écologie' }],
+          availability: {
+            frequency: ['HOURS_WEEK'] as any,
+            timeSlots: ['WEEKDAY'] as any,
+            type: 'HYBRID' as any,
+          },
+          completedMissionsCount: 3,
+          joinedAt: new Date('2025-03-01'),
+        },
+      ],
+      total: 1,
+      canRemove: true,
+    };
+
+    it('✅ délègue au service et retourne la liste des participants', async () => {
+      mockService.getParticipants.mockResolvedValue(mockParticipantsResponse);
+
+      const result = await controller.getParticipants(1, 1);
+
+      expect(mockService.getParticipants).toHaveBeenCalledWith(1, 1);
+      expect(result.total).toBe(1);
+      expect(result.canRemove).toBe(true);
+      expect(result.participants[0].firstName).toBe('Alice');
+    });
+
+    it('✅ retourne canRemove=false pour une mission archivée ou terminée', async () => {
+      mockService.getParticipants.mockResolvedValue({
+        ...mockParticipantsResponse,
+        canRemove: false,
+      });
+
+      const result = await controller.getParticipants(1, 1);
+
+      expect(result.canRemove).toBe(false);
+    });
+
+    it('✅ retourne une liste vide si aucun participant', async () => {
+      mockService.getParticipants.mockResolvedValue({
+        participants: [],
+        total: 0,
+        canRemove: true,
+      });
+
+      const result = await controller.getParticipants(1, 1);
+
+      expect(result.total).toBe(0);
+      expect(result.participants).toHaveLength(0);
+    });
+
+    it('❌ propage NotFoundException si la mission est introuvable', async () => {
+      mockService.getParticipants.mockRejectedValue(
+        new NotFoundException('Mission #999 introuvable'),
+      );
+
+      await expect(controller.getParticipants(1, 999)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  // ── removeParticipant ────────────────────────────────────────────
+  describe('removeParticipant', () => {
+    it('✅ délègue au service et ne retourne rien (204)', async () => {
+      mockService.removeParticipant.mockResolvedValue(undefined);
+
+      const result = await controller.removeParticipant(1, 1, 42);
+
+      expect(mockService.removeParticipant).toHaveBeenCalledWith(1, 1, 42);
+      expect(result).toBeUndefined();
+    });
+
+    it('❌ propage ForbiddenException si la mission est archivée ou terminée', async () => {
+      mockService.removeParticipant.mockRejectedValue(
+        new ForbiddenException(
+          "Impossible de retirer un participant d'une mission terminée ou archivée",
+        ),
+      );
+
+      await expect(controller.removeParticipant(1, 1, 42)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it("❌ propage NotFoundException si le participant n'est pas inscrit", async () => {
+      mockService.removeParticipant.mockRejectedValue(
+        new NotFoundException(
+          "L'utilisateur #999 n'est pas inscrit à cette mission",
+        ),
+      );
+
+      await expect(controller.removeParticipant(1, 1, 999)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('❌ propage NotFoundException si la mission est introuvable', async () => {
+      mockService.removeParticipant.mockRejectedValue(
+        new NotFoundException('Mission #999 introuvable'),
+      );
+
+      await expect(controller.removeParticipant(1, 999, 42)).rejects.toThrow(
         NotFoundException,
       );
     });

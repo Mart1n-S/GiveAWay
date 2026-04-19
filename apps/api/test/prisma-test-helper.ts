@@ -156,6 +156,18 @@ export async function createTestMission(
 }
 
 /**
+ * Inscrit un utilisateur à une mission (crée une entrée MissionParticipant).
+ */
+export async function createTestMissionParticipant(
+  missionId: number,
+  userId: number,
+) {
+  return prisma.missionParticipant.create({
+    data: { missionId, userId },
+  });
+}
+
+/**
  * Crée un utilisateur prêt à l'emploi (activé) pour les tests de connexion
  */
 
