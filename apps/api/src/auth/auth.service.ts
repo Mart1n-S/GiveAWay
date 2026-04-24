@@ -20,6 +20,7 @@ import {
   UserAvailability,
   MissionParticipant,
   Mission,
+  MissionCause,
   AvailabilityType,
   AvailabilityTime,
   AvailabilityFrequency,
@@ -37,8 +38,12 @@ export type UserWithRelations = PrismaUser & {
   causes?: (UserCause & { cause: Cause })[];
   availability?: UserAvailability | null;
   participations?: (MissionParticipant & {
-    mission: Mission & { association: Association };
+    mission: Mission & {
+      association: Association;
+      causes: (MissionCause & { cause: Cause })[];
+    };
   })[];
+  _count?: { follows?: number };
 };
 
 @Injectable()
@@ -218,6 +223,8 @@ export class AuthService {
       profilePicture: user.profilePicture,
       status: user.status as unknown as SharedUserStatus,
       emailNotifications: user.emailNotifications,
+      matchNotifications: user.matchNotifications,
+      followsCount: user._count?.follows ?? 0,
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
       address: user.address
@@ -272,7 +279,14 @@ export class AuthService {
             id: p.mission.id,
             title: p.mission.title,
             type: p.mission.type,
+            availabilityType: p.mission.availabilityType,
             startDate: p.mission.startDate?.toISOString() ?? null,
+            durationInt: p.mission.durationInt,
+            causes:
+              p.mission.causes?.map((mc) => ({
+                id: mc.cause.id,
+                label: mc.cause.label,
+              })) ?? [],
             association: {
               id: p.mission.association.id,
               name: p.mission.association.name,

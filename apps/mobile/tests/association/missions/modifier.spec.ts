@@ -227,7 +227,7 @@ test.describe("Page Modifier Mission — Navigation", () => {
   }, testInfo) => {
     const user = await createTestUser(testInfo.workerIndex);
     const assoc = await createTestAssociation(user.id);
-    const mission = await createTestMission(assoc.id);
+    const mission = await createTestMission(assoc.id, { volunteersNeeded: 5 });
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToModifier(page, user, mission.id, isMobile);
@@ -252,6 +252,7 @@ test.describe("Page Modifier Mission — Soumission", () => {
     const assoc = await createTestAssociation(user.id);
     const mission = await createTestMission(assoc.id, {
       title: "Titre À Modifier",
+      volunteersNeeded: 5,
     });
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -306,7 +307,7 @@ test.describe("Page Modifier Mission — Soumission", () => {
   }, testInfo) => {
     const user = await createTestUser(testInfo.workerIndex);
     const assoc = await createTestAssociation(user.id);
-    const mission = await createTestMission(assoc.id);
+    const mission = await createTestMission(assoc.id, { volunteersNeeded: 5 });
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToModifier(page, user, mission.id, isMobile);

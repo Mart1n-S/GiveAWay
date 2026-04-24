@@ -14,7 +14,70 @@ import type {
   AddMemberDto,
   UpdateMemberRoleDto,
   TransferOwnerDto,
+  AssociationPublicListResponse,
+  AssociationPublicProfile,
+  FollowStatusResponse,
 } from "@repo/shared";
+
+export interface PublicAssociationListQuery {
+  search?: string;
+  city?: string;
+  lat?: number;
+  lng?: number;
+  radius?: number;
+  page?: number;
+  pageSize?: number;
+}
+
+export async function getPublicAssociations(
+  query: PublicAssociationListQuery = {},
+): Promise<AssociationPublicListResponse> {
+  const params: Record<string, string> = {};
+  if (query.search) params.search = query.search;
+  if (query.city) params.city = query.city;
+  if (query.lat !== undefined) params.lat = String(query.lat);
+  if (query.lng !== undefined) params.lng = String(query.lng);
+  if (query.radius !== undefined) params.radius = String(query.radius);
+  if (query.page !== undefined) params.page = String(query.page);
+  if (query.pageSize !== undefined) params.pageSize = String(query.pageSize);
+
+  try {
+    const { data } = await api.get<AssociationPublicListResponse>(
+      "/associations/public",
+      { params },
+    );
+    return data;
+  } catch {
+    Toast.show({
+      type: "error",
+      text1: "Impossible de charger les associations",
+      text2: "Vérifiez votre connexion et réessayez.",
+      visibilityTime: 10000,
+      onPress: () => Toast.hide(),
+    });
+    throw new Error("Impossible de charger les associations.");
+  }
+}
+
+export async function getPublicAssociation(
+  associationId: number,
+): Promise<AssociationPublicProfile> {
+  try {
+    const { data } = await api.get<AssociationPublicProfile>(
+      `/associations/public/${associationId}`,
+    );
+    return data;
+  } catch (err) {
+    if (isAxiosError(err)) {
+      if (err.response?.status === 404) {
+        throw new Error("Association introuvable.");
+      }
+    }
+    throw new Error(
+      "Impossible de charger l'association. Vérifiez votre connexion.",
+    );
+  }
+}
 import type { ReactNativeFile } from "@/components/multiple-documents-picker/multiple-documents-picker";
 
 /** Filtres optionnels pour la recherche d'associations proches */
@@ -427,6 +490,37 @@ export async function deleteDocument(
     .filter((d) => d.id !== documentId)
     .map((d) => d.fileUrl);
   return updateAssociation(associationId, { documentUrls: remainingUrls });
+}
+
+/**
+ * GET /associations/:id/follow
+ * Retourne si l'utilisateur connecté suit l'association.
+ */
+export async function getFollowStatus(
+  associationId: number,
+): Promise<FollowStatusResponse> {
+  const { data } = await api.get<FollowStatusResponse>(
+    `/associations/${associationId}/follow`,
+  );
+  return data;
+}
+
+/**
+ * POST /associations/:id/follow
+ * Abonne l'utilisateur connecté aux nouvelles missions de l'association.
+ */
+export async function followAssociation(associationId: number): Promise<void> {
+  await api.post(`/associations/${associationId}/follow`);
+}
+
+/**
+ * DELETE /associations/:id/follow
+ * Désabonne l'utilisateur connecté.
+ */
+export async function unfollowAssociation(
+  associationId: number,
+): Promise<void> {
+  await api.delete(`/associations/${associationId}/follow`);
 }
 
 /**

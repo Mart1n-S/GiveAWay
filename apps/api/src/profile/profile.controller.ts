@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Patch,
+  Query,
   Req,
   Res,
   UnauthorizedException,
@@ -23,7 +24,13 @@ import {
   UpdateProfileSchema,
   UpdateNotificationsDto,
   UpdateNotificationsSchema,
+  RegisterPushTokenDto,
+  RegisterPushTokenSchema,
   User,
+  FollowedAssociationItem,
+  ParticipationStatsDto,
+  ParticipationStatsQueryDto,
+  ParticipationStatsQuerySchema,
 } from '@repo/shared';
 import { AuthenticatedRequest } from '../common/interfaces/authenticated-request.interface';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -47,6 +54,40 @@ export class ProfileController {
     }
 
     return this.profileService.getProfile(req.user.id);
+  }
+
+  /**
+   * GET /profile/follows
+   * Retourne la liste des associations suivies par l'utilisateur connecté
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Get('follows')
+  @HttpCode(HttpStatus.OK)
+  async getFollowedAssociations(
+    @Req() req: AuthenticatedRequest,
+  ): Promise<FollowedAssociationItem[]> {
+    if (!req.user.id) {
+      throw new UnauthorizedException('Utilisateur non identifié');
+    }
+    return this.profileService.getFollowedAssociations(req.user.id);
+  }
+
+  /**
+   * GET /profile/participations/stats
+   * Retourne les statistiques de participation du bénévole connecté
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Get('participations/stats')
+  @HttpCode(HttpStatus.OK)
+  async getParticipationStats(
+    @Req() req: AuthenticatedRequest,
+    @Query(new ZodValidationPipe(ParticipationStatsQuerySchema))
+    query: ParticipationStatsQueryDto,
+  ): Promise<ParticipationStatsDto> {
+    if (!req.user.id) {
+      throw new UnauthorizedException('Utilisateur non identifié');
+    }
+    return this.profileService.getParticipationStats(req.user.id, query);
   }
 
   /**
@@ -111,6 +152,24 @@ export class ProfileController {
     }
 
     return this.profileService.updateNotifications(req.user.id, dto);
+  }
+
+  /**
+   * PATCH /profile/push-token
+   * Enregistre ou met à jour le token de notification push de l'appareil
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Patch('push-token')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async savePushToken(
+    @Req() req: AuthenticatedRequest,
+    @Body(new ZodValidationPipe(RegisterPushTokenSchema))
+    dto: RegisterPushTokenDto,
+  ): Promise<void> {
+    if (!req.user.id) {
+      throw new UnauthorizedException('Utilisateur non identifié');
+    }
+    await this.profileService.savePushToken(req.user.id, dto);
   }
 
   /**

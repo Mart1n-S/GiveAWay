@@ -5,6 +5,10 @@ import {
   UpdateProfileDto,
   DeleteAccountDto,
   UpdateNotificationsDto,
+  RegisterPushTokenDto,
+  FollowedAssociationItem,
+  ParticipationStatsDto,
+  ParticipationStatsQueryDto,
 } from "@repo/shared";
 import { useProfileStore } from "../stores/profile.store";
 import { Platform } from "react-native";
@@ -152,5 +156,28 @@ export const ProfileService = {
 
     // Nettoyage du store local après suppression
     useAuthStore.getState().logout();
+  },
+
+  registerPushToken: async (dto: RegisterPushTokenDto): Promise<void> => {
+    await api.patch("/profile/push-token", dto);
+  },
+
+  getFollowedAssociations: async (): Promise<FollowedAssociationItem[]> => {
+    const { data } = await api.get<FollowedAssociationItem[]>("/profile/follows");
+    return data;
+  },
+
+  getParticipationStats: async (
+    query: ParticipationStatsQueryDto,
+  ): Promise<ParticipationStatsDto> => {
+    const params = new URLSearchParams();
+    if (query.startDate) params.set("startDate", query.startDate);
+    if (query.endDate) params.set("endDate", query.endDate);
+    if (query.type) params.set("type", query.type);
+    const qs = params.toString();
+    const { data } = await api.get<ParticipationStatsDto>(
+      `/profile/participations/stats${qs ? `?${qs}` : ""}`,
+    );
+    return data;
   },
 };

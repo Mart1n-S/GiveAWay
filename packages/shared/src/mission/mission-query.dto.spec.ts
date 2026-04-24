@@ -412,6 +412,43 @@ describe('MissionListQuerySchema', () => {
   });
 
   // =========================================================================
+  // associationId
+  // =========================================================================
+  describe('associationId', () => {
+    it('✅ Doit accepter associationId=1 (minimum)', () => {
+      const result = MissionListQuerySchema.safeParse({ associationId: '1' });
+      expect(result.success).toBe(true);
+      if (result.success) expect(result.data.associationId).toBe(1);
+    });
+
+    it('✅ Doit convertir "5" en 5', () => {
+      const result = MissionListQuerySchema.parse({ associationId: '5' });
+      expect(result.associationId).toBe(5);
+      expect(typeof result.associationId).toBe('number');
+    });
+
+    it('❌ Doit rejeter associationId=0 (sous le minimum)', () => {
+      const result = MissionListQuerySchema.safeParse({ associationId: '0' });
+      expect(result.success).toBe(false);
+    });
+
+    it('❌ Doit rejeter associationId=-1', () => {
+      const result = MissionListQuerySchema.safeParse({ associationId: '-1' });
+      expect(result.success).toBe(false);
+    });
+
+    it('✅ Doit retourner undefined si associationId est absent', () => {
+      const result = MissionListQuerySchema.parse({});
+      expect(result.associationId).toBeUndefined();
+    });
+
+    it('✅ Doit traiter associationId="" comme absent (undefined)', () => {
+      const result = MissionListQuerySchema.parse({ associationId: '' });
+      expect(result.associationId).toBeUndefined();
+    });
+  });
+
+  // =========================================================================
   // Combinaisons
   // =========================================================================
   describe('Combinaisons de paramètres', () => {

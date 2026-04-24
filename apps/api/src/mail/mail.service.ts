@@ -414,6 +414,62 @@ export class MailService {
     );
   }
 
+  private getNewMissionTemplate(
+    userName: string,
+    missionTitle: string,
+    associationName: string,
+  ): string {
+    const content = `
+      <h1 style="margin: 0 0 16px 0; color: #1e293b; font-size: 22px; font-weight: 700; text-align: center;">Nouvelle mission disponible 🧡</h1>
+      <p style="text-align: center; margin-bottom: 24px;">Bonjour <b>${userName}</b>,</p>
+      <p style="text-align: center; margin-bottom: 24px;">
+        L'association <b>${associationName}</b> que vous suivez vient de publier une nouvelle mission :
+      </p>
+      <div style="background-color: #fff7ed; border-left: 4px solid #cc460f; border-radius: 8px; padding: 16px 20px; margin-bottom: 32px; text-align: left;">
+        <p style="margin: 0; font-size: 17px; font-weight: 700; color: #1e293b;">${missionTitle}</p>
+      </div>
+      <p style="text-align: center; margin-bottom: 32px; color: #64748b;">
+        Connectez-vous à GiveAWay pour consulter les détails.
+      </p>
+      <div style="border-top: 1px solid #f1f5f9; padding-top: 24px; font-size: 13px; color: #94a3b8; text-align: center;">
+        Vous recevez cet email car vous êtes abonné aux notifications de <b>${associationName}</b>.<br/>
+        Vous pouvez gérer vos préférences dans votre profil GiveAWay.
+      </div>
+    `;
+    return this.getEmailWrapper(content);
+  }
+
+  async sendNewMissionEmail(
+    email: string,
+    userName: string,
+    missionTitle: string,
+    associationName: string,
+  ) {
+    if (
+      this.config.get('NODE_ENV') === 'test' ||
+      this.config.get('USE_DETERMINISTIC_OTP') === 'true'
+    ) {
+      console.log(
+        `\n📨 [MAIL SERVICE] Nouvelle mission — notif pour : ${email}`,
+      );
+      console.log(
+        `📋 Mission : ${missionTitle} | Association : ${associationName}\n`,
+      );
+      return;
+    }
+
+    const html = this.getNewMissionTemplate(
+      userName,
+      missionTitle,
+      associationName,
+    );
+    return this.sendApiEmail(
+      email,
+      `Nouvelle mission de ${associationName} 🧡`,
+      html,
+    );
+  }
+
   async sendPasswordResetEmail(email: string, token: string) {
     if (
       this.config.get('NODE_ENV') === 'test' ||

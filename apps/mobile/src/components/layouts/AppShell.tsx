@@ -112,8 +112,8 @@ export function AppShell({ children, layoutType = "main" }: AppShellProps) {
     ...PUBLIC_LINKS.filter((l) => l.id !== "home"),
   ]
     .filter((link) => {
-      // Masquer "Mon Association" si l'utilisateur n'appartient à aucune association
-      if (link.id === "association" && !hasAssociation) return false;
+      // Masquer "Mon Association" et "Gestion des Missions" si pas membre d'une association
+      if ((link.id === "association" || link.id === "gestion-des-missions") && !hasAssociation) return false;
       // Si c'est du mobile natif dans le layout Main, on applique le filtre drawer
       // Sinon (Web ou Subpage), on affiche tout ce qui est pertinent
       if (!isWeb && layoutType === "main" && link.hideInMobileDrawer)

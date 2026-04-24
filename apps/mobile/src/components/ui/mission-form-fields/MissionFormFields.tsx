@@ -128,9 +128,9 @@ function FieldError({ message }: { message?: string }) {
 
 function InfoNote({ children }: { children: string }) {
   return (
-    <View className="flex-row gap-2 items-start p-3 bg-blue-50 rounded-lg border border-blue-100">
+    <View className="flex-row items-start gap-2 p-3 border border-blue-100 rounded-lg bg-blue-50">
       <InfoIcon className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-      <Text className="text-xs text-grey-700 flex-1">{children}</Text>
+      <Text className="flex-1 text-xs text-grey-700">{children}</Text>
     </View>
   );
 }
@@ -156,14 +156,18 @@ export function MissionFormFields<T extends FieldValues>({
 
   const [showActivityInfo, setShowActivityInfo] = useState(false);
 
-  const availabilityType = useWatch({ control, name: "availabilityType" as any }) as
-    | "REMOTE"
-    | "ON_SITE"
-    | "HYBRID"
-    | null
-    | undefined;
+  const availabilityType = useWatch({
+    control,
+    name: "availabilityType" as any,
+  }) as "REMOTE" | "ON_SITE" | "HYBRID" | undefined;
+
+  const hasRegistration = useWatch({
+    control,
+    name: "hasRegistration" as any,
+  }) as boolean | undefined;
 
   const isRemote = availabilityType === "REMOTE";
+  const showVolunteersNeeded = !isCollect && (hasRegistration ?? true);
 
   return (
     <>
@@ -210,11 +214,15 @@ export function MissionFormFields<T extends FieldValues>({
             {showActivityInfo && (
               <View className="p-3 bg-blue-50 rounded-lg border border-blue-100 gap-2.5">
                 {ACTIVITY_INFO.map(({ Icon, title, desc }) => (
-                  <View key={title} className="flex-row gap-2 items-start">
+                  <View key={title} className="flex-row items-start gap-2">
                     <Icon className="w-4 h-4 text-primary mt-0.5 shrink-0" />
                     <View className="flex-1">
-                      <Text className="text-xs font-bold text-grey-800">{title}</Text>
-                      <Text className="text-xs text-grey-600 leading-4">{desc}</Text>
+                      <Text className="text-xs font-bold text-grey-800">
+                        {title}
+                      </Text>
+                      <Text className="text-xs leading-4 text-grey-600">
+                        {desc}
+                      </Text>
                     </View>
                   </View>
                 ))}
@@ -272,7 +280,8 @@ export function MissionFormFields<T extends FieldValues>({
                     <FieldError message={fieldState.error?.message} />
                     {isCollect && (
                       <Text className="text-xs text-grey-500">
-                        Une collecte implique un lieu physique (en présentiel uniquement).
+                        Une collecte implique un lieu physique (en présentiel
+                        uniquement).
                       </Text>
                     )}
                   </View>
@@ -286,9 +295,9 @@ export function MissionFormFields<T extends FieldValues>({
       {/* ── Step 2 : Détails ────────────────────────────────────── */}
       <View style={{ display: step === 2 ? "flex" : "none" }}>
         {isInfo ? (
-          <View className="items-center justify-center py-10 gap-3">
+          <View className="items-center justify-center gap-3 py-10">
             <InfoIcon className="w-10 h-10 text-grey-300" />
-            <Text className="text-sm text-grey-500 text-center">
+            <Text className="text-sm text-center text-grey-500">
               Une information n'a pas de modalité logistique.{"\n"}
               Passez directement à l'étape suivante pour y associer des tags.
             </Text>
@@ -312,13 +321,14 @@ export function MissionFormFields<T extends FieldValues>({
               />
             )}
 
-            {!isCollect && (
+            {showVolunteersNeeded && (
               <FormInput
                 control={control}
                 name={"volunteersNeeded" as any}
                 label="Nombre de bénévoles souhaité"
                 placeholder="Ex: 10"
                 keyboardType="numeric"
+                required
               />
             )}
 
@@ -344,7 +354,9 @@ export function MissionFormFields<T extends FieldValues>({
                           label={opt.label}
                           selected={field.value === opt.value}
                           onPress={() =>
-                            field.onChange(field.value === opt.value ? null : opt.value)
+                            field.onChange(
+                              field.value === opt.value ? null : opt.value,
+                            )
                           }
                         />
                       ))}
@@ -357,17 +369,26 @@ export function MissionFormFields<T extends FieldValues>({
 
             <View className="flex-row gap-3">
               <View className="flex-1">
-                <FormDateInput control={control} name={"startDate" as any} label="Date de début" />
+                <FormDateInput
+                  control={control}
+                  name={"startDate" as any}
+                  label="Date de début"
+                />
               </View>
               <View className="flex-1">
-                <FormDateInput control={control} name={"endDate" as any} label="Date de fin" />
+                <FormDateInput
+                  control={control}
+                  name={"endDate" as any}
+                  label="Date de fin"
+                />
               </View>
             </View>
 
             {/* Adresse — masquée pour les missions 100 % à distance */}
             {isRemote ? (
               <InfoNote>
-                Pour les missions à distance, l'adresse de l'association sera utilisée pour l'affichage sur la carte.
+                Pour les missions à distance, l'adresse de l'association sera
+                utilisée pour l'affichage sur la carte.
               </InfoNote>
             ) : (
               <Controller
@@ -375,7 +396,9 @@ export function MissionFormFields<T extends FieldValues>({
                 name={"address" as any}
                 render={({ field, fieldState }) => (
                   <View className="gap-1">
-                    <Text className="text-sm font-bold text-grey-800">Adresse</Text>
+                    <Text className="text-sm font-bold text-grey-800">
+                      Adresse
+                    </Text>
                     <AddressAutocomplete
                       value={field.value ?? undefined}
                       onSelect={(result) => {
@@ -406,7 +429,9 @@ export function MissionFormFields<T extends FieldValues>({
       <View style={{ display: step === 3 ? "flex" : "none" }}>
         <View className="gap-6">
           <View className="gap-3">
-            <Text className="text-sm font-bold text-grey-800">Compétences recherchées</Text>
+            <Text className="text-sm font-bold text-grey-800">
+              Compétences recherchées
+            </Text>
             <Controller
               control={control}
               name={"skillIds" as any}
@@ -422,7 +447,9 @@ export function MissionFormFields<T extends FieldValues>({
           </View>
 
           <View className="gap-3">
-            <Text className="text-sm font-bold text-grey-800">Causes associées</Text>
+            <Text className="text-sm font-bold text-grey-800">
+              Causes associées
+            </Text>
             <Controller
               control={control}
               name={"causeIds" as any}
@@ -438,7 +465,9 @@ export function MissionFormFields<T extends FieldValues>({
           </View>
 
           <View className="gap-3">
-            <Text className="text-sm font-bold text-grey-800">Publics ciblés</Text>
+            <Text className="text-sm font-bold text-grey-800">
+              Publics ciblés
+            </Text>
             <Controller
               control={control}
               name={"publicTypeIds" as any}
@@ -454,7 +483,9 @@ export function MissionFormFields<T extends FieldValues>({
           </View>
 
           <View className="gap-3">
-            <Text className="text-sm font-bold text-grey-800">Types de bénévoles</Text>
+            <Text className="text-sm font-bold text-grey-800">
+              Types de bénévoles
+            </Text>
             <Controller
               control={control}
               name={"volunteerTypeIds" as any}
