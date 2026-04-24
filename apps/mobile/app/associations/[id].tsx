@@ -17,8 +17,15 @@ import { cssInterop } from "nativewind";
 import clsx from "clsx";
 
 import type { AssociationPublicProfile, MissionListItem } from "@repo/shared";
-import { getPublicAssociation } from "@/services/association.service";
+import {
+  getPublicAssociation,
+  getFollowStatus,
+  followAssociation,
+  unfollowAssociation,
+} from "@/services/association.service";
 import { MissionService } from "@/services/mission.service";
+import { useAuthStore } from "@/stores/auth.store";
+import { useProfileStore } from "@/stores/profile.store";
 import { Text, Button, TagBadge, colors } from "@/components/ui";
 import { MissionCard } from "@/components/ui/mission-card/mission-card";
 import { MissionMap } from "@/components/ui/mission-map";
@@ -332,8 +339,10 @@ export default function AssociationPublicProfileScreen() {
   const [missionsLoading, setMissionsLoading] = useState(false);
   const [missionsLoadingMore, setMissionsLoadingMore] = useState(false);
 
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const [notified, setNotified] = useState(false);
   const [notifyModalVisible, setNotifyModalVisible] = useState(false);
+  const [notifyLoading, setNotifyLoading] = useState(false);
 
   usePageTitle("Association");
 
@@ -391,6 +400,13 @@ export default function AssociationPublicProfileScreen() {
     if (association) loadMissions(1, false);
   }, [association, loadMissions]);
 
+  useEffect(() => {
+    if (!association || !isAuthenticated || !id) return;
+    getFollowStatus(Number(id))
+      .then((res) => setNotified(res.isFollowing))
+      .catch(() => {});
+  }, [association, isAuthenticated, id]);
+
   const handleBack = () => {
     if (router.canGoBack()) router.back();
     else router.push("/associations");
@@ -400,18 +416,51 @@ export default function AssociationPublicProfileScreen() {
     router.push(`/missions/${missionId}`);
   };
 
-  // Pression sur la cloche : ouvre la modal si pas encore abonné, désabonne directement sinon
   const handleNotifyPress = () => {
     if (notified) {
-      setNotified(false);
+      void handleUnfollow();
     } else {
       setNotifyModalVisible(true);
     }
   };
 
-  const handleNotifyConfirm = () => {
-    setNotified(true);
+  const handleNotifyConfirm = async () => {
     setNotifyModalVisible(false);
+
+    if (!isAuthenticated) {
+      setNotified(true);
+      return;
+    }
+
+    if (!id) return;
+    setNotifyLoading(true);
+    try {
+      await followAssociation(Number(id));
+      setNotified(true);
+      const store = useProfileStore.getState();
+      const prev = store.profile?.followsCount ?? 0;
+      store.updateProfile({ followsCount: prev + 1 });
+    } catch {
+      // silently ignore
+    } finally {
+      setNotifyLoading(false);
+    }
+  };
+
+  const handleUnfollow = async () => {
+    if (!id) return;
+    setNotifyLoading(true);
+    try {
+      await unfollowAssociation(Number(id));
+      setNotified(false);
+      const store = useProfileStore.getState();
+      const prev = store.profile?.followsCount ?? 0;
+      store.updateProfile({ followsCount: Math.max(0, prev - 1) });
+    } catch {
+      // silently ignore
+    } finally {
+      setNotifyLoading(false);
+    }
   };
 
   const hasMissionsMore = missions.length < missionsTotal;
@@ -509,7 +558,7 @@ export default function AssociationPublicProfileScreen() {
       <NotificationModal
         visible={notifyModalVisible}
         associationName={association.name}
-        onConfirm={handleNotifyConfirm}
+        onConfirm={() => void handleNotifyConfirm()}
         onCancel={() => setNotifyModalVisible(false)}
       />
 

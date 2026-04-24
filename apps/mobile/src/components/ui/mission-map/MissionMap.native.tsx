@@ -1,9 +1,12 @@
 import { Platform, StyleSheet, View, Linking } from "react-native";
 import MapView, { Marker } from "react-native-maps";
-import Constants, { ExecutionEnvironment } from "expo-constants";
 import { Text } from "../text/text";
 import { Button } from "../button/button";
 import type { MissionMapProps } from "./MissionMap.types";
+
+// Passer à true une fois la clé Google Maps configurée dans app.config.js
+// (android.config.googleMaps.apiKey)
+const GOOGLE_MAPS_CONFIGURED = false;
 
 const DELTA = 0.008;
 
@@ -31,15 +34,13 @@ export function MissionMap({
     });
   };
 
-  // Carte non disponible dans Expo Go sur Android (Google Maps non configuré)
-  const isNativeBuild =
-    Constants.executionEnvironment !== ExecutionEnvironment.StoreClient;
-  if (Platform.OS === "android" && !isNativeBuild) {
+  // Carte désactivée sur Android tant que la clé Google Maps n'est pas configurée
+  if (Platform.OS === "android" && !GOOGLE_MAPS_CONFIGURED) {
     return (
       <View className="gap-3">
         <View style={[styles.placeholder, { height }]}>
           <Text className="text-sm text-grey-500 text-center px-4">
-            Carte non disponible dans Expo Go sur Android.
+            Carte non disponible sur Android pour le moment.
           </Text>
         </View>
         <View className="items-start">

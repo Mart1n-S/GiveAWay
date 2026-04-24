@@ -9,6 +9,7 @@ const VALID_PAYLOAD = {
   description: 'Description suffisamment longue pour passer la validation minimale.',
   type: 'MISSION' as const,
   availabilityType: 'REMOTE' as const,
+  volunteersNeeded: 10,
 };
 
 const VALID_INFO_PAYLOAD = {
@@ -104,7 +105,10 @@ describe('CreateMissionSchema', () => {
                 type,
                 availabilityType:
                   type === 'COLLECT' ? ('ON_SITE' as const) : ('REMOTE' as const),
+                // COLLECT n'a pas de concept d'inscription (règle non applicable)
                 ...(type === 'COLLECT' && {
+                  hasRegistration: false,
+                  volunteersNeeded: undefined,
                   address: { street: '1 rue Test', postalCode: '75001', city: 'Paris' },
                 }),
               };
@@ -278,8 +282,76 @@ describe('CreateMissionSchema', () => {
       expect(result.success).toBe(false);
     });
 
-    it('accepte undefined (champ optionnel)', () => {
+    it('accepte un nombre valide de bénévoles', () => {
       const result = CreateMissionSchema.safeParse(VALID_PAYLOAD);
+      expect(result.success).toBe(true);
+    });
+  });
+
+  // ===========================================================================
+  // Règle métier : volunteersNeeded obligatoire si hasRegistration=true (MISSION/EVENT)
+  // ===========================================================================
+  describe('❌ volunteersNeeded obligatoire si hasRegistration=true (MISSION / EVENT)', () => {
+    it('rejette MISSION avec hasRegistration=true et volunteersNeeded absent', () => {
+      const result = CreateMissionSchema.safeParse({
+        ...VALID_PAYLOAD,
+        hasRegistration: true,
+        volunteersNeeded: undefined,
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const err = result.error.issues.find((i) => i.path[0] === 'volunteersNeeded');
+        expect(err).toBeDefined();
+        expect(err?.message).toContain('bénévoles');
+      }
+    });
+
+    it('rejette EVENT avec hasRegistration=true et volunteersNeeded absent', () => {
+      const result = CreateMissionSchema.safeParse({
+        ...VALID_PAYLOAD,
+        type: 'EVENT' as const,
+        hasRegistration: true,
+        volunteersNeeded: undefined,
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const err = result.error.issues.find((i) => i.path[0] === 'volunteersNeeded');
+        expect(err).toBeDefined();
+      }
+    });
+
+    it('accepte MISSION avec hasRegistration=false et volunteersNeeded absent', () => {
+      const result = CreateMissionSchema.safeParse({
+        ...VALID_PAYLOAD,
+        hasRegistration: false,
+        volunteersNeeded: undefined,
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('accepte EVENT avec hasRegistration=false et volunteersNeeded absent', () => {
+      const result = CreateMissionSchema.safeParse({
+        ...VALID_PAYLOAD,
+        type: 'EVENT' as const,
+        hasRegistration: false,
+        volunteersNeeded: undefined,
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('accepte COLLECT sans volunteersNeeded (règle non applicable)', () => {
+      const result = CreateMissionSchema.safeParse({
+        ...VALID_PAYLOAD,
+        type: 'COLLECT' as const,
+        availabilityType: 'ON_SITE' as const,
+        volunteersNeeded: undefined,
+        address: { street: '1 rue Test', postalCode: '75001', city: 'Paris' },
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('accepte INFO sans volunteersNeeded (règle non applicable)', () => {
+      const result = CreateMissionSchema.safeParse(VALID_INFO_PAYLOAD);
       expect(result.success).toBe(true);
     });
   });

@@ -6,6 +6,7 @@ import {
   Platform,
   Pressable,
 } from "react-native";
+// Pressable is used for the reset-filters button inside this file
 import { Stack, useRouter } from "expo-router";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
@@ -16,8 +17,16 @@ import { cssInterop } from "nativewind";
 import { Text } from "@/components/ui/text/text";
 import { Button } from "@/components/ui/button/button";
 import { colors } from "@/components/ui/theme/tokens";
+import { KpiCard } from "@/components/ui/stats/KpiCard";
+import { SectionTitle } from "@/components/ui/stats/SectionTitle";
+import { TypeFilterBar, TYPE_LABELS, TYPE_COLORS } from "@/components/ui/stats/TypeFilterBar";
+import { FilterDateRow } from "@/components/ui/stats/FilterDateRow";
 
 import ArrowLeftIconSource from "@assets/icons/ic_arrow_left.svg";
+import { useAuthStore } from "@/stores/auth.store";
+import { AssociationMissionService } from "@/services/association-mission.service";
+import type { AssociationMissionStats, ActivityType, StatsQueryDto } from "@repo/shared";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const iconConfig = {
   className: {
@@ -27,139 +36,8 @@ const iconConfig = {
 } as const;
 
 const ArrowLeftIcon = cssInterop(ArrowLeftIconSource, iconConfig);
-import { DateInput } from "@/components/ui/mission-filters/DateInput";
-import { useAuthStore } from "@/stores/auth.store";
-import { AssociationMissionService } from "@/services/association-mission.service";
-import type { AssociationMissionStats, ActivityType, StatsQueryDto } from "@repo/shared";
-import { ACTIVITY_TYPES } from "@repo/shared";
-import { usePageTitle } from "@/hooks/usePageTitle";
-
-// ─── Constantes ──────────────────────────────────────────────────────────────
-
-const TYPE_LABELS: Record<ActivityType, string> = {
-  MISSION: "Mission",
-  EVENT: "Événement",
-  COLLECT: "Collecte",
-  INFO: "Information",
-};
-
-const TYPE_COLORS: Record<ActivityType, string> = {
-  MISSION: colors.primary.default,
-  EVENT: colors.blue[600],
-  COLLECT: colors.green[600],
-  INFO: colors.grey[500],
-};
 
 const CHART_WIDTH = Platform.OS === "web" ? 500 : 320;
-
-// ─── Composants ──────────────────────────────────────────────────────────────
-
-function KpiCard({
-  label,
-  value,
-  color = colors.grey[900],
-}: {
-  readonly label: string;
-  readonly value: string | number;
-  readonly color?: string;
-}) {
-  return (
-    <View className="flex-1 items-center gap-1 p-4 bg-white border rounded-lg border-grey-100">
-      <Text className="text-2xl font-bold" style={{ color }}>
-        {value}
-      </Text>
-      <Text className="text-xs text-center text-grey-500">{label}</Text>
-    </View>
-  );
-}
-
-function SectionTitle({ title }: { readonly title: string }) {
-  return (
-    <Text className="text-base font-bold text-grey-900 mb-3">{title}</Text>
-  );
-}
-
-function FilterDateRow({
-  startDate,
-  endDate,
-  onStartChange,
-  onEndChange,
-}: {
-  readonly startDate: string | undefined;
-  readonly endDate: string | undefined;
-  readonly onStartChange: (v: string | undefined) => void;
-  readonly onEndChange: (v: string | undefined) => void;
-}) {
-  return (
-    <View className="flex-row gap-3">
-      <View className="flex-1 gap-1">
-        <Text className="text-xs font-semibold text-grey-600">Du</Text>
-        <View className="h-11 px-3 border border-grey-200 rounded-lg justify-center bg-white">
-          <DateInput value={startDate} onChange={onStartChange} label="Date de début" />
-        </View>
-      </View>
-      <View className="flex-1 gap-1">
-        <Text className="text-xs font-semibold text-grey-600">Au</Text>
-        <View className="h-11 px-3 border border-grey-200 rounded-lg justify-center bg-white">
-          <DateInput value={endDate} onChange={onEndChange} label="Date de fin" />
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function TypeFilterBar({
-  selected,
-  onSelect,
-}: {
-  readonly selected: ActivityType | undefined;
-  readonly onSelect: (t: ActivityType | undefined) => void;
-}) {
-  return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-      <View className="flex-row gap-2">
-        <Pressable
-          testID="filter-type-ALL"
-          onPress={() => onSelect(undefined)}
-          className="px-3 py-1.5 rounded-full border web:cursor-pointer"
-          style={{
-            backgroundColor: !selected ? colors.primary.default : "white",
-            borderColor: !selected ? colors.primary.default : colors.grey[200],
-          }}
-        >
-          <Text
-            className="text-xs font-semibold"
-            style={{ color: !selected ? "white" : colors.grey[600] }}
-          >
-            Tous
-          </Text>
-        </Pressable>
-        {ACTIVITY_TYPES.map((type) => {
-          const active = selected === type;
-          return (
-            <Pressable
-              key={type}
-              testID={`filter-type-${type}`}
-              onPress={() => onSelect(active ? undefined : type)}
-              className="px-3 py-1.5 rounded-full border web:cursor-pointer"
-              style={{
-                backgroundColor: active ? TYPE_COLORS[type] : "white",
-                borderColor: active ? TYPE_COLORS[type] : colors.grey[200],
-              }}
-            >
-              <Text
-                className="text-xs font-semibold"
-                style={{ color: active ? "white" : colors.grey[600] }}
-              >
-                {TYPE_LABELS[type]}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-    </ScrollView>
-  );
-}
 
 // ─── Génération HTML pour PDF ─────────────────────────────────────────────────
 

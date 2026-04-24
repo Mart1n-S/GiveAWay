@@ -55,6 +55,7 @@ const VALID_MISSION_PAYLOAD = {
   type: 'MISSION',
   availabilityType: 'REMOTE',
   hasRegistration: true,
+  volunteersNeeded: 5,
 };
 
 // ── Suite ─────────────────────────────────────────────────────────

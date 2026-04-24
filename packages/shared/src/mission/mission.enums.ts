@@ -55,6 +55,5 @@ export interface MissionBase {
   title: string;
   description: string;
   type: ActivityType;
-  /** null autorisé pour les missions de type INFO (simple information) */
-  availabilityType: MissionAvailabilityType | null;
+  availabilityType: MissionAvailabilityType;
 }

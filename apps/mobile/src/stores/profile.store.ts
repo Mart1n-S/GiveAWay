@@ -11,6 +11,9 @@ interface ProfileState {
   lastFetchedAt: number | null;
 
   setProfile: (profile: User) => void;
+  /** Stocke le profil pour affichage immédiat (ex: post-login) mais le marque stale
+   *  pour forcer un rechargement complet au prochain getProfile(). */
+  setProfileFromAuth: (profile: User) => void;
   updateProfile: (partial: Partial<User>) => void;
   clearProfile: () => void;
   setLoading: (isLoading: boolean) => void;
@@ -25,6 +28,8 @@ export const useProfileStore = create<ProfileState>()(
       lastFetchedAt: null,
 
       setProfile: (profile) => set({ profile, lastFetchedAt: Date.now() }),
+
+      setProfileFromAuth: (profile) => set({ profile, lastFetchedAt: null }),
 
       updateProfile: (partial) =>
         set((state) => ({

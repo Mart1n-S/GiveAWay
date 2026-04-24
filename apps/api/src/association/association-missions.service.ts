@@ -26,6 +26,8 @@ import {
 } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
+import { NotificationService } from '../notification/notification.service';
+import { MatchingService } from '../matching/matching.service';
 
 // Type interne pour le résultat de la requête Prisma avec relations
 type MissionWithRelations = Prisma.MissionGetPayload<{
@@ -48,11 +50,32 @@ const MISSION_INCLUDE = {
   _count: { select: { participants: true } },
 } as const;
 
+// Type pour les candidats au matching (query Prisma avec relations)
+type CandidateUser = {
+  id: number;
+  email: string;
+  firstName: string;
+  pushToken: string | null;
+  emailNotifications: boolean;
+  skills: { skill: { id: number } }[];
+  causes: { cause: { id: number } }[];
+  availability: { type: string; timeSlot: string[] } | null;
+  address: { latitude: unknown; longitude: unknown } | null;
+  participations: {
+    mission: {
+      causes: { cause: { id: number } }[];
+      skills: { skill: { id: number } }[];
+    };
+  }[];
+};
+
 @Injectable()
 export class AssociationMissionsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mail: MailService,
+    private readonly notifications: NotificationService,
+    private readonly matching: MatchingService,
   ) {}
 
   // ----------------------------------------------------------------
@@ -100,7 +123,7 @@ export class AssociationMissionsService {
         title: dto.title,
         description: dto.description,
         type: dto.type as any,
-        availabilityType: (dto.availabilityType as any) ?? null,
+        availabilityType: dto.availabilityType as any,
         hasRegistration: dto.hasRegistration,
         volunteersNeeded: dto.volunteersNeeded ?? null,
         durationInt: dto.durationInt ?? null,
@@ -135,7 +158,13 @@ export class AssociationMissionsService {
       include: MISSION_INCLUDE,
     });
 
-    return this.mapToDto(mission);
+    const result = this.mapToDto(mission);
+
+    // Fire-and-forget: notifie les abonnés et les utilisateurs matchants
+    void this.notifyFollowers(associationId, mission.title, mission.id);
+    void this.notifyMatchingUsers(associationId, mission);
+
+    return result;
   }
 
   // ----------------------------------------------------------------
@@ -521,7 +550,7 @@ export class AssociationMissionsService {
           }),
           ...(dto.type !== undefined && { type: dto.type as any }),
           ...(dto.availabilityType !== undefined && {
-            availabilityType: (dto.availabilityType as any) ?? null,
+            availabilityType: dto.availabilityType as any,
           }),
           ...(dto.hasRegistration !== undefined && {
             hasRegistration: dto.hasRegistration,
@@ -796,6 +825,158 @@ export class AssociationMissionsService {
   // Helpers privés
   // ----------------------------------------------------------------
 
+  private async notifyMatchingUsers(
+    associationId: number,
+    mission: MissionWithRelations,
+  ): Promise<void> {
+    // Chargement des candidats :
+    // - matchNotifications activé, compte ACTIVE
+    // - Pas déjà notifiés via follow (évite double notification)
+    // - Pas membres de l'association
+    // - Filtre profil vide : au moins une compétence ou une cause renseignée
+    const candidates = (await this.prisma.user.findMany({
+      where: {
+        matchNotifications: true,
+        status: 'ACTIVE',
+        OR: [{ skills: { some: {} } }, { causes: { some: {} } }],
+        NOT: [
+          { follows: { some: { associationId } } },
+          { associations: { some: { associationId } } },
+        ],
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        pushToken: true,
+        emailNotifications: true,
+        skills: { select: { skill: { select: { id: true } } } },
+        causes: { select: { cause: { select: { id: true } } } },
+        availability: { select: { type: true, timeSlot: true } },
+        address: { select: { latitude: true, longitude: true } },
+        participations: {
+          where: { mission: { status: 'ACTIVE' } },
+          select: {
+            mission: {
+              select: {
+                causes: { select: { cause: { select: { id: true } } } },
+                skills: { select: { skill: { select: { id: true } } } },
+              },
+            },
+          },
+          take: 10,
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    })) as unknown as CandidateUser[];
+
+    const matched = candidates
+      .map((user) => ({
+        user,
+        score: this.matching.scoreUserMission(user, mission),
+      }))
+      .filter(({ score }) => score.isMatch);
+
+    if (matched.length === 0) return;
+
+    // Push notifications
+    const pushMessages = matched
+      .filter(({ user }) => !!user.pushToken)
+      .map(({ user }) => ({
+        to: user.pushToken,
+        title: 'Mission pour vous',
+        body: mission.title,
+        data: { missionId: mission.id },
+        sound: 'default' as const,
+      }));
+
+    if (pushMessages.length > 0) {
+      await this.notifications.sendPushNotifications(pushMessages);
+    }
+
+    // Emails
+    const association = await this.prisma.association.findUnique({
+      where: { id: associationId },
+      select: { name: true },
+    });
+
+    Promise.allSettled(
+      matched
+        .filter(({ user }) => user.emailNotifications && user.email)
+        .map(({ user }) =>
+          this.mail.sendNewMissionEmail(
+            user.email,
+            user.firstName,
+            mission.title,
+            association?.name ?? '',
+          ),
+        ),
+    );
+  }
+
+  private async notifyFollowers(
+    associationId: number,
+    missionTitle: string,
+    missionId: number,
+  ): Promise<void> {
+    const [follows, association] = await Promise.all([
+      this.prisma.userAssociationFollow.findMany({
+        where: { associationId },
+        select: {
+          user: {
+            select: {
+              pushToken: true,
+              email: true,
+              firstName: true,
+              emailNotifications: true,
+            },
+          },
+        },
+      }),
+      this.prisma.association.findUnique({
+        where: { id: associationId },
+        select: { name: true },
+      }),
+    ]);
+
+    const associationName = association?.name ?? 'Une association';
+
+    // Push notifications
+    const tokens = follows
+      .map((f) => f.user.pushToken)
+      .filter((t): t is string => t !== null && t !== undefined);
+
+    if (tokens.length > 0) {
+      await this.notifications.sendPushNotifications(
+        tokens.map((token) => ({
+          to: token,
+          title: associationName,
+          body: missionTitle,
+          data: { missionId },
+          sound: 'default' as const,
+        })),
+      );
+    }
+
+    // Emails — uniquement pour les abonnés ayant activé les emails
+    const emailFollowers = follows.filter(
+      (f) => f.user.emailNotifications && f.user.email,
+    );
+
+    if (emailFollowers.length > 0) {
+      Promise.allSettled(
+        emailFollowers.map((f) =>
+          this.mail.sendNewMissionEmail(
+            f.user.email,
+            f.user.firstName,
+            missionTitle,
+            associationName,
+          ),
+        ),
+      );
+    }
+  }
+
   private async verifyOwnership(
     associationId: number,
     missionId: number,
@@ -878,7 +1059,7 @@ export class AssociationMissionsService {
       title: mission.title,
       description: mission.description,
       type: mission.type as any,
-      availabilityType: (mission.availabilityType as any) ?? null,
+      availabilityType: mission.availabilityType as any,
       status: mission.status as any,
       hasRegistration: mission.hasRegistration,
       volunteersNeeded: mission.volunteersNeeded,

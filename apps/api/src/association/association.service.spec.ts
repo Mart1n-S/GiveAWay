@@ -927,7 +927,15 @@ describe('AssociationService', () => {
       mockPrisma.association.findMany.mockResolvedValue([]);
       mockPrisma.association.count.mockResolvedValue(0);
 
-      await service.findPublicList(undefined, undefined, undefined, undefined, 10, 3, 6);
+      await service.findPublicList(
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        10,
+        3,
+        6,
+      );
 
       const callArgs = mockPrisma.association.findMany.mock.calls[0][0];
       expect(callArgs.skip).toBe(12); // (3-1) * 6
@@ -964,7 +972,9 @@ describe('AssociationService', () => {
     });
 
     it('✅ Retourne le profil public avec tous les champs mappés', async () => {
-      mockPrisma.association.findFirst.mockResolvedValue(makePublicAssociation());
+      mockPrisma.association.findFirst.mockResolvedValue(
+        makePublicAssociation(),
+      );
 
       const result = await service.findPublicProfile(42);
 
@@ -987,7 +997,9 @@ describe('AssociationService', () => {
     });
 
     it('✅ Recherche uniquement les associations avec status VALIDATED', async () => {
-      mockPrisma.association.findFirst.mockResolvedValue(makePublicAssociation());
+      mockPrisma.association.findFirst.mockResolvedValue(
+        makePublicAssociation(),
+      );
 
       await service.findPublicProfile(42);
 
@@ -1016,7 +1028,9 @@ describe('AssociationService', () => {
     });
 
     it('✅ Retourne createdAt en string ISO', async () => {
-      mockPrisma.association.findFirst.mockResolvedValue(makePublicAssociation());
+      mockPrisma.association.findFirst.mockResolvedValue(
+        makePublicAssociation(),
+      );
 
       const result = await service.findPublicProfile(42);
 
