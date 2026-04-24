@@ -123,7 +123,7 @@ export class AssociationMissionsService {
         title: dto.title,
         description: dto.description,
         type: dto.type as any,
-        availabilityType: (dto.availabilityType as any) ?? null,
+        availabilityType: dto.availabilityType as any,
         hasRegistration: dto.hasRegistration,
         volunteersNeeded: dto.volunteersNeeded ?? null,
         durationInt: dto.durationInt ?? null,
@@ -550,7 +550,7 @@ export class AssociationMissionsService {
           }),
           ...(dto.type !== undefined && { type: dto.type as any }),
           ...(dto.availabilityType !== undefined && {
-            availabilityType: (dto.availabilityType as any) ?? null,
+            availabilityType: dto.availabilityType as any,
           }),
           ...(dto.hasRegistration !== undefined && {
             hasRegistration: dto.hasRegistration,
@@ -1059,7 +1059,7 @@ export class AssociationMissionsService {
       title: mission.title,
       description: mission.description,
       type: mission.type as any,
-      availabilityType: (mission.availabilityType as any) ?? null,
+      availabilityType: mission.availabilityType as any,
       status: mission.status as any,
       hasRegistration: mission.hasRegistration,
       volunteersNeeded: mission.volunteersNeeded,

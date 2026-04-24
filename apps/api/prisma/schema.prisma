@@ -156,8 +156,7 @@ model Mission {
   volunteersNeeded Int?          @map("volunteers_needed")
   durationInt      Int?              @map("duration_minutes") // ex: 60, 120...
   frequency        MissionFrequency? @default(ONCE)
-  // Null autorisé pour les missions de type INFO (simple information)
-  availabilityType AvailabilityType? @map("availability_type")
+  availabilityType AvailabilityType @default(ON_SITE) @map("availability_type")
 
   startDate DateTime? @map("start_date")
   endDate   DateTime? @map("end_date")

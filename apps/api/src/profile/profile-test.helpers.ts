@@ -13,6 +13,7 @@ export const mockUserComplete = {
   emailVerifiedAt: new Date(),
   status: UserStatus.ACTIVE,
   emailNotifications: false,
+  matchNotifications: false,
   pushToken: null,
   createdAt: new Date(),
   updatedAt: new Date(),
@@ -39,6 +40,7 @@ export const mockUserComplete = {
     type: 'HYBRID',
   },
   participations: [],
+  _count: { follows: 0 },
 };
 
 export const mockMappedUser = {
@@ -52,6 +54,7 @@ export const mockMappedUser = {
     type: 'HYBRID',
   },
   participations: [],
+  followsCount: 0,
   createdAt: new Date().toISOString(),
 };
 
@@ -72,6 +75,12 @@ export const createMockAuthService = () => ({
     },
     userAvailability: {
       upsert: jest.fn(),
+    },
+    missionParticipant: {
+      findMany: jest.fn(),
+    },
+    userAssociationFollow: {
+      findMany: jest.fn(),
     },
   },
   logger: { error: jest.fn(), warn: jest.fn() },

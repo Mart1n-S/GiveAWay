@@ -39,11 +39,15 @@ export const CreateMissionBaseSchema = z.object({
   type: z.enum(ACTIVITY_TYPES, { error: "Type d'activité invalide" }),
 
   availabilityType: z
-    .enum(MISSION_AVAILABILITY_TYPES, {
-      error: "Type de disponibilité invalide",
-    })
-    .optional()
-    .nullable(),
+    .preprocess(
+      (val) => (val === "" || val === null ? undefined : val),
+      z
+        .enum(MISSION_AVAILABILITY_TYPES, {
+          error: "Type de disponibilité invalide",
+        })
+        .optional(),
+    )
+    .optional(),
 
   hasRegistration: z
     .preprocess((val) => val === "true" || val === true, z.boolean())
@@ -86,37 +90,22 @@ export const CreateMissionBaseSchema = z.object({
     .optional()
     .nullable(),
 
-  address: z
-    .preprocess(toJsonArray, AddressSchema)
-    .optional()
-    .nullable(),
+  address: z.preprocess(toJsonArray, AddressSchema).optional().nullable(),
 
   skillIds: z
-    .preprocess(
-      toJsonArray,
-      z.array(z.number().int().positive()).optional(),
-    )
+    .preprocess(toJsonArray, z.array(z.number().int().positive()).optional())
     .optional(),
 
   causeIds: z
-    .preprocess(
-      toJsonArray,
-      z.array(z.number().int().positive()).optional(),
-    )
+    .preprocess(toJsonArray, z.array(z.number().int().positive()).optional())
     .optional(),
 
   publicTypeIds: z
-    .preprocess(
-      toJsonArray,
-      z.array(z.number().int().positive()).optional(),
-    )
+    .preprocess(toJsonArray, z.array(z.number().int().positive()).optional())
     .optional(),
 
   volunteerTypeIds: z
-    .preprocess(
-      toJsonArray,
-      z.array(z.number().int().positive()).optional(),
-    )
+    .preprocess(toJsonArray, z.array(z.number().int().positive()).optional())
     .optional(),
 });
 
@@ -133,17 +122,14 @@ export function applyMissionBusinessRules(
 
   // ── Règles selon le type d'activité ─────────────────────────────
   if (type === "INFO") {
-    // Une information ne doit pas avoir de modalité
     if (availability != null) {
       ctx.addIssue({
         code: "custom",
         path: ["availabilityType"],
-        message:
-          "Une information n'a pas de modalité (laissez vide)",
+        message: "Une information n'a pas de modalité (laissez vide)",
       });
     }
   } else if (type === "COLLECT") {
-    // Une collecte implique un lieu physique → seul EN_SITE autorisé
     if (availability != null && availability !== "ON_SITE") {
       ctx.addIssue({
         code: "custom",
@@ -151,35 +137,47 @@ export function applyMissionBusinessRules(
         message: "Une collecte doit être en présentiel uniquement",
       });
     }
-    if (!partial && availability == null) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["availabilityType"],
-        message: "La modalité est obligatoire pour une collecte",
-      });
-    }
-  } else if (type === "MISSION" || type === "EVENT") {
-    // Missions / événements → availabilityType requis en création
-    if (!partial && availability == null) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["availabilityType"],
-        message: "La modalité est obligatoire",
-      });
-    }
+  }
+
+  // ── Modalité obligatoire pour tous les types sauf INFO (création uniquement) ──
+  if (!partial && type !== undefined && type !== "INFO" && availability == null) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["availabilityType"],
+      message:
+        "Veuillez sélectionner une modalité (présentiel, à distance ou hybride)",
+    });
+  }
+
+  // ── Nombre de bénévoles obligatoire si inscription requise (MISSION / EVENT uniquement) ──
+  if (
+    data.hasRegistration === true &&
+    data.volunteersNeeded == null &&
+    (type === "MISSION" || type === "EVENT")
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["volunteersNeeded"],
+      message: "Veuillez préciser le nombre de bénévoles souhaité",
+    });
   }
 
   // ── Adresse obligatoire pour ON_SITE / HYBRID ──────────────────
+  // En mode édition (partial), si on ne modifie pas la modalité, on ne force rien.
+  const resolvedAvailability = partial
+    ? availability
+    : (availability ?? (type === "INFO" ? undefined : "ON_SITE"));
+
   if (
-    availability &&
-    (availability === "ON_SITE" || availability === "HYBRID") &&
+    resolvedAvailability &&
+    (resolvedAvailability === "ON_SITE" || resolvedAvailability === "HYBRID") &&
     data.address == null
   ) {
     ctx.addIssue({
       code: "custom",
       path: ["address"],
       message:
-        "L'adresse est obligatoire pour une mission en présentiel ou hybride",
+        "L'adresse est obligatoire pour une mission en présentiel (par défaut) ou hybride",
     });
   }
 

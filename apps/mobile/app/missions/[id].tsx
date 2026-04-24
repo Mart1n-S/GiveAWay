@@ -481,14 +481,11 @@ export default function MissionDetailScreen() {
     value: string;
     label: string;
   }> = [
-    ...(mission.hasRegistration
+    ...(mission.hasRegistration && mission.volunteersNeeded != null
       ? [
           {
             Icon: HandHeartIcon,
-            value:
-              mission.volunteersNeeded != null
-                ? `${mission.participantsCount} / ${mission.volunteersNeeded}`
-                : String(mission.participantsCount),
+            value: `${mission.participantsCount} / ${mission.volunteersNeeded}`,
             label: "bénévole" + (mission.participantsCount > 1 ? "s" : ""),
           },
         ]

@@ -146,7 +146,11 @@ export default function ProfileScreen() {
         <View className="w-full max-w-2xl gap-6 px-4 pt-4 mx-auto">
           <ProfileHeader user={user} />
 
-          <ProfileStats user={user} />
+          <ProfileStats
+            user={user}
+            onFollowsPress={() => router.push("/profil/abonnements")}
+            onHelpedPress={() => router.push("/profil/associations-aidees")}
+          />
 
           <ProfileBioCard user={user} />
 

@@ -26,15 +26,14 @@ function AssociationsTabIcon({ color }: { readonly color: string }) {
 }
 
 const MOBILE_SUBPAGE_ROUTES = new Set([
-  "/profil/modifier",
-  "/profil/mot-de-passe",
-  "/profil/notifications",
   "/association/modifier",
   "/association/membres",
   "/association/statistiques",
 ]);
 
 function isMobileSubpageRoute(pathname: string): boolean {
+  // Toutes les sous-pages profil (modifier, mot-de-passe, notifications, supprimer, abonnements, associations-aidees…)
+  if (pathname.startsWith("/profil/")) return true;
   if (MOBILE_SUBPAGE_ROUTES.has(pathname)) return true;
   // Routes dynamiques : /missions/:id
   if (/^\/missions\/\d+/.test(pathname)) return true;

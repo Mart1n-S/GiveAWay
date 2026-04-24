@@ -10,7 +10,7 @@ import {
 
 /**
  * Représentation complète d'une mission dans le tableau de bord association.
- * `availabilityType` est héritée de MissionBase (nullable pour les missions de type INFO).
+ * `availabilityType` est héritée de MissionBase
  */
 export interface AssociationMissionItem extends MissionBase {
   status: MissionStatus;

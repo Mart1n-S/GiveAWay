@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Patch,
+  Query,
   Req,
   Res,
   UnauthorizedException,
@@ -26,6 +27,10 @@ import {
   RegisterPushTokenDto,
   RegisterPushTokenSchema,
   User,
+  FollowedAssociationItem,
+  ParticipationStatsDto,
+  ParticipationStatsQueryDto,
+  ParticipationStatsQuerySchema,
 } from '@repo/shared';
 import { AuthenticatedRequest } from '../common/interfaces/authenticated-request.interface';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -49,6 +54,40 @@ export class ProfileController {
     }
 
     return this.profileService.getProfile(req.user.id);
+  }
+
+  /**
+   * GET /profile/follows
+   * Retourne la liste des associations suivies par l'utilisateur connecté
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Get('follows')
+  @HttpCode(HttpStatus.OK)
+  async getFollowedAssociations(
+    @Req() req: AuthenticatedRequest,
+  ): Promise<FollowedAssociationItem[]> {
+    if (!req.user.id) {
+      throw new UnauthorizedException('Utilisateur non identifié');
+    }
+    return this.profileService.getFollowedAssociations(req.user.id);
+  }
+
+  /**
+   * GET /profile/participations/stats
+   * Retourne les statistiques de participation du bénévole connecté
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Get('participations/stats')
+  @HttpCode(HttpStatus.OK)
+  async getParticipationStats(
+    @Req() req: AuthenticatedRequest,
+    @Query(new ZodValidationPipe(ParticipationStatsQuerySchema))
+    query: ParticipationStatsQueryDto,
+  ): Promise<ParticipationStatsDto> {
+    if (!req.user.id) {
+      throw new UnauthorizedException('Utilisateur non identifié');
+    }
+    return this.profileService.getParticipationStats(req.user.id, query);
   }
 
   /**

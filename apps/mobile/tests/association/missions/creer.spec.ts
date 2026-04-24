@@ -312,7 +312,8 @@ test.describe("Page Créer Mission — Soumission", () => {
     await page.getByRole("radio", { name: "À distance" }).click();
     await page.getByRole("button", { name: /suivant/i }).click();
 
-    // Étape 2 — Détails (champs optionnels)
+    // Étape 2 — Détails (hasRegistration=true par défaut → volunteersNeeded requis)
+    await page.getByPlaceholder("Ex: 10").fill("5");
     await page.getByRole("button", { name: /suivant/i }).click();
 
     // Étape 3 — Tags

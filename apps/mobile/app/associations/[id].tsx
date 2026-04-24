@@ -25,6 +25,7 @@ import {
 } from "@/services/association.service";
 import { MissionService } from "@/services/mission.service";
 import { useAuthStore } from "@/stores/auth.store";
+import { useProfileStore } from "@/stores/profile.store";
 import { Text, Button, TagBadge, colors } from "@/components/ui";
 import { MissionCard } from "@/components/ui/mission-card/mission-card";
 import { MissionMap } from "@/components/ui/mission-map";
@@ -416,11 +417,6 @@ export default function AssociationPublicProfileScreen() {
   };
 
   const handleNotifyPress = () => {
-    if (!isAuthenticated) {
-      // Redirige vers la page de connexion si non authentifié
-      router.push("/(auth)/connexion");
-      return;
-    }
     if (notified) {
       void handleUnfollow();
     } else {
@@ -429,16 +425,25 @@ export default function AssociationPublicProfileScreen() {
   };
 
   const handleNotifyConfirm = async () => {
+    setNotifyModalVisible(false);
+
+    if (!isAuthenticated) {
+      setNotified(true);
+      return;
+    }
+
     if (!id) return;
     setNotifyLoading(true);
     try {
       await followAssociation(Number(id));
       setNotified(true);
+      const store = useProfileStore.getState();
+      const prev = store.profile?.followsCount ?? 0;
+      store.updateProfile({ followsCount: prev + 1 });
     } catch {
       // silently ignore
     } finally {
       setNotifyLoading(false);
-      setNotifyModalVisible(false);
     }
   };
 
@@ -448,6 +453,9 @@ export default function AssociationPublicProfileScreen() {
     try {
       await unfollowAssociation(Number(id));
       setNotified(false);
+      const store = useProfileStore.getState();
+      const prev = store.profile?.followsCount ?? 0;
+      store.updateProfile({ followsCount: Math.max(0, prev - 1) });
     } catch {
       // silently ignore
     } finally {

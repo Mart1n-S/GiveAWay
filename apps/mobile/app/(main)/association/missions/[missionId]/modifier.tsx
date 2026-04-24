@@ -81,7 +81,9 @@ export default function ModifierMissionScreen() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [isLoadingMission, setIsLoadingMission] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [associationAddress, setAssociationAddress] = useState<Address | null>(null);
+  const [associationAddress, setAssociationAddress] = useState<Address | null>(
+    null,
+  );
   const addressAutoSetReady = useRef(false);
   const [refs, setRefs] = useState<{
     skills: RefItem[];
@@ -106,9 +108,14 @@ export default function ModifierMissionScreen() {
     mode: "onSubmit",
   });
 
-  const activityType = useWatch({ control, name: "type" }) as ActivityType | undefined;
-  const availabilityType = useWatch({ control, name: "availabilityType" as any }) as
-    | "REMOTE" | "ON_SITE" | "HYBRID" | null | undefined;
+  const activityType = useWatch({ control, name: "type" }) as
+    | ActivityType
+    | undefined;
+  const availabilityType = useWatch({
+    control,
+    name: "availabilityType" as any,
+  }) as "REMOTE" | "ON_SITE" | "HYBRID" | null | undefined;
+  const hasRegistration = useWatch({ control, name: "hasRegistration" }) as boolean | undefined;
 
   const stepFields = useMemo(
     () =>
@@ -123,13 +130,25 @@ export default function ModifierMissionScreen() {
     if (!activityType) return;
     const current = getValues("availabilityType");
     if (activityType === "INFO") {
-      if (current != null) setValue("availabilityType", null as any, { shouldValidate: false });
+      // On passe undefined pour vider proprement le champ
+      if (current != null)
+        setValue("availabilityType", undefined as any, {
+          shouldValidate: false,
+        });
     } else if (activityType === "COLLECT") {
       if (current != null && current !== "ON_SITE") {
-        setValue("availabilityType", null as any, { shouldValidate: false });
+        // Pour une collecte, autant forcer visuellement la bonne valeur plutôt que de vider le champ
+        setValue("availabilityType", "ON_SITE", { shouldValidate: true });
       }
     }
   }, [activityType, getValues, setValue]);
+
+  // Vide volunteersNeeded quand l'inscription n'est plus obligatoire
+  useEffect(() => {
+    if (hasRegistration === false) {
+      setValue("volunteersNeeded", undefined as any, { shouldValidate: false });
+    }
+  }, [hasRegistration, setValue]);
 
   useEffect(() => {
     if (!associationId || !id) return;
@@ -142,23 +161,34 @@ export default function ModifierMissionScreen() {
       MissionService.getVolunteerTypes(),
       getAssociation(associationId),
     ])
-      .then(([mission, skills, causes, publicTypes, volunteerTypes, association]) => {
-        if (mission.status === "ARCHIVED") {
-          Toast.show({
-            type: "error",
-            text1: "Accès refusé",
-            text2: "Les missions archivées ne peuvent pas être modifiées.",
-            visibilityTime: 4000,
-            onPress: () => Toast.hide(),
-          });
-          router.replace(`/association/missions/${id}` as any);
-          return;
-        }
-        setRefs({ skills, causes, publicTypes, volunteerTypes });
-        if (association?.address) setAssociationAddress(association.address);
-        populateForm(mission);
-        setTimeout(() => { addressAutoSetReady.current = true; }, 0);
-      })
+      .then(
+        ([
+          mission,
+          skills,
+          causes,
+          publicTypes,
+          volunteerTypes,
+          association,
+        ]) => {
+          if (mission.status === "ARCHIVED") {
+            Toast.show({
+              type: "error",
+              text1: "Accès refusé",
+              text2: "Les missions archivées ne peuvent pas être modifiées.",
+              visibilityTime: 4000,
+              onPress: () => Toast.hide(),
+            });
+            router.replace(`/association/missions/${id}` as any);
+            return;
+          }
+          setRefs({ skills, causes, publicTypes, volunteerTypes });
+          if (association?.address) setAssociationAddress(association.address);
+          populateForm(mission);
+          setTimeout(() => {
+            addressAutoSetReady.current = true;
+          }, 0);
+        },
+      )
       .catch(() => {
         Toast.show({
           type: "error",
@@ -173,7 +203,9 @@ export default function ModifierMissionScreen() {
 
   // Re-valide un champ dès qu'il change, uniquement s'il a déjà une erreur
   const errorsRef = React.useRef(errors);
-  useEffect(() => { errorsRef.current = errors; });
+  useEffect(() => {
+    errorsRef.current = errors;
+  });
   useEffect(() => {
     const subscription = watch((_, { name }) => {
       if (!name) return;
@@ -187,17 +219,22 @@ export default function ModifierMissionScreen() {
   // Auto-remplit l'adresse avec celle de l'association pour INFO et REMOTE
   // Le guard addressAutoSetReady évite d'écraser l'adresse existante au chargement
   useEffect(() => {
-    if (!addressAutoSetReady.current || !activityType || !associationAddress) return;
+    if (!addressAutoSetReady.current || !activityType || !associationAddress)
+      return;
     const isInfo = activityType === "INFO";
     const isRemote = availabilityType === "REMOTE";
     if (isInfo || isRemote) {
-      setValue("address" as any, {
-        street: associationAddress.street,
-        postalCode: associationAddress.postalCode,
-        city: associationAddress.city,
-        latitude: associationAddress.latitude ?? undefined,
-        longitude: associationAddress.longitude ?? undefined,
-      }, { shouldValidate: false });
+      setValue(
+        "address" as any,
+        {
+          street: associationAddress.street,
+          postalCode: associationAddress.postalCode,
+          city: associationAddress.city,
+          latitude: associationAddress.latitude ?? undefined,
+          longitude: associationAddress.longitude ?? undefined,
+        },
+        { shouldValidate: false },
+      );
     }
   }, [activityType, availabilityType, associationAddress, setValue]);
 
@@ -208,8 +245,14 @@ export default function ModifierMissionScreen() {
       type: mission.type,
       availabilityType: mission.availabilityType ?? undefined,
       hasRegistration: mission.hasRegistration,
-      volunteersNeeded: mission.volunteersNeeded != null ? String(mission.volunteersNeeded) : ("" as any),
-      durationInt: mission.durationInt != null ? String(mission.durationInt / 60) : ("" as any),
+      volunteersNeeded:
+        mission.volunteersNeeded != null
+          ? String(mission.volunteersNeeded)
+          : ("" as any),
+      durationInt:
+        mission.durationInt != null
+          ? String(mission.durationInt / 60)
+          : ("" as any),
       frequency: mission.frequency ?? undefined,
       startDate: mission.startDate
         ? new Date(mission.startDate).toISOString()
@@ -242,19 +285,35 @@ export default function ModifierMissionScreen() {
   };
 
   const FIELD_TO_STEP: Record<string, 1 | 2 | 3> = {
-    title: 1, description: 1, type: 1, availabilityType: 1,
-    hasRegistration: 2, volunteersNeeded: 2, durationInt: 2,
-    frequency: 2, startDate: 2, endDate: 2, address: 2,
-    skillIds: 3, causeIds: 3, publicTypeIds: 3, volunteerTypeIds: 3,
+    title: 1,
+    description: 1,
+    type: 1,
+    availabilityType: 1,
+    hasRegistration: 2,
+    volunteersNeeded: 2,
+    durationInt: 2,
+    frequency: 2,
+    startDate: 2,
+    endDate: 2,
+    address: 2,
+    skillIds: 3,
+    causeIds: 3,
+    publicTypeIds: 3,
+    volunteerTypeIds: 3,
   };
 
-  const mapServerErrorsToFields = (properties: Record<string, any>): 1 | 2 | 3 | null => {
+  const mapServerErrorsToFields = (
+    properties: Record<string, any>,
+  ): 1 | 2 | 3 | null => {
     let firstErrorStep: 1 | 2 | 3 | null = null;
     let mapped = false;
     Object.entries(properties).forEach(([field, payload]) => {
       const msg = (payload as any)?.errors?.[0];
       if (!msg) return;
-      setError(field as keyof UpdateMissionFormValues, { type: "server", message: msg });
+      setError(field as keyof UpdateMissionFormValues, {
+        type: "server",
+        message: msg,
+      });
       mapped = true;
       const s = FIELD_TO_STEP[field] ?? 1;
       if (firstErrorStep === null || s < firstErrorStep) firstErrorStep = s;
@@ -270,9 +329,10 @@ export default function ModifierMissionScreen() {
     try {
       const payload = {
         ...data,
-        durationInt: data.durationInt != null
-          ? Math.round(Number(data.durationInt) * 60)
-          : undefined,
+        durationInt:
+          data.durationInt != null
+            ? Math.round(Number(data.durationInt) * 60)
+            : undefined,
       };
       await AssociationMissionService.update(associationId, id, payload);
       Toast.show({
@@ -288,9 +348,13 @@ export default function ModifierMissionScreen() {
         const apiError: any = err.response.data;
 
         if (status === 400 && apiError?.errors?.properties) {
-          const firstErrorStep = mapServerErrorsToFields(apiError.errors.properties);
+          const firstErrorStep = mapServerErrorsToFields(
+            apiError.errors.properties,
+          );
           if (firstErrorStep !== null) {
-            setError("root", { message: "Certains champs nécessitent une correction." });
+            setError("root", {
+              message: "Certains champs nécessitent une correction.",
+            });
             setStep(firstErrorStep);
             return;
           }
@@ -302,7 +366,10 @@ export default function ModifierMissionScreen() {
         });
       } else {
         // Erreur réseau ou inattendue → toast
-        const msg = err instanceof Error ? err.message : "Impossible de contacter le serveur.";
+        const msg =
+          err instanceof Error
+            ? err.message
+            : "Impossible de contacter le serveur.";
         setError("root", { message: msg });
         Toast.show({
           type: "error",
@@ -319,7 +386,7 @@ export default function ModifierMissionScreen() {
 
   if (isLoadingMission) {
     return (
-      <View className="flex-1 items-center justify-center">
+      <View className="items-center justify-center flex-1">
         <ActivityIndicator size="large" color={colors.primary.default} />
       </View>
     );
@@ -327,7 +394,12 @@ export default function ModifierMissionScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ headerTitle: "Modifier la mission", headerShown: Platform.OS !== "web" }} />
+      <Stack.Screen
+        options={{
+          headerTitle: "Modifier la mission",
+          headerShown: Platform.OS !== "web",
+        }}
+      />
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -357,7 +429,7 @@ export default function ModifierMissionScreen() {
               if (isActive) stepBg = "bg-primary";
               else if (isDone) stepBg = "bg-success-100";
               return (
-                <View key={label} className="flex-1 items-center gap-1">
+                <View key={label} className="items-center flex-1 gap-1">
                   <View
                     className={`w-7 h-7 rounded-full items-center justify-center ${stepBg}`}
                   >
@@ -371,9 +443,7 @@ export default function ModifierMissionScreen() {
                   </View>
                   <Text
                     className={`text-xs ${
-                      isActive
-                        ? "text-primary font-semibold"
-                        : "text-grey-400"
+                      isActive ? "text-primary font-semibold" : "text-grey-400"
                     }`}
                   >
                     {label}
@@ -390,7 +460,7 @@ export default function ModifierMissionScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View className="w-full max-w-2xl mx-auto gap-4">
+          <View className="w-full max-w-2xl gap-4 mx-auto">
             {errors.root?.message && (
               <View className="p-3 border border-red-200 rounded-md bg-red-50">
                 <Text className="text-sm font-medium text-center text-red-600">
@@ -412,7 +482,7 @@ export default function ModifierMissionScreen() {
           </View>
         </ScrollView>
 
-        <View className="flex-row gap-3 px-4 py-3 border-t border-grey-100 bg-white">
+        <View className="flex-row gap-3 px-4 py-3 bg-white border-t border-grey-100">
           {step > 1 ? (
             <Button
               variant="secondary"

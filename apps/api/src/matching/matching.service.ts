@@ -7,7 +7,7 @@ const DISTANCE_FULL_KM = 5;
 export interface MissionForScoring {
   causes: { cause: { id: number } }[];
   skills: { skill: { id: number } }[];
-  availabilityType: string | null;
+  availabilityType: string;
   address: { latitude: unknown; longitude: unknown } | null;
   startDate: Date | null;
 }

@@ -20,6 +20,7 @@ export interface User {
 
   emailNotifications: boolean;
   matchNotifications: boolean;
+  followsCount: number;
 
   createdAt: Date | string;
   updatedAt: Date | string;

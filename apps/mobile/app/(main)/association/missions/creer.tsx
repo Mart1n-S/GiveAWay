@@ -74,7 +74,9 @@ export default function CreerMissionScreen() {
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [associationAddress, setAssociationAddress] = useState<Address | null>(null);
+  const [associationAddress, setAssociationAddress] = useState<Address | null>(
+    null,
+  );
   const [refs, setRefs] = useState<{
     skills: RefItem[];
     causes: RefItem[];
@@ -109,13 +111,20 @@ export default function CreerMissionScreen() {
     },
   });
 
-  const activityType = useWatch({ control, name: "type" }) as ActivityType | undefined;
-  const availabilityType = useWatch({ control, name: "availabilityType" as any }) as
-    | "REMOTE" | "ON_SITE" | "HYBRID" | null | undefined;
+  const activityType = useWatch({ control, name: "type" }) as
+    | ActivityType
+    | undefined;
+  const availabilityType = useWatch({
+    control,
+    name: "availabilityType" as any,
+  }) as "REMOTE" | "ON_SITE" | "HYBRID" | null | undefined;
+  const hasRegistration = useWatch({ control, name: "hasRegistration" }) as boolean;
 
   const stepFields = useMemo(() => {
     const table =
-      activityType === "INFO" ? STEP_FIELDS_BY_TYPE.info : STEP_FIELDS_BY_TYPE.default;
+      activityType === "INFO"
+        ? STEP_FIELDS_BY_TYPE.info
+        : STEP_FIELDS_BY_TYPE.default;
     return table;
   }, [activityType]);
 
@@ -124,13 +133,25 @@ export default function CreerMissionScreen() {
     if (!activityType) return;
     const current = getValues("availabilityType");
     if (activityType === "INFO") {
-      if (current != null) setValue("availabilityType", null as any, { shouldValidate: false });
+      // On utilise undefined pour laisser Zod et Prisma faire leur travail
+      if (current != null)
+        setValue("availabilityType", undefined as any, {
+          shouldValidate: false,
+        });
     } else if (activityType === "COLLECT") {
       if (current != null && current !== "ON_SITE") {
-        setValue("availabilityType", null as any, { shouldValidate: false });
+        // On sélectionne automatiquement "ON_SITE" pour l'utilisateur
+        setValue("availabilityType", "ON_SITE", { shouldValidate: true });
       }
     }
   }, [activityType, getValues, setValue]);
+
+  // Vide volunteersNeeded quand l'inscription n'est plus obligatoire
+  useEffect(() => {
+    if (!hasRegistration) {
+      setValue("volunteersNeeded", undefined as any, { shouldValidate: false });
+    }
+  }, [hasRegistration, setValue]);
 
   useEffect(() => {
     const tasks: Promise<any>[] = [
@@ -151,7 +172,9 @@ export default function CreerMissionScreen() {
 
   // Re-valide un champ dès qu'il change, uniquement s'il a déjà une erreur
   const errorsRef = React.useRef(errors);
-  useEffect(() => { errorsRef.current = errors; });
+  useEffect(() => {
+    errorsRef.current = errors;
+  });
   useEffect(() => {
     const subscription = watch((_, { name }) => {
       if (!name) return;
@@ -168,13 +191,17 @@ export default function CreerMissionScreen() {
     const isInfo = activityType === "INFO";
     const isRemote = availabilityType === "REMOTE";
     if (isInfo || isRemote) {
-      setValue("address" as any, {
-        street: associationAddress.street,
-        postalCode: associationAddress.postalCode,
-        city: associationAddress.city,
-        latitude: associationAddress.latitude ?? undefined,
-        longitude: associationAddress.longitude ?? undefined,
-      }, { shouldValidate: false });
+      setValue(
+        "address" as any,
+        {
+          street: associationAddress.street,
+          postalCode: associationAddress.postalCode,
+          city: associationAddress.city,
+          latitude: associationAddress.latitude ?? undefined,
+          longitude: associationAddress.longitude ?? undefined,
+        },
+        { shouldValidate: false },
+      );
     }
   }, [activityType, availabilityType, associationAddress, setValue]);
 
@@ -195,19 +222,35 @@ export default function CreerMissionScreen() {
   };
 
   const FIELD_TO_STEP: Record<string, 1 | 2 | 3> = {
-    title: 1, description: 1, type: 1, availabilityType: 1,
-    hasRegistration: 2, volunteersNeeded: 2, durationInt: 2,
-    frequency: 2, startDate: 2, endDate: 2, address: 2,
-    skillIds: 3, causeIds: 3, publicTypeIds: 3, volunteerTypeIds: 3,
+    title: 1,
+    description: 1,
+    type: 1,
+    availabilityType: 1,
+    hasRegistration: 2,
+    volunteersNeeded: 2,
+    durationInt: 2,
+    frequency: 2,
+    startDate: 2,
+    endDate: 2,
+    address: 2,
+    skillIds: 3,
+    causeIds: 3,
+    publicTypeIds: 3,
+    volunteerTypeIds: 3,
   };
 
-  const mapServerErrorsToFields = (properties: Record<string, any>): 1 | 2 | 3 | null => {
+  const mapServerErrorsToFields = (
+    properties: Record<string, any>,
+  ): 1 | 2 | 3 | null => {
     let firstErrorStep: 1 | 2 | 3 | null = null;
     let mapped = false;
     Object.entries(properties).forEach(([field, payload]) => {
       const msg = (payload as any)?.errors?.[0];
       if (!msg) return;
-      setError(field as keyof CreateMissionFormValues, { type: "server", message: msg });
+      setError(field as keyof CreateMissionFormValues, {
+        type: "server",
+        message: msg,
+      });
       mapped = true;
       const s = FIELD_TO_STEP[field] ?? 1;
       if (firstErrorStep === null || s < firstErrorStep) firstErrorStep = s;
@@ -223,9 +266,10 @@ export default function CreerMissionScreen() {
     try {
       const payload = {
         ...data,
-        durationInt: data.durationInt != null
-          ? Math.round(Number(data.durationInt) * 60)
-          : undefined,
+        durationInt:
+          data.durationInt != null
+            ? Math.round(Number(data.durationInt) * 60)
+            : undefined,
       };
       await AssociationMissionService.create(associationId, payload);
       Toast.show({
@@ -241,9 +285,13 @@ export default function CreerMissionScreen() {
         const apiError: any = err.response.data;
 
         if (status === 400 && apiError?.errors?.properties) {
-          const firstErrorStep = mapServerErrorsToFields(apiError.errors.properties);
+          const firstErrorStep = mapServerErrorsToFields(
+            apiError.errors.properties,
+          );
           if (firstErrorStep !== null) {
-            setError("root", { message: "Certains champs nécessitent une correction." });
+            setError("root", {
+              message: "Certains champs nécessitent une correction.",
+            });
             setStep(firstErrorStep);
             return;
           }
@@ -255,7 +303,10 @@ export default function CreerMissionScreen() {
         });
       } else {
         // Erreur réseau ou inattendue → toast
-        const msg = err instanceof Error ? err.message : "Impossible de contacter le serveur.";
+        const msg =
+          err instanceof Error
+            ? err.message
+            : "Impossible de contacter le serveur.";
         setError("root", { message: msg });
         Toast.show({
           type: "error",
@@ -272,8 +323,8 @@ export default function CreerMissionScreen() {
 
   if (!associationId) {
     return (
-      <View className="flex-1 items-center justify-center px-6">
-        <Text className="text-base text-grey-500 text-center">
+      <View className="items-center justify-center flex-1 px-6">
+        <Text className="text-base text-center text-grey-500">
           Vous n'êtes membre d'aucune association.
         </Text>
       </View>
@@ -282,7 +333,12 @@ export default function CreerMissionScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ headerTitle: "Créer une mission", headerShown: Platform.OS !== "web" }} />
+      <Stack.Screen
+        options={{
+          headerTitle: "Créer une mission",
+          headerShown: Platform.OS !== "web",
+        }}
+      />
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -313,7 +369,7 @@ export default function CreerMissionScreen() {
               if (isActive) stepBg = "bg-primary";
               else if (isDone) stepBg = "bg-success-100";
               return (
-                <View key={label} className="flex-1 items-center gap-1">
+                <View key={label} className="items-center flex-1 gap-1">
                   <View
                     className={`w-7 h-7 rounded-full items-center justify-center ${stepBg}`}
                   >
@@ -327,9 +383,7 @@ export default function CreerMissionScreen() {
                   </View>
                   <Text
                     className={`text-xs ${
-                      isActive
-                        ? "text-primary font-semibold"
-                        : "text-grey-400"
+                      isActive ? "text-primary font-semibold" : "text-grey-400"
                     }`}
                   >
                     {label}
@@ -346,7 +400,7 @@ export default function CreerMissionScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View className="w-full max-w-2xl mx-auto gap-4">
+          <View className="w-full max-w-2xl gap-4 mx-auto">
             {errors.root?.message && (
               <View className="p-3 border border-red-200 rounded-md bg-red-50">
                 <Text className="text-sm font-medium text-center text-red-600">
@@ -377,7 +431,7 @@ export default function CreerMissionScreen() {
         </ScrollView>
 
         {/* Footer */}
-        <View className="flex-row gap-3 px-4 py-3 border-t border-grey-100 bg-white">
+        <View className="flex-row gap-3 px-4 py-3 bg-white border-t border-grey-100">
           {step > 1 ? (
             <Button
               variant="secondary"

@@ -255,6 +255,67 @@ describe('UpdateMissionSchema', () => {
   });
 
   // ===========================================================================
+  // Règle métier : volunteersNeeded obligatoire si hasRegistration=true (MISSION/EVENT)
+  // ===========================================================================
+  describe('❌ volunteersNeeded obligatoire si hasRegistration=true (MISSION / EVENT)', () => {
+    it('rejette MISSION + hasRegistration=true sans volunteersNeeded', () => {
+      const result = UpdateMissionSchema.safeParse({
+        type: 'MISSION' as const,
+        hasRegistration: true,
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const err = result.error.issues.find((i) => i.path[0] === 'volunteersNeeded');
+        expect(err).toBeDefined();
+        expect(err?.message).toContain('bénévoles');
+      }
+    });
+
+    it('rejette EVENT + hasRegistration=true sans volunteersNeeded', () => {
+      const result = UpdateMissionSchema.safeParse({
+        type: 'EVENT' as const,
+        hasRegistration: true,
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const err = result.error.issues.find((i) => i.path[0] === 'volunteersNeeded');
+        expect(err).toBeDefined();
+      }
+    });
+
+    it('accepte MISSION + hasRegistration=true avec volunteersNeeded fourni', () => {
+      const result = UpdateMissionSchema.safeParse({
+        type: 'MISSION' as const,
+        availabilityType: 'REMOTE' as const,
+        hasRegistration: true,
+        volunteersNeeded: 5,
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('accepte MISSION + hasRegistration=false sans volunteersNeeded', () => {
+      const result = UpdateMissionSchema.safeParse({
+        type: 'MISSION' as const,
+        availabilityType: 'REMOTE' as const,
+        hasRegistration: false,
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('accepte hasRegistration=true seul (type absent — mode partial)', () => {
+      // Sans type fourni, la règle ne s'applique pas (type === undefined)
+      const result = UpdateMissionSchema.safeParse({ hasRegistration: true });
+      expect(result.success).toBe(true);
+    });
+
+    it('accepte type MISSION seul (hasRegistration absent — mode partial)', () => {
+      // Sans hasRegistration fourni, la règle ne s'applique pas
+      const result = UpdateMissionSchema.safeParse({ type: 'MISSION' as const });
+      expect(result.success).toBe(true);
+    });
+  });
+
+  // ===========================================================================
   // Cohérence des dates
   // ===========================================================================
   describe('❌ Cohérence des dates (superRefine)', () => {

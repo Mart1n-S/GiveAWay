@@ -2,7 +2,7 @@ const isNativeBuild = process.env.EXPO_NATIVE_BUILD === "true";
 
 module.exports = {
   expo: {
-    name: "mobile",
+    name: "GiveAWay",
     slug: "mobile",
     owner: "giveaway-team",
     version: "1.0.0",
@@ -22,10 +22,16 @@ module.exports = {
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
       },
+      icon: {
+        dark: "./assets/ios-dark.png",
+        light: "./assets/ios-light.png",
+        tinted: "./assets/ios-tinted.png",
+      }
     },
     android: {
       adaptiveIcon: {
         foregroundImage: "./assets/adaptive-icon.png",
+        monochrome: "./assets/adaptive-icon.png",
         backgroundColor: "#ffffff",
       },
       edgeToEdgeEnabled: true,
