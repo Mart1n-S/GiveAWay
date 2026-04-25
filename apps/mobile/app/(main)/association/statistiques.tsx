@@ -176,6 +176,13 @@ export default function StatistiquesScreen() {
   const [endDate, setEndDate] = useState<string | undefined>(undefined);
   const [missionType, setMissionType] = useState<ActivityType | undefined>(undefined);
 
+  // Stable factory for PieChart center label — must be before early return
+  const totalMissions = stats?.summary.totalMissions ?? 0;
+  const renderPieCenter = useCallback(
+    () => <PieChartCenter total={totalMissions} />,
+    [totalMissions],
+  );
+
   const currentFilters: StatsQueryDto = {
     startDate,
     endDate,
@@ -206,11 +213,16 @@ export default function StatistiquesScreen() {
       const html = buildPdfHtml(stats, associationName, currentFilters);
 
       if (Platform.OS === "web") {
-        const w = window.open("", "_blank");
-        if (w) {
-          w.document.write(html);
-          w.document.close();
-          w.print();
+        const blob = new Blob([html], { type: "text/html" });
+        const blobUrl = URL.createObjectURL(blob);
+        const printWindow = window.open(blobUrl, "_blank");
+        if (printWindow) {
+          printWindow.addEventListener("load", () => {
+            printWindow.print();
+            URL.revokeObjectURL(blobUrl);
+          });
+        } else {
+          URL.revokeObjectURL(blobUrl);
         }
         return;
       }
@@ -283,13 +295,6 @@ export default function StatistiquesScreen() {
     stats?.participationByMonth.map((m) => ({
       value: m.participants,
     })) ?? [];
-
-  // Stable factory for PieChart center label
-  const totalMissions = stats?.summary.totalMissions ?? 0;
-  const renderPieCenter = useCallback(
-    () => <PieChartCenter total={totalMissions} />,
-    [totalMissions],
-  );
 
   // ─── Rendu du contenu principal ───────────────────────────────────
   const renderPageContent = () => {

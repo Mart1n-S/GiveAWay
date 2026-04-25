@@ -314,7 +314,7 @@ export default function MissionDetailScreen() {
         options={{
           headerTitle: mission.title,
           headerShown: Platform.OS !== "web",
-          headerLeft: Platform.OS !== "web" ? renderHeaderLeft : undefined,
+          headerLeft: Platform.OS === "web" ? undefined : renderHeaderLeft,
         }}
       />
       <View className="flex-1 bg-grey-50">

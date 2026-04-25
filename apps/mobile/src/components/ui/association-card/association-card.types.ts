@@ -1,12 +1,12 @@
 export interface AssociationCardProps {
-  id: number;
-  name: string;
-  description: string | null;
-  logoUrl: string | null;
-  category: string | null;
-  city: string | null;
-  activeMissionsCount: number;
-  onPress?: () => void;
-  className?: string;
-  testID?: string;
+  readonly id: number;
+  readonly name: string;
+  readonly description: string | null;
+  readonly logoUrl: string | null;
+  readonly category: string | null;
+  readonly city: string | null;
+  readonly activeMissionsCount: number;
+  readonly onPress?: () => void;
+  readonly className?: string;
+  readonly testID?: string;
 }

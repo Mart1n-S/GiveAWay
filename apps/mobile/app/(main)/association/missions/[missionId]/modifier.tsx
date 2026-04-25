@@ -3,8 +3,8 @@ import { View, ActivityIndicator } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { isAxiosError } from "axios";
 import Toast from "react-native-toast-message";
+import { buildMissionPayload, handleMissionApiError } from "@/hooks/missionFormHelpers";
 import { colors } from "@/components/ui/theme/tokens";
 import { MissionFormFields } from "@/components/ui/mission-form-fields/MissionFormFields";
 import { MissionFormLayout } from "@/components/ui/mission-form-fields/MissionFormLayout";
@@ -113,13 +113,13 @@ export default function ModifierMissionScreen() {
       availabilityType: mission.availabilityType ?? undefined,
       hasRegistration: mission.hasRegistration,
       volunteersNeeded:
-        mission.volunteersNeeded != null
-          ? String(mission.volunteersNeeded)
-          : ("" as any),
+        mission.volunteersNeeded == null
+          ? ("" as any)
+          : String(mission.volunteersNeeded),
       durationInt:
-        mission.durationInt != null
-          ? String(mission.durationInt / 60)
-          : ("" as any),
+        mission.durationInt == null
+          ? ("" as any)
+          : String(mission.durationInt / 60),
       frequency: mission.frequency ?? undefined,
       startDate: mission.startDate
         ? new Date(mission.startDate).toISOString()
@@ -141,13 +141,7 @@ export default function ModifierMissionScreen() {
     clearErrors("root");
 
     try {
-      const payload = {
-        ...data,
-        durationInt:
-          data.durationInt != null
-            ? Math.round(Number(data.durationInt) * 60)
-            : undefined,
-      };
+      const payload = buildMissionPayload(data);
       await AssociationMissionService.update(associationId, id, payload);
       Toast.show({
         type: "success",
@@ -157,40 +151,7 @@ export default function ModifierMissionScreen() {
       });
       router.back();
     } catch (err) {
-      if (isAxiosError(err) && err.response) {
-        const status = err.response.status;
-        const apiError: any = err.response.data;
-
-        if (status === 400 && apiError?.errors?.properties) {
-          const firstErrorStep = mapServerErrorsToFields(
-            apiError.errors.properties,
-          );
-          if (firstErrorStep !== null) {
-            setError("root", {
-              message: "Certains champs nécessitent une correction.",
-            });
-            setStep(firstErrorStep);
-            return;
-          }
-        }
-
-        setError("root", {
-          message: apiError?.message ?? "Mise à jour impossible.",
-        });
-      } else {
-        const msg =
-          err instanceof Error
-            ? err.message
-            : "Impossible de contacter le serveur.";
-        setError("root", { message: msg });
-        Toast.show({
-          type: "error",
-          text1: "Erreur",
-          text2: msg,
-          visibilityTime: 5000,
-          onPress: () => Toast.hide(),
-        });
-      }
+      if (handleMissionApiError(err, setError, setStep, mapServerErrorsToFields, "Mise à jour impossible.")) return;
     } finally {
       setIsSubmitting(false);
     }

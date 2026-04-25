@@ -108,7 +108,7 @@ export default function MainLayout() {
           options={{
             title: "Associations",
             tabBarIcon: AssociationsTabIcon,
-            href: Platform.OS !== "web" ? null : undefined,
+            href: Platform.OS === "web" ? undefined : null,
           }}
         />
 

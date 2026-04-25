@@ -759,9 +759,9 @@ export class AssociationMissionsService {
       causes: r.user.causes.map((c) => c.cause),
       availability: r.user.availability
         ? {
-            frequency: r.user.availability.frequency as any,
-            timeSlots: r.user.availability.timeSlot as any,
-            type: r.user.availability.type as any,
+            frequency: r.user.availability.frequency,
+            timeSlots: r.user.availability.timeSlot,
+            type: r.user.availability.type,
           }
         : null,
       completedMissionsCount: countMap.get(r.userId) ?? 0,

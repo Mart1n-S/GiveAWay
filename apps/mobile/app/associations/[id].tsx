@@ -1,8 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   View,
   ScrollView,
-  Animated,
   Platform,
   Image,
   Linking,
@@ -10,6 +9,7 @@ import {
   Pressable,
   ActivityIndicator,
 } from "react-native";
+import { Skeleton } from "@/components/ui/skeleton/Skeleton";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, Stack, useRouter } from "expo-router";
 import { isAxiosError } from "axios";
@@ -59,26 +59,6 @@ const InfoIcon = cssInterop(InfoIconSource, iconConfig);
 const MISSIONS_PAGE_SIZE = 6;
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
-
-function Skeleton({ className = "" }: { readonly className?: string }) {
-  const anim = useRef(new Animated.Value(0.5)).current;
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(anim, { toValue: 0.9, duration: 900, useNativeDriver: true }),
-        Animated.timing(anim, { toValue: 0.4, duration: 900, useNativeDriver: true }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [anim]);
-  return (
-    <Animated.View
-      className={clsx("bg-grey-300 rounded-xl", className)}
-      style={{ opacity: anim }}
-    />
-  );
-}
 
 function SkeletonScreen() {
   return (
@@ -440,7 +420,6 @@ export default function AssociationPublicProfileScreen() {
       store.updateProfile({ followsCount: prev + 1 });
     } catch {
       // silently ignore
-    } finally {
     }
   };
 
@@ -454,7 +433,6 @@ export default function AssociationPublicProfileScreen() {
       store.updateProfile({ followsCount: Math.max(0, prev - 1) });
     } catch {
       // silently ignore
-    } finally {
     }
   };
 
@@ -748,7 +726,7 @@ export default function AssociationPublicProfileScreen() {
                     {(hasAddress || association.phone) && <Divider />}
                     <MetaRow
                       icon={GlobeIcon}
-                      onPress={() => Linking.openURL(association.website!)}
+                      onPress={() => Linking.openURL(association.website ?? "")}
                     >
                       <Text
                         className="text-sm font-medium text-primary"

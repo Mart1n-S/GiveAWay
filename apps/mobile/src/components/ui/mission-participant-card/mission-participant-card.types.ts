@@ -1,8 +1,8 @@
 import type { MissionParticipantProfile } from "@repo/shared";
 
 export interface MissionParticipantCardProps {
-  participant: MissionParticipantProfile;
-  canRemove: boolean;
-  onRemove: (userId: number) => void;
-  onViewProfile: (participant: MissionParticipantProfile) => void;
+  readonly participant: MissionParticipantProfile;
+  readonly canRemove: boolean;
+  readonly onRemove: (userId: number) => void;
+  readonly onViewProfile: (participant: MissionParticipantProfile) => void;
 }

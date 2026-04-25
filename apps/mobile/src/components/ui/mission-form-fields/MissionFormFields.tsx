@@ -89,11 +89,11 @@ function PillRadio({
   Icon,
   disabled,
 }: {
-  label: string;
-  selected: boolean;
-  onPress: () => void;
-  Icon?: IconComponent;
-  disabled?: boolean;
+  readonly label: string;
+  readonly selected: boolean;
+  readonly onPress: () => void;
+  readonly Icon?: IconComponent;
+  readonly disabled?: boolean;
 }) {
   return (
     <Pressable
@@ -121,12 +121,12 @@ function PillRadio({
   );
 }
 
-function FieldError({ message }: { message?: string }) {
+function FieldError({ message }: { readonly message?: string }) {
   if (!message) return null;
   return <Text className="text-xs font-medium text-error-100">{message}</Text>;
 }
 
-function InfoNote({ children }: { children: string }) {
+function InfoNote({ children }: { readonly children: string }) {
   return (
     <View className="flex-row items-start gap-2 p-3 border border-blue-100 rounded-lg bg-blue-50">
       <InfoIcon className="w-4 h-4 text-primary mt-0.5 shrink-0" />
@@ -415,7 +415,7 @@ export function MissionFormFields<T extends FieldValues>({
                           longitude: result.longitude || undefined,
                         });
                       }}
-                      error={fieldState.error as any}
+                      error={fieldState.error}
                       testIDPrefix="mission"
                     />
                   </View>

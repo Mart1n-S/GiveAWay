@@ -350,7 +350,7 @@ export class ProfileService {
     }
     if (query.endDate) {
       missionFilter['startDate'] = {
-        ...((missionFilter['startDate'] as object) ?? {}),
+        ...(missionFilter['startDate'] as object),
         lte: new Date(query.endDate),
       };
     }
@@ -503,7 +503,7 @@ export class ProfileService {
       where: { id: missionId },
       select: { id: true, status: true, hasRegistration: true },
     });
-    if (!mission || mission.status !== 'ACTIVE' || !mission.hasRegistration) {
+    if (mission?.status !== 'ACTIVE' || !mission?.hasRegistration) {
       throw new BadRequestException(
         "La mission n'accepte pas de candidatures.",
       );

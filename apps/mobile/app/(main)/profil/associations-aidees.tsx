@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   ScrollView,
@@ -35,6 +35,10 @@ const iconConfig = {
 const ArrowLeftIcon = cssInterop(ArrowLeftIconSource, iconConfig);
 
 const CHART_WIDTH = Platform.OS === "web" ? 500 : 300;
+
+function PieChartCenter({ total }: { readonly total: number }) {
+  return <Text className="text-sm font-bold text-grey-900">{total}</Text>;
+}
 const MISSIONS_LIMIT = 20;
 
 export default function AssociationsAideesScreen() {
@@ -107,10 +111,8 @@ export default function AssociationsAideesScreen() {
 
   const totalParticipations = stats?.summary.totalParticipations ?? 0;
 
-  const renderPieCenter = useMemo(
-    () => () => (
-      <Text className="text-sm font-bold text-grey-900">{totalParticipations}</Text>
-    ),
+  const renderPieCenter = useCallback(
+    () => <PieChartCenter total={totalParticipations} />,
     [totalParticipations],
   );
 

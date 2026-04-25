@@ -25,16 +25,16 @@ const ArrowLeftIcon = cssInterop(ArrowLeftIconSource, iconConfig);
 const CheckIcon = cssInterop(CheckIconSource, iconConfig);
 
 interface MissionFormLayoutProps {
-  title: string;
-  submitLabel: string;
-  step: 1 | 2 | 3;
-  isSubmitting: boolean;
-  onBack: () => void;
-  onNext: () => void;
-  onSubmit: () => void;
-  onCancel: () => void;
-  errorMessage?: string;
-  children: React.ReactNode;
+  readonly title: string;
+  readonly submitLabel: string;
+  readonly step: 1 | 2 | 3;
+  readonly isSubmitting: boolean;
+  readonly onBack: () => void;
+  readonly onNext: () => void;
+  readonly onSubmit: () => void;
+  readonly onCancel: () => void;
+  readonly errorMessage?: string;
+  readonly children: React.ReactNode;
 }
 
 export function MissionFormLayout({

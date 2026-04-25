@@ -3,8 +3,8 @@ import { View, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { isAxiosError } from "axios";
 import Toast from "react-native-toast-message";
+import { buildMissionPayload, handleMissionApiError } from "@/hooks/missionFormHelpers";
 import { Text } from "@/components/ui/text/text";
 import { MissionFormFields } from "@/components/ui/mission-form-fields/MissionFormFields";
 import { MissionFormLayout } from "@/components/ui/mission-form-fields/MissionFormLayout";
@@ -88,13 +88,7 @@ export default function CreerMissionScreen() {
     clearErrors("root");
 
     try {
-      const payload = {
-        ...data,
-        durationInt:
-          data.durationInt != null
-            ? Math.round(Number(data.durationInt) * 60)
-            : undefined,
-      };
+      const payload = buildMissionPayload(data);
       await AssociationMissionService.create(associationId, payload);
       Toast.show({
         type: "success",
@@ -104,40 +98,7 @@ export default function CreerMissionScreen() {
       });
       router.replace("/association/missions" as any);
     } catch (err) {
-      if (isAxiosError(err) && err.response) {
-        const status = err.response.status;
-        const apiError: any = err.response.data;
-
-        if (status === 400 && apiError?.errors?.properties) {
-          const firstErrorStep = mapServerErrorsToFields(
-            apiError.errors.properties,
-          );
-          if (firstErrorStep !== null) {
-            setError("root", {
-              message: "Certains champs nécessitent une correction.",
-            });
-            setStep(firstErrorStep);
-            return;
-          }
-        }
-
-        setError("root", {
-          message: apiError?.message ?? "Création impossible.",
-        });
-      } else {
-        const msg =
-          err instanceof Error
-            ? err.message
-            : "Impossible de contacter le serveur.";
-        setError("root", { message: msg });
-        Toast.show({
-          type: "error",
-          text1: "Erreur",
-          text2: msg,
-          visibilityTime: 5000,
-          onPress: () => Toast.hide(),
-        });
-      }
+      if (handleMissionApiError(err, setError, setStep, mapServerErrorsToFields, "Création impossible.")) return;
     } finally {
       setIsSubmitting(false);
     }

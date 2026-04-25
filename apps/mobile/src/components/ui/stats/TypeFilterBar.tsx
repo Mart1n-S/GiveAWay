@@ -44,8 +44,8 @@ export function TypeFilterBar({ selected, onSelect }: TypeFilterBarProps) {
           onPress={() => onSelect(undefined)}
           className="flex-row items-center gap-1 px-3 py-1.5 rounded-full border web:cursor-pointer web:outline-none web:focus-visible:ring-2 web:focus-visible:ring-focus web:focus-visible:ring-offset-1"
           style={{
-            backgroundColor: !selected ? colors.primary.default : "white",
-            borderColor: !selected ? colors.primary.default : colors.grey[200],
+            backgroundColor: selected ? "white" : colors.primary.default,
+            borderColor: selected ? colors.grey[200] : colors.primary.default,
           }}
         >
           {!selected && (
@@ -56,7 +56,7 @@ export function TypeFilterBar({ selected, onSelect }: TypeFilterBarProps) {
           )}
           <Text
             className="text-xs font-semibold"
-            style={{ color: !selected ? "white" : colors.grey[600] }}
+            style={{ color: selected ? colors.grey[600] : "white" }}
           >
             Tous
           </Text>

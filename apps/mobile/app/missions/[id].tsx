@@ -1,13 +1,13 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   View,
   ScrollView,
-  Animated,
   Platform,
   Image,
   Linking,
   Pressable,
 } from "react-native";
+import { Skeleton } from "@/components/ui/skeleton/Skeleton";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, Stack, useRouter } from "expo-router";
 import { isAxiosError } from "axios";
@@ -152,26 +152,6 @@ const TYPE_CONFIG: Record<
 };
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
-
-function Skeleton({ className = "" }: { readonly className?: string }) {
-  const anim = useRef(new Animated.Value(0.5)).current;
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(anim, { toValue: 0.9, duration: 900, useNativeDriver: true }),
-        Animated.timing(anim, { toValue: 0.4, duration: 900, useNativeDriver: true }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [anim]);
-  return (
-    <Animated.View
-      className={clsx("bg-grey-300 rounded-xl", className)}
-      style={{ opacity: anim }}
-    />
-  );
-}
 
 function SkeletonScreen() {
   return (
@@ -479,12 +459,12 @@ export default function MissionDetailScreen() {
   const isInteractive = mission.status === "ACTIVE" && !isMissionExpired;
   const showCta = isInteractive && (canRegister || isAssociationMember || isParticipating);
 
-  const statusBanner =
-    mission.status === "ARCHIVED"
-      ? { text: "Cette mission est archivée — elle n'est plus ouverte aux candidatures.", color: colors.grey[600], bg: colors.grey[100] }
-      : isMissionExpired
-        ? { text: "Cette mission est terminée — elle n'accepte plus de nouvelles candidatures.", color: colors.grey[600], bg: colors.grey[100] }
-        : null;
+  let statusBanner: { text: string; color: string; bg: string } | null = null;
+  if (mission.status === "ARCHIVED") {
+    statusBanner = { text: "Cette mission est archivée — elle n'est plus ouverte aux candidatures.", color: colors.grey[600], bg: colors.grey[100] };
+  } else if (isMissionExpired) {
+    statusBanner = { text: "Cette mission est terminée — elle n'accepte plus de nouvelles candidatures.", color: colors.grey[600], bg: colors.grey[100] };
+  }
 
   const handleParticipate = async () => {
     setParticipationLoading(true);

@@ -5,10 +5,9 @@ import type { ActivityType, Address } from "@repo/shared";
 
 export const STEP_LABELS = ["Informations", "Détails", "Tags"];
 
-export const STEP_FIELDS_BY_TYPE: Record<
-  "default" | "info",
-  Record<1 | 2 | 3, string[]>
-> = {
+type StepVariant = "default" | "info";
+
+export const STEP_FIELDS_BY_TYPE: Record<StepVariant, Record<1 | 2 | 3, string[]>> = {
   default: {
     1: ["title", "description", "type", "availabilityType"],
     2: [
@@ -58,9 +57,7 @@ export function useMissionStepper(
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
-  const activityType = useWatch({ control, name: "type" }) as
-    | ActivityType
-    | undefined;
+  const activityType: ActivityType | undefined = useWatch({ control, name: "type" });
   const availabilityType = useWatch({ control, name: "availabilityType" }) as
     | "REMOTE"
     | "ON_SITE"
@@ -153,7 +150,7 @@ export function useMissionStepper(
     let firstErrorStep: 1 | 2 | 3 | null = null;
     let mapped = false;
     Object.entries(properties).forEach(([field, payload]) => {
-      const msg = (payload as any)?.errors?.[0];
+      const msg = payload?.errors?.[0];
       if (!msg) return;
       setError(field, { type: "server", message: msg });
       mapped = true;
