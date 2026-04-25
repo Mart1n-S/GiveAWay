@@ -310,7 +310,11 @@ export default function HistoriqueScreen() {
     }
   }, []);
 
-  useFocusEffect(load);
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
 
   // ─── Données dérivées ────────────────────────────────────────────────────
   const classified: Classified[] = participations.map((p) => ({
