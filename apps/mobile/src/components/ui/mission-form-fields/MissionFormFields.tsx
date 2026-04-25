@@ -373,6 +373,7 @@ export function MissionFormFields<T extends FieldValues>({
                   control={control}
                   name={"startDate" as any}
                   label="Date de début"
+                  required={!isInfo}
                 />
               </View>
               <View className="flex-1">

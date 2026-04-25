@@ -220,6 +220,45 @@ export default function MissionDetailScreen() {
     }
   };
 
+  const handleHeaderBack = useCallback(() => {
+    if (router.canGoBack()) router.back();
+    else router.navigate("/association/missions" as any);
+  }, [router]);
+
+  const renderHeaderLeft = useCallback(
+    () => <MissionDetailHeaderLeft onBack={handleHeaderBack} />,
+    [handleHeaderBack],
+  );
+
+  const renderParticipants = () => {
+    if (participantsLoading) {
+      return (
+        <View className="items-center py-6">
+          <ActivityIndicator color={colors.primary.default} />
+        </View>
+      );
+    }
+    if (participantsData?.participants.length === 0) {
+      return (
+        <View className="items-center gap-2 p-6 bg-white border rounded-xl border-grey-100">
+          <UsersIcon className="w-8 h-8 text-grey-300" />
+          <Text className="text-sm text-center text-grey-500">
+            Aucun bénévole inscrit pour le moment.
+          </Text>
+        </View>
+      );
+    }
+    return participantsData?.participants.map((p) => (
+      <MissionParticipantCard
+        key={p.userId}
+        participant={p}
+        canRemove={participantsData.canRemove}
+        onRemove={(userId) => setRemoveTarget(userId)}
+        onViewProfile={(participant) => setSelectedParticipant(participant)}
+      />
+    ));
+  };
+
   const CONFIRM_CONFIG: Record<
     ConfirmAction,
     { title: string; message: string; label: string; destructive: boolean }
@@ -275,17 +314,7 @@ export default function MissionDetailScreen() {
         options={{
           headerTitle: mission.title,
           headerShown: Platform.OS !== "web",
-          headerLeft: Platform.OS !== "web"
-            ? () => (
-                <MissionDetailHeaderLeft
-                  onBack={() =>
-                    router.canGoBack()
-                      ? router.back()
-                      : router.navigate("/association/missions" as any)
-                  }
-                />
-              )
-            : undefined,
+          headerLeft: Platform.OS !== "web" ? renderHeaderLeft : undefined,
         }}
       />
       <View className="flex-1 bg-grey-50">
@@ -481,28 +510,7 @@ export default function MissionDetailScreen() {
                   )}
                 </View>
 
-                {participantsLoading ? (
-                  <View className="items-center py-6">
-                    <ActivityIndicator color={colors.primary.default} />
-                  </View>
-                ) : participantsData?.participants.length === 0 ? (
-                  <View className="items-center gap-2 p-6 bg-white border rounded-xl border-grey-100">
-                    <UsersIcon className="w-8 h-8 text-grey-300" />
-                    <Text className="text-sm text-center text-grey-500">
-                      Aucun bénévole inscrit pour le moment.
-                    </Text>
-                  </View>
-                ) : (
-                  participantsData?.participants.map((p) => (
-                    <MissionParticipantCard
-                      key={p.userId}
-                      participant={p}
-                      canRemove={participantsData.canRemove}
-                      onRemove={(userId) => setRemoveTarget(userId)}
-                      onViewProfile={(participant) => setSelectedParticipant(participant)}
-                    />
-                  ))
-                )}
+                {renderParticipants()}
               </View>
             )}
           </View>

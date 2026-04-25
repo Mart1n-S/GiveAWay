@@ -7,8 +7,6 @@ import {
 } from "react-native";
 import { useRouter, Stack } from "expo-router";
 import Toast from "react-native-toast-message";
-
-import { Text } from "@/components/ui";
 import {
   ProfileHeader,
   ProfileStats,
@@ -17,6 +15,7 @@ import {
   ProfileCausesSkills,
   ProfileHistory,
   ProfileActions,
+  Text
 } from "@/components/ui";
 
 import { ProfileService } from "@/services/profile.service";

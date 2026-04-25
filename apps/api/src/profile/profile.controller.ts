@@ -5,7 +5,10 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Param,
+  ParseIntPipe,
   Patch,
+  Post,
   Query,
   Req,
   Res,
@@ -88,6 +91,58 @@ export class ProfileController {
       throw new UnauthorizedException('Utilisateur non identifié');
     }
     return this.profileService.getParticipationStats(req.user.id, query);
+  }
+
+  /**
+   * GET /profile/missions/:missionId/participation
+   * Vérifie si l'utilisateur connecté participe à une mission donnée
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Get('missions/:missionId/participation')
+  @HttpCode(HttpStatus.OK)
+  async checkParticipation(
+    @Req() req: AuthenticatedRequest,
+    @Param('missionId', ParseIntPipe) missionId: number,
+  ): Promise<{ isParticipating: boolean }> {
+    if (!req.user.id)
+      throw new UnauthorizedException('Utilisateur non identifié');
+    const isParticipating = await this.profileService.checkParticipation(
+      req.user.id,
+      missionId,
+    );
+    return { isParticipating };
+  }
+
+  /**
+   * POST /profile/missions/:missionId/participate
+   * L'utilisateur connecté s'inscrit à une mission
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Post('missions/:missionId/participate')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async participateInMission(
+    @Req() req: AuthenticatedRequest,
+    @Param('missionId', ParseIntPipe) missionId: number,
+  ): Promise<void> {
+    if (!req.user.id)
+      throw new UnauthorizedException('Utilisateur non identifié');
+    await this.profileService.participateInMission(req.user.id, missionId);
+  }
+
+  /**
+   * DELETE /profile/missions/:missionId/participate
+   * L'utilisateur connecté annule sa participation à une mission
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Delete('missions/:missionId/participate')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async cancelParticipation(
+    @Req() req: AuthenticatedRequest,
+    @Param('missionId', ParseIntPipe) missionId: number,
+  ): Promise<void> {
+    if (!req.user.id)
+      throw new UnauthorizedException('Utilisateur non identifié');
+    await this.profileService.cancelParticipation(req.user.id, missionId);
   }
 
   /**

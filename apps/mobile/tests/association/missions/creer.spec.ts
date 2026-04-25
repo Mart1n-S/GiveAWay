@@ -312,7 +312,8 @@ test.describe("Page Créer Mission — Soumission", () => {
     await page.getByRole("radio", { name: "À distance" }).click();
     await page.getByRole("button", { name: /suivant/i }).click();
 
-    // Étape 2 — Détails (hasRegistration=true par défaut → volunteersNeeded requis)
+    // Étape 2 — Détails : startDate obligatoire + volunteersNeeded
+    await page.getByLabel("Date de début").fill("2026-06-15");
     await page.getByPlaceholder("Ex: 10").fill("5");
     await page.getByRole("button", { name: /suivant/i }).click();
 
@@ -325,5 +326,69 @@ test.describe("Page Créer Mission — Soumission", () => {
     await expect(page).toHaveURL(/.*association\/missions$/, {
       timeout: 10000,
     });
+  });
+});
+
+// ===========================================================================
+// Validation — startDate obligatoire
+// ===========================================================================
+test.describe("Page Créer Mission — Validation startDate", () => {
+  test("devrait bloquer l'étape 2 si startDate manquante pour une MISSION", async ({
+    page,
+  }, testInfo) => {
+    const user = await createTestUser(testInfo.workerIndex);
+    await createTestAssociation(user.id);
+    const isMobile = testInfo.project.name.includes("Mobile");
+
+    await loginAndGoToCreer(page, user, isMobile);
+
+    // Étape 1 — type MISSION
+    await page
+      .getByPlaceholder("Ex: Distribution alimentaire")
+      .fill("Mission sans date");
+    await page
+      .getByPlaceholder("Décrivez la mission, les activités prévues...")
+      .fill("Description suffisante pour passer la validation minimale.");
+    await page.getByRole("radio", { name: "Mission" }).click();
+    await page.getByRole("radio", { name: "À distance" }).click();
+    await page.getByRole("button", { name: /suivant/i }).click();
+
+    // Étape 2 — NE PAS remplir startDate, tenter d'avancer
+    await page.getByPlaceholder("Ex: 10").fill("5");
+    // Clic Suivant sans startDate
+    await page.getByRole("button", { name: /suivant/i }).click();
+
+    // Doit rester à l'étape 2 (message d'erreur sur startDate)
+    await expect(
+      page.getByText(/date de début.*obligatoire/i),
+    ).toBeVisible({ timeout: 5000 });
+    // On est toujours en étape 2
+    await expect(page.getByRole("button", { name: /suivant/i })).toBeVisible();
+  });
+
+  test("ne doit PAS bloquer si le type est INFO (pas de startDate requise)", async ({
+    page,
+  }, testInfo) => {
+    const user = await createTestUser(testInfo.workerIndex);
+    await createTestAssociation(user.id);
+    const isMobile = testInfo.project.name.includes("Mobile");
+
+    await loginAndGoToCreer(page, user, isMobile);
+
+    // Étape 1 — type INFO
+    await page
+      .getByPlaceholder("Ex: Distribution alimentaire")
+      .fill("Info sans date");
+    await page
+      .getByPlaceholder("Décrivez la mission, les activités prévues...")
+      .fill("Simple annonce informative à destination des bénévoles.");
+    await page.getByRole("radio", { name: "Information" }).click();
+    await page.getByRole("button", { name: /suivant/i }).click();
+
+    // Étape 2 — vide pour INFO → peut avancer
+    await page.getByRole("button", { name: /suivant/i }).click();
+
+    // Étape 3 — Tags
+    await expect(page.getByRole("button", { name: /^créer$/i })).toBeVisible();
   });
 });

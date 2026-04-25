@@ -80,11 +80,11 @@ export class AssociationController {
     return this.associationService.findPublicList(
       search || undefined,
       city || undefined,
-      lat ? parseFloat(lat) : undefined,
-      lng ? parseFloat(lng) : undefined,
-      radius ? parseFloat(radius) : 10,
-      page ? parseInt(page, 10) : 1,
-      pageSize ? parseInt(pageSize, 10) : 12,
+      lat ? Number.parseFloat(lat) : undefined,
+      lng ? Number.parseFloat(lng) : undefined,
+      radius ? Number.parseFloat(radius) : 10,
+      page ? Number.parseInt(page, 10) : 1,
+      pageSize ? Number.parseInt(pageSize, 10) : 12,
     );
   }
 

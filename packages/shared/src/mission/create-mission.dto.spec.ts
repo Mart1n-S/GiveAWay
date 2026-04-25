@@ -4,12 +4,18 @@ import { CreateMissionSchema } from './create-mission.dto';
 // Payload valide de référence
 // ----------------------------------------------------------------
 
+// Dates dynamiques pour que les tests ne périment jamais
+const FUTURE_START = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+const FUTURE_END   = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString();
+const PAST_DATE    = new Date(Date.now() - 2  * 24 * 60 * 60 * 1000).toISOString(); // avant-hier
+
 const VALID_PAYLOAD = {
   title: 'Distribution alimentaire',
   description: 'Description suffisamment longue pour passer la validation minimale.',
   type: 'MISSION' as const,
   availabilityType: 'REMOTE' as const,
   volunteersNeeded: 10,
+  startDate: FUTURE_START,
 };
 
 const VALID_INFO_PAYLOAD = {
@@ -57,8 +63,8 @@ describe('CreateMissionSchema', () => {
         volunteersNeeded: 10,
         durationInt: 120,
         frequency: 'WEEKLY',
-        startDate: '2025-06-01T08:00:00.000Z',
-        endDate: '2025-06-30T18:00:00.000Z',
+        startDate: FUTURE_START,
+        endDate: FUTURE_END,
         address: {
           street: '10 rue de la Paix',
           postalCode: '75001',
@@ -469,8 +475,8 @@ describe('CreateMissionSchema', () => {
     it('accepte endDate > startDate', () => {
       const result = CreateMissionSchema.safeParse({
         ...VALID_PAYLOAD,
-        startDate: '2025-06-01T00:00:00.000Z',
-        endDate: '2025-06-30T00:00:00.000Z',
+        startDate: FUTURE_START,
+        endDate: FUTURE_END,
       });
       expect(result.success).toBe(true);
     });
@@ -478,9 +484,131 @@ describe('CreateMissionSchema', () => {
     it('accepte startDate seul sans endDate', () => {
       const result = CreateMissionSchema.safeParse({
         ...VALID_PAYLOAD,
-        startDate: '2025-06-01T00:00:00.000Z',
+        startDate: FUTURE_START,
       });
       expect(result.success).toBe(true);
+    });
+  });
+
+  // ===========================================================================
+  // startDate obligatoire (superRefine)
+  // ===========================================================================
+  describe('❌ startDate — obligatoire pour non-INFO', () => {
+    it('rejette MISSION sans startDate', () => {
+      const { startDate: _, ...noDate } = VALID_PAYLOAD;
+      const result = CreateMissionSchema.safeParse(noDate);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const err = result.error.issues.find((i) => i.path[0] === 'startDate');
+        expect(err).toBeDefined();
+      }
+    });
+
+    it('rejette MISSION avec startDate=null', () => {
+      const result = CreateMissionSchema.safeParse({
+        ...VALID_PAYLOAD,
+        startDate: null,
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const err = result.error.issues.find((i) => i.path[0] === 'startDate');
+        expect(err).toBeDefined();
+      }
+    });
+
+    it('rejette EVENT sans startDate', () => {
+      const result = CreateMissionSchema.safeParse({
+        ...VALID_PAYLOAD,
+        type: 'EVENT' as const,
+        startDate: undefined,
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('rejette COLLECT sans startDate', () => {
+      const result = CreateMissionSchema.safeParse({
+        ...VALID_PAYLOAD,
+        type: 'COLLECT' as const,
+        availabilityType: 'ON_SITE' as const,
+        address: { street: '1 rue Test', postalCode: '75001', city: 'Paris' },
+        startDate: undefined,
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('accepte INFO sans startDate', () => {
+      const result = CreateMissionSchema.safeParse(VALID_INFO_PAYLOAD);
+      expect(result.success).toBe(true);
+    });
+
+    it('accepte INFO avec startDate fourni', () => {
+      const result = CreateMissionSchema.safeParse({
+        ...VALID_INFO_PAYLOAD,
+        startDate: FUTURE_START,
+      });
+      expect(result.success).toBe(true);
+    });
+  });
+
+  // ===========================================================================
+  // Dates dans le passé
+  // ===========================================================================
+  describe('❌ dates dans le passé (superRefine)', () => {
+    it('rejette une startDate dans le passé', () => {
+      const result = CreateMissionSchema.safeParse({
+        ...VALID_PAYLOAD,
+        startDate: PAST_DATE,
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const err = result.error.issues.find((i) => i.path[0] === 'startDate');
+        expect(err).toBeDefined();
+        expect(err?.message).toContain('passé');
+      }
+    });
+
+    it('rejette une endDate dans le passé', () => {
+      const result = CreateMissionSchema.safeParse({
+        ...VALID_PAYLOAD,
+        endDate: PAST_DATE,
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const err = result.error.issues.find((i) => i.path[0] === 'endDate');
+        expect(err).toBeDefined();
+        expect(err?.message).toContain('passé');
+      }
+    });
+
+    it("accepte startDate = aujourd'hui (minuit UTC)", () => {
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      const result = CreateMissionSchema.safeParse({
+        ...VALID_PAYLOAD,
+        startDate: today.toISOString(),
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('accepte endDate dans le futur', () => {
+      const result = CreateMissionSchema.safeParse({
+        ...VALID_PAYLOAD,
+        endDate: FUTURE_END,
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('rejette startDate et endDate tous deux dans le passé', () => {
+      const result = CreateMissionSchema.safeParse({
+        ...VALID_PAYLOAD,
+        startDate: PAST_DATE,
+        endDate: PAST_DATE,
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const startErr = result.error.issues.find((i) => i.path[0] === 'startDate');
+        expect(startErr).toBeDefined();
+      }
     });
   });
 });

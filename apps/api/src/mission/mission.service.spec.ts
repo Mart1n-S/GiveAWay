@@ -616,5 +616,97 @@ describe('MissionService', () => {
 
       expect(result.address).toBeNull();
     });
+
+    it('❌ Lève NotFoundException si le statut est DELETED (soft-delete)', async () => {
+      mockPrismaService.mission.findUnique.mockResolvedValue(
+        makePrismaDetailMission({ status: 'DELETED' }),
+      );
+
+      await expect(service.findById(1)).rejects.toThrow(NotFoundException);
+      await expect(service.findById(1)).rejects.toThrow(
+        'Mission #1 introuvable',
+      );
+    });
+
+    it('✅ Retourne la mission si le statut est ARCHIVED (accessible aux membres/participants)', async () => {
+      mockPrismaService.mission.findUnique.mockResolvedValue(
+        makePrismaDetailMission({ status: 'ARCHIVED' }),
+      );
+
+      const result = await service.findById(1);
+
+      expect(result.status).toBe('ARCHIVED');
+    });
+  });
+
+  // =========================================================================
+  // findAll — filtre missions expirées
+  // =========================================================================
+  describe('findAll — exclusion des missions expirées', () => {
+    it('✅ Inclut un filtre OR pour exclure les missions dont endDate est dépassée', async () => {
+      mockPrismaService.mission.findMany.mockResolvedValue([]);
+      mockPrismaService.mission.count.mockResolvedValue(0);
+
+      await service.findAll(defaultQuery);
+
+      const whereArg =
+        mockPrismaService.mission.findMany.mock.calls[0][0].where;
+      expect(Array.isArray(whereArg.OR)).toBe(true);
+      expect(whereArg.OR).toEqual(
+        expect.arrayContaining([
+          { endDate: null },
+          expect.objectContaining({
+            endDate: expect.objectContaining({ gt: expect.any(Date) }),
+          }),
+        ]),
+      );
+    });
+
+    it('✅ Conserve le filtre status ACTIVE en même temps que le filtre endDate', async () => {
+      mockPrismaService.mission.findMany.mockResolvedValue([]);
+      mockPrismaService.mission.count.mockResolvedValue(0);
+
+      await service.findAll(defaultQuery);
+
+      const whereArg =
+        mockPrismaService.mission.findMany.mock.calls[0][0].where;
+      expect(whereArg.status).toBe('ACTIVE');
+      expect(whereArg.OR).toBeDefined();
+    });
+  });
+
+  // =========================================================================
+  // findForMap — filtre missions expirées
+  // =========================================================================
+  describe('findForMap — exclusion des missions expirées', () => {
+    it('✅ Inclut un filtre OR pour exclure les missions dont endDate est dépassée', async () => {
+      mockPrismaService.mission.findMany.mockResolvedValue([]);
+
+      await service.findForMap();
+
+      const whereArg =
+        mockPrismaService.mission.findMany.mock.calls[0][0].where;
+      expect(Array.isArray(whereArg.OR)).toBe(true);
+      expect(whereArg.OR).toEqual(
+        expect.arrayContaining([
+          { endDate: null },
+          expect.objectContaining({
+            endDate: expect.objectContaining({ gt: expect.any(Date) }),
+          }),
+        ]),
+      );
+    });
+
+    it('✅ Conserve le filtre status ACTIVE et la contrainte adresse géolocalisée', async () => {
+      mockPrismaService.mission.findMany.mockResolvedValue([]);
+
+      await service.findForMap();
+
+      const whereArg =
+        mockPrismaService.mission.findMany.mock.calls[0][0].where;
+      expect(whereArg.status).toBe('ACTIVE');
+      expect(whereArg.address).toBeDefined();
+      expect(whereArg.OR).toBeDefined();
+    });
   });
 });

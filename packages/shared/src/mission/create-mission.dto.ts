@@ -112,10 +112,12 @@ export const CreateMissionBaseSchema = z.object({
 // ─── Règles métier transverses (DRY entre CREATE et UPDATE) ────────
 // `partial = true` → appliqué sur UpdateMissionSchema (certains champs peuvent être undefined)
 
+const DEFAULT_RULES_OPTIONS = { partial: false };
+
 export function applyMissionBusinessRules(
   data: Partial<z.infer<typeof CreateMissionBaseSchema>>,
   ctx: z.RefinementCtx,
-  { partial }: { partial: boolean } = { partial: false },
+  { partial }: { partial: boolean } = DEFAULT_RULES_OPTIONS,
 ): void {
   const type = data.type;
   const availability = data.availabilityType;
@@ -162,11 +164,29 @@ export function applyMissionBusinessRules(
     });
   }
 
+  // ── startDate obligatoire pour les missions non-INFO ──────────────
+  if (type !== undefined && type !== "INFO") {
+    if (!partial && data.startDate == null) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["startDate"],
+        message: "La date de début est obligatoire pour ce type de mission",
+      });
+    } else if (partial && data.startDate === null) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["startDate"],
+        message: "La date de début ne peut pas être supprimée",
+      });
+    }
+  }
+
   // ── Adresse obligatoire pour ON_SITE / HYBRID ──────────────────
   // En mode édition (partial), si on ne modifie pas la modalité, on ne force rien.
+  const defaultAvailability = type === "INFO" ? undefined : "ON_SITE";
   const resolvedAvailability = partial
     ? availability
-    : (availability ?? (type === "INFO" ? undefined : "ON_SITE"));
+    : (availability ?? defaultAvailability);
 
   if (
     resolvedAvailability &&
@@ -178,6 +198,26 @@ export function applyMissionBusinessRules(
       path: ["address"],
       message:
         "L'adresse est obligatoire pour une mission en présentiel (par défaut) ou hybride",
+    });
+  }
+
+  // ── Dates ne peuvent pas être dans le passé ──────────────────
+  const todayStart = new Date();
+  todayStart.setUTCHours(0, 0, 0, 0);
+
+  if (data.startDate && new Date(data.startDate) < todayStart) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["startDate"],
+      message: "La date de début ne peut pas être dans le passé",
+    });
+  }
+
+  if (data.endDate && new Date(data.endDate) < todayStart) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["endDate"],
+      message: "La date de fin ne peut pas être dans le passé",
     });
   }
 

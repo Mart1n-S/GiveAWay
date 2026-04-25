@@ -16,6 +16,9 @@ interface ProfileState {
   setProfileFromAuth: (profile: User) => void;
   updateProfile: (partial: Partial<User>) => void;
   clearProfile: () => void;
+  /** Marque le profil comme obsolète sans le vider : le profil reste affiché
+   *  dans la top bar mais un appel API sera déclenché au prochain getProfile(). */
+  markStale: () => void;
   setLoading: (isLoading: boolean) => void;
   isStale: () => boolean;
 }
@@ -37,6 +40,8 @@ export const useProfileStore = create<ProfileState>()(
         })),
 
       clearProfile: () => set({ profile: null, isLoading: false, lastFetchedAt: null }),
+
+      markStale: () => set({ lastFetchedAt: null }),
 
       setLoading: (isLoading) => set({ isLoading }),
 

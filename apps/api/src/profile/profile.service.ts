@@ -8,6 +8,7 @@ import {
   UserStatus,
   UserAvailability,
   AvailabilityTime,
+  MissionStatus,
 } from '../generated/prisma/client';
 import {
   User,
@@ -61,6 +62,7 @@ export class ProfileService {
         causes: { include: { cause: true } },
         availability: true,
         participations: {
+          where: { mission: { status: { not: MissionStatus.DELETED } } },
           include: {
             mission: {
               include: {
@@ -340,7 +342,9 @@ export class ProfileService {
   ): Promise<ParticipationStatsDto> {
     const { prisma } = this.authService;
 
-    const missionFilter: Record<string, unknown> = {};
+    const missionFilter: Record<string, unknown> = {
+      status: { not: MissionStatus.DELETED },
+    };
     if (query.startDate) {
       missionFilter['startDate'] = { gte: new Date(query.startDate) };
     }
@@ -357,9 +361,7 @@ export class ProfileService {
     const rows = await prisma.missionParticipant.findMany({
       where: {
         userId,
-        ...(Object.keys(missionFilter).length > 0
-          ? { mission: missionFilter }
-          : {}),
+        mission: missionFilter,
       },
       include: {
         mission: {
@@ -455,7 +457,9 @@ export class ProfileService {
         type: r.mission.type,
         availabilityType: r.mission.availabilityType,
         startDate: r.mission.startDate?.toISOString() ?? null,
+        endDate: r.mission.endDate?.toISOString() ?? null,
         durationInt: r.mission.durationInt,
+        frequency: r.mission.frequency ?? null,
         causes: r.mission.causes.map((mc) => ({
           id: mc.cause.id,
           label: mc.cause.label,
@@ -479,6 +483,43 @@ export class ProfileService {
       byMonth,
       byAssociation,
     };
+  }
+
+  async checkParticipation(
+    userId: number,
+    missionId: number,
+  ): Promise<boolean> {
+    const { prisma } = this.authService;
+    const record = await prisma.missionParticipant.findFirst({
+      where: { userId, missionId },
+      select: { missionId: true },
+    });
+    return record !== null;
+  }
+
+  async participateInMission(userId: number, missionId: number): Promise<void> {
+    const { prisma } = this.authService;
+    const mission = await prisma.mission.findUnique({
+      where: { id: missionId },
+      select: { id: true, status: true, hasRegistration: true },
+    });
+    if (!mission || mission.status !== 'ACTIVE' || !mission.hasRegistration) {
+      throw new BadRequestException(
+        "La mission n'accepte pas de candidatures.",
+      );
+    }
+    await prisma.missionParticipant.upsert({
+      where: { missionId_userId: { missionId, userId } },
+      create: { userId, missionId },
+      update: {},
+    });
+  }
+
+  async cancelParticipation(userId: number, missionId: number): Promise<void> {
+    const { prisma } = this.authService;
+    await prisma.missionParticipant.deleteMany({
+      where: { userId, missionId },
+    });
   }
 
   /**
@@ -583,6 +624,7 @@ export class ProfileService {
         causes: { include: { cause: true } },
         availability: true,
         participations: {
+          where: { mission: { status: { not: MissionStatus.DELETED } } },
           include: { mission: { include: { association: true } } },
           orderBy: { createdAt: 'desc' },
         },
@@ -818,7 +860,11 @@ const PARTICIPATION_TYPE_LABELS: Record<string, string> = {
 
 function formatParticipationMonthLabel(month: string): string {
   const [year, monthNum] = month.split('-');
-  const date = new Date(parseInt(year, 10), parseInt(monthNum, 10) - 1, 1);
+  const date = new Date(
+    Number.parseInt(year, 10),
+    Number.parseInt(monthNum, 10) - 1,
+    1,
+  );
   const label = date.toLocaleDateString('fr-FR', {
     month: 'short',
     year: '2-digit',

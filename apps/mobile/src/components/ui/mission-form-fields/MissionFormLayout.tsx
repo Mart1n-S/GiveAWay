@@ -118,7 +118,7 @@ export function MissionFormLayout({
           showsVerticalScrollIndicator={false}
         >
           <View className="w-full max-w-2xl gap-4 mx-auto">
-            {errorMessage && (
+            {!!errorMessage && (
               <View className="p-3 border border-red-200 rounded-md bg-red-50">
                 <Text className="text-sm font-medium text-center text-red-600">
                   {errorMessage}

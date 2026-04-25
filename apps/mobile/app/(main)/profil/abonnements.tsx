@@ -35,6 +35,67 @@ const iconConfig = {
 const ArrowLeftIcon = cssInterop(ArrowLeftIconSource, iconConfig);
 const NotificationSolidIcon = cssInterop(NotificationSolidIconSource, iconConfig);
 
+// ─── Composants stables hors du parent ───────────────────────────────────────
+
+function ListSeparator() {
+  return <View className="h-[1px] mx-4 bg-grey-100" />;
+}
+
+function AssociationRow({
+  item,
+  onPress,
+  onUnfollow,
+}: {
+  readonly item: FollowedAssociationItem;
+  readonly onPress: () => void;
+  readonly onUnfollow: () => void;
+}) {
+  const initial = item.name.charAt(0).toUpperCase();
+
+  return (
+    <Pressable
+      onPress={onPress}
+      className="flex-row items-center gap-3 px-4 py-3 bg-white active:bg-grey-50"
+    >
+      {item.logoUrl ? (
+        <Image
+          source={{ uri: item.logoUrl }}
+          className="w-10 h-10 rounded-full bg-grey-100"
+          resizeMode="cover"
+        />
+      ) : (
+        <View className="items-center justify-center w-10 h-10 rounded-full bg-primary-50">
+          <Text className="text-base font-bold text-primary">{initial}</Text>
+        </View>
+      )}
+
+      <View className="flex-1 min-w-0">
+        <Text className="text-sm font-semibold text-grey-900" numberOfLines={1}>
+          {item.name}
+        </Text>
+        {!!item.city && (
+          <Text className="text-xs text-grey-400" numberOfLines={1}>
+            {item.city}
+          </Text>
+        )}
+      </View>
+
+      <Pressable
+        onPress={(e) => {
+          e.stopPropagation?.();
+          onUnfollow();
+        }}
+        hitSlop={8}
+        className="p-2 rounded-full active:bg-grey-100"
+      >
+        <NotificationSolidIcon className="w-5 h-5 text-primary" />
+      </Pressable>
+    </Pressable>
+  );
+}
+
+// ─── Écran ────────────────────────────────────────────────────────────────────
+
 export default function AbonnementsScreen() {
   const router = useRouter();
   usePageTitle("Abonnements");
@@ -63,7 +124,7 @@ export default function AbonnementsScreen() {
   }, []);
 
   useEffect(() => {
-    void load();
+    load();
   }, [load]);
 
   const filtered = search.trim()
@@ -100,6 +161,52 @@ export default function AbonnementsScreen() {
     }
   };
 
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <View className="items-center justify-center flex-1">
+          <ActivityIndicator size="large" color={colors.primary.default} />
+        </View>
+      );
+    }
+
+    if (filtered.length === 0) {
+      return (
+        <View className="items-center justify-center flex-1 px-6">
+          <Text className="text-sm font-medium text-center text-grey-500">
+            {search.trim()
+              ? "Aucune association ne correspond à votre recherche."
+              : "Vous ne suivez aucune association pour l'instant."}
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <FlatList
+        data={filtered}
+        keyExtractor={(item) => String(item.id)}
+        contentContainerStyle={{ paddingBottom: 32 }}
+        ListHeaderComponent={
+          <Text className="px-4 pt-4 pb-2 text-xs font-semibold tracking-wide uppercase text-grey-500">
+            {items.length} association{items.length > 1 ? "s" : ""} suivie
+            {items.length > 1 ? "s" : ""}
+          </Text>
+        }
+        renderItem={({ item }) => (
+          <AssociationRow
+            item={item}
+            onPress={() => router.push(`/associations/${item.id}`)}
+            onUnfollow={() => {
+              handleUnfollow(item);
+            }}
+          />
+        )}
+        ItemSeparatorComponent={ListSeparator}
+      />
+    );
+  };
+
   return (
     <>
       <Stack.Screen
@@ -132,94 +239,8 @@ export default function AbonnementsScreen() {
           />
         </View>
 
-        {isLoading ? (
-          <View className="items-center justify-center flex-1">
-            <ActivityIndicator size="large" color={colors.primary.default} />
-          </View>
-        ) : filtered.length === 0 ? (
-          <View className="items-center justify-center flex-1 px-6">
-            <Text className="text-sm font-medium text-center text-grey-500">
-              {search.trim()
-                ? "Aucune association ne correspond à votre recherche."
-                : "Vous ne suivez aucune association pour l'instant."}
-            </Text>
-          </View>
-        ) : (
-          <FlatList
-            data={filtered}
-            keyExtractor={(item) => String(item.id)}
-            contentContainerStyle={{ paddingBottom: 32 }}
-            ListHeaderComponent={
-              <Text className="px-4 pt-4 pb-2 text-xs font-semibold tracking-wide uppercase text-grey-500">
-                {items.length} association{items.length > 1 ? "s" : ""} suivie{items.length > 1 ? "s" : ""}
-              </Text>
-            }
-            renderItem={({ item }) => (
-              <AssociationRow
-                item={item}
-                onPress={() => router.push(`/associations/${item.id}`)}
-                onUnfollow={() => void handleUnfollow(item)}
-              />
-            )}
-            ItemSeparatorComponent={() => (
-              <View className="h-[1px] mx-4 bg-grey-100" />
-            )}
-          />
-        )}
+        {renderContent()}
       </View>
     </>
-  );
-}
-
-function AssociationRow({
-  item,
-  onPress,
-  onUnfollow,
-}: {
-  item: FollowedAssociationItem;
-  onPress: () => void;
-  onUnfollow: () => void;
-}) {
-  const initial = item.name.charAt(0).toUpperCase();
-
-  return (
-    <Pressable
-      onPress={onPress}
-      className="flex-row items-center gap-3 px-4 py-3 bg-white active:bg-grey-50"
-    >
-      {item.logoUrl ? (
-        <Image
-          source={{ uri: item.logoUrl }}
-          className="w-10 h-10 rounded-full bg-grey-100"
-          resizeMode="cover"
-        />
-      ) : (
-        <View className="items-center justify-center w-10 h-10 rounded-full bg-primary-50">
-          <Text className="text-base font-bold text-primary">{initial}</Text>
-        </View>
-      )}
-
-      <View className="flex-1 min-w-0">
-        <Text className="text-sm font-semibold text-grey-900" numberOfLines={1}>
-          {item.name}
-        </Text>
-        {item.city && (
-          <Text className="text-xs text-grey-400" numberOfLines={1}>
-            {item.city}
-          </Text>
-        )}
-      </View>
-
-      <Pressable
-        onPress={(e) => {
-          e.stopPropagation?.();
-          onUnfollow();
-        }}
-        hitSlop={8}
-        className="p-2 rounded-full active:bg-grey-100"
-      >
-        <NotificationSolidIcon className="w-5 h-5 text-primary" />
-      </Pressable>
-    </Pressable>
   );
 }

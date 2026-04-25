@@ -111,6 +111,7 @@ describe('ProfileService — exportData', () => {
         causes: { include: { cause: true } },
         availability: true,
         participations: {
+          where: { mission: { status: { not: 'DELETED' } } },
           include: { mission: { include: { association: true } } },
           orderBy: { createdAt: 'desc' },
         },

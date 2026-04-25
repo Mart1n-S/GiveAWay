@@ -17,6 +17,7 @@ export interface MissionDetail extends MissionBase {
   startDate: Date | string | null;
   endDate: Date | string | null;
   participantsCount: number;
+  isParticipating?: boolean;
 
   association: {
     id: number;

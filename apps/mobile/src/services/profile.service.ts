@@ -175,8 +175,9 @@ export const ProfileService = {
     if (query.endDate) params.set("endDate", query.endDate);
     if (query.type) params.set("type", query.type);
     const qs = params.toString();
+    const suffix = qs ? `?${qs}` : "";
     const { data } = await api.get<ParticipationStatsDto>(
-      `/profile/participations/stats${qs ? `?${qs}` : ""}`,
+      `/profile/participations/stats${suffix}`,
     );
     return data;
   },

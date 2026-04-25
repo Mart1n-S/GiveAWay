@@ -26,6 +26,7 @@ export function ConfirmModal({
   confirmLabel = "Confirmer",
   cancelLabel = "Annuler",
   destructive = false,
+  layout = "horizontal",
   onConfirm,
   onCancel,
   loading = false,
@@ -80,28 +81,51 @@ export function ConfirmModal({
           <View className="h-px bg-grey-100" />
 
           {/* Actions */}
-          <View className="flex-row gap-3 px-5 pb-5 pt-2">
-            <Button
-              variant="secondary"
-              onPress={onCancel}
-              disabled={isLoading}
-              className="flex-1"
-            >
-              {cancelLabel}
-            </Button>
-
-            <Button
-              onPress={handleConfirm}
-              loading={isLoading}
-              className={clsx(
-                "flex-1",
-                destructive &&
-                  "bg-red-600 border-red-600 hover:bg-red-700 hover:border-red-700 active:bg-red-800 active:border-red-800",
-              )}
-            >
-              {confirmLabel}
-            </Button>
-          </View>
+          {layout === "vertical" ? (
+            <View className="gap-2 px-5 pb-5 pt-2">
+              <Button
+                onPress={handleConfirm}
+                loading={isLoading}
+                className={clsx(
+                  "w-full",
+                  destructive &&
+                    "bg-red-600 border-red-600 hover:bg-red-700 hover:border-red-700 active:bg-red-800 active:border-red-800",
+                )}
+              >
+                {confirmLabel}
+              </Button>
+              <Button
+                variant="secondary"
+                onPress={onCancel}
+                disabled={isLoading}
+                className="w-full"
+              >
+                {cancelLabel}
+              </Button>
+            </View>
+          ) : (
+            <View className="flex-row gap-3 px-5 pb-5 pt-2">
+              <Button
+                variant="secondary"
+                onPress={onCancel}
+                disabled={isLoading}
+                className="flex-1"
+              >
+                {cancelLabel}
+              </Button>
+              <Button
+                onPress={handleConfirm}
+                loading={isLoading}
+                className={clsx(
+                  "flex-1",
+                  destructive &&
+                    "bg-red-600 border-red-600 hover:bg-red-700 hover:border-red-700 active:bg-red-800 active:border-red-800",
+                )}
+              >
+                {confirmLabel}
+              </Button>
+            </View>
+          )}
         </Pressable>
       </Pressable>
     </Modal>

@@ -13,6 +13,7 @@ import { useLocalSearchParams, Stack, useRouter } from "expo-router";
 import { isAxiosError } from "axios";
 import { cssInterop } from "nativewind";
 import clsx from "clsx";
+import Toast from "react-native-toast-message";
 
 import type {
   MissionDetail,
@@ -21,9 +22,12 @@ import type {
   ActivityType,
 } from "@repo/shared";
 import { MissionService } from "@/services/mission.service";
+import { ProfileService } from "@/services/profile.service";
 import { useAuthStore } from "@/stores/auth.store";
+import { useProfileStore } from "@/stores/profile.store";
 import { Text, Button, TagBadge, colors } from "@/components/ui";
 import { MissionMap } from "@/components/ui/mission-map";
+import { ConfirmModal } from "@/components/ui/confirm-modal/ConfirmModal";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 import LocalisationIconSource from "@assets/icons/ic_localisation.svg";
@@ -327,6 +331,10 @@ export default function MissionDetailScreen() {
   const [mission, setMission] = useState<MissionDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorType, setErrorType] = useState<"network" | "notfound" | null>(null);
+  const [isParticipating, setIsParticipating] = useState(false);
+  const [isParticipationChecked, setIsParticipationChecked] = useState(!user);
+  const [participationLoading, setParticipationLoading] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   usePageTitle("Détail mission");
 
@@ -350,6 +358,18 @@ export default function MissionDetailScreen() {
     loadMission();
   }, [id]);
 
+  // Vérifie la participation si l'utilisateur est connecté
+  useEffect(() => {
+    if (!id || !user) {
+      setIsParticipationChecked(true);
+      return;
+    }
+    MissionService.checkParticipation(Number(id))
+      .then(({ isParticipating: result }) => setIsParticipating(result))
+      .catch(() => {})
+      .finally(() => setIsParticipationChecked(true));
+  }, [id, user]);
+
   const handleBack = () => {
     if (router.canGoBack()) router.back();
     else router.push("/missions");
@@ -371,6 +391,11 @@ export default function MissionDetailScreen() {
     [mission?.startDate, mission?.endDate],
   );
 
+  const isMissionExpired = useMemo(() => {
+    if (!mission?.endDate) return false;
+    return new Date(mission.endDate) < new Date();
+  }, [mission?.endDate]);
+
   const isAssociationMember = useMemo(
     () =>
       mission != null &&
@@ -380,12 +405,23 @@ export default function MissionDetailScreen() {
     [mission, user?.associations],
   );
 
+  // Vrai si la mission n'est plus accessible en lecture publique
+  // (archivée ou expirée) et que l'utilisateur n'est ni membre ni participant
+  const isRestrictedAccess = useMemo(() => {
+    if (!mission || !isParticipationChecked) return false;
+    const isArchived = mission.status === "ARCHIVED";
+    if (!isArchived && !isMissionExpired) return false;
+    return !isAssociationMember && !isParticipating;
+  }, [mission, isParticipationChecked, isMissionExpired, isAssociationMember, isParticipating]);
+
   const canRegister = useMemo(
     () =>
       !isAssociationMember &&
+      !isParticipating &&
+      !isMissionExpired &&
       mission?.hasRegistration === true &&
       mission?.status === "ACTIVE",
-    [isAssociationMember, mission?.hasRegistration, mission?.status],
+    [isAssociationMember, isParticipating, isMissionExpired, mission?.hasRegistration, mission?.status],
   );
 
   const isFull = useMemo(
@@ -406,7 +442,7 @@ export default function MissionDetailScreen() {
 
   // ─── États ──────────────────────────────────────────────────────────────────
 
-  if (isLoading) {
+  if (isLoading || !isParticipationChecked) {
     return (
       <>
         <Stack.Screen options={{ title: "Mission" }} />
@@ -424,13 +460,98 @@ export default function MissionDetailScreen() {
     );
   }
 
+  if (isRestrictedAccess) {
+    return (
+      <>
+        <Stack.Screen options={{ title: "Mission" }} />
+        <ErrorScreen type="notfound" onRetry={loadMission} onBack={handleBack} />
+      </>
+    );
+  }
+
   // ─── Mission chargée ────────────────────────────────────────────────────────
 
   const tc = TYPE_CONFIG[mission.type];
   const hasAddress = mission.address !== null;
   const mapLat = mission.address?.latitude ?? null;
   const mapLng = mission.address?.longitude ?? null;
-  const showCta = canRegister || isAssociationMember;
+
+  const isInteractive = mission.status === "ACTIVE" && !isMissionExpired;
+  const showCta = isInteractive && (canRegister || isAssociationMember || isParticipating);
+
+  const statusBanner =
+    mission.status === "ARCHIVED"
+      ? { text: "Cette mission est archivée — elle n'est plus ouverte aux candidatures.", color: colors.grey[600], bg: colors.grey[100] }
+      : isMissionExpired
+        ? { text: "Cette mission est terminée — elle n'accepte plus de nouvelles candidatures.", color: colors.grey[600], bg: colors.grey[100] }
+        : null;
+
+  const handleParticipate = async () => {
+    setParticipationLoading(true);
+    try {
+      await MissionService.participate(mission.id);
+      setIsParticipating(true);
+      // Mise à jour locale du compteur de participants
+      setMission((m) =>
+        m ? { ...m, participantsCount: m.participantsCount + 1 } : m,
+      );
+      // Marque le profil comme obsolète et recharge depuis l'API en arrière-plan
+      useProfileStore.getState().markStale();
+      ProfileService.getProfile().catch(() => {});
+      Toast.show({
+        type: "success",
+        text1: "Inscription confirmée !",
+        text2: "Vous participez désormais à cette mission.",
+        visibilityTime: 4000,
+        onPress: () => Toast.hide(),
+      });
+    } catch {
+      Toast.show({
+        type: "error",
+        text1: "Erreur",
+        text2: "Impossible de s'inscrire à cette mission.",
+        visibilityTime: 4000,
+        onPress: () => Toast.hide(),
+      });
+    } finally {
+      setParticipationLoading(false);
+    }
+  };
+
+  const handleCancelParticipation = async () => {
+    setShowCancelModal(false);
+    setParticipationLoading(true);
+    try {
+      await MissionService.cancelParticipation(mission.id);
+      setIsParticipating(false);
+      // Mise à jour locale du compteur de participants
+      setMission((m) =>
+        m
+          ? { ...m, participantsCount: Math.max(0, m.participantsCount - 1) }
+          : m,
+      );
+      // Marque le profil comme obsolète et recharge depuis l'API en arrière-plan
+      useProfileStore.getState().markStale();
+      ProfileService.getProfile().catch(() => {});
+      Toast.show({
+        type: "success",
+        text1: "Participation annulée",
+        text2: "Vous n'êtes plus inscrit à cette mission.",
+        visibilityTime: 4000,
+        onPress: () => Toast.hide(),
+      });
+    } catch {
+      Toast.show({
+        type: "error",
+        text1: "Erreur",
+        text2: "Impossible d'annuler votre participation.",
+        visibilityTime: 4000,
+        onPress: () => Toast.hide(),
+      });
+    } finally {
+      setParticipationLoading(false);
+    }
+  };
 
   let ctaButton: React.ReactNode;
   if (isAssociationMember) {
@@ -449,6 +570,18 @@ export default function MissionDetailScreen() {
         Gérer cette mission
       </Button>
     );
+  } else if (isParticipating) {
+    ctaButton = (
+      <Button
+        testID="btn-cancel-participation"
+        variant="secondary"
+        onPress={() => setShowCancelModal(true)}
+        loading={participationLoading}
+        className="w-full"
+      >
+        Ne plus faire cette mission
+      </Button>
+    );
   } else if (isFull) {
     ctaButton = (
       <Button
@@ -463,7 +596,13 @@ export default function MissionDetailScreen() {
     );
   } else {
     ctaButton = (
-      <Button testID="btn-candidater" variant="primary" onPress={() => {}} className="w-full">
+      <Button
+        testID="btn-candidater"
+        variant="primary"
+        onPress={handleParticipate}
+        loading={participationLoading}
+        className="w-full"
+      >
         Candidater à cette mission
       </Button>
     );
@@ -541,6 +680,19 @@ export default function MissionDetailScreen() {
 
   return (
     <>
+      <ConfirmModal
+        visible={showCancelModal}
+        title="Annuler la participation ?"
+        message="Vous ne serez plus inscrit à cette mission. Vous pourrez vous réinscrire si des places sont encore disponibles."
+        confirmLabel="Annuler ma participation"
+        cancelLabel="Garder ma place"
+        destructive
+        layout="vertical"
+        loading={participationLoading}
+        onConfirm={handleCancelParticipation}
+        onCancel={() => setShowCancelModal(false)}
+      />
+
       <Stack.Screen options={{ title: mission.title }} />
 
       <View className="flex-1 bg-grey-50">
@@ -606,6 +758,21 @@ export default function MissionDetailScreen() {
               </Text>
             </View>
           </View>
+
+          {/* ──────────────────────────── BANDEAU STATUT ── */}
+          {!!statusBanner && (
+            <View
+              className="px-4 py-3"
+              style={{ backgroundColor: statusBanner.bg }}
+            >
+              <Text
+                className="text-sm text-center font-medium"
+                style={{ color: statusBanner.color }}
+              >
+                {statusBanner.text}
+              </Text>
+            </View>
+          )}
 
           {/* ─────────────────────────────────────── STATS ── */}
           {stats.length > 0 && (

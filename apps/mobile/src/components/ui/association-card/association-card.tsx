@@ -80,7 +80,7 @@ export function AssociationCard({
             <Text className="text-base font-bold text-grey-900" numberOfLines={1}>
               {name}
             </Text>
-            {category && (
+            {!!category && (
               <Text className="text-xs text-grey-600" numberOfLines={1}>
                 {category}
               </Text>
@@ -89,7 +89,7 @@ export function AssociationCard({
         </View>
 
         {/* Description */}
-        {description && (
+        {!!description && (
           <Text className="mb-3 text-sm leading-5 text-grey-600" numberOfLines={3}>
             {description}
           </Text>
@@ -100,7 +100,7 @@ export function AssociationCard({
       <View className="px-4 py-3 border-t border-grey-100">
         <View className="flex-row flex-wrap items-center justify-between gap-2">
           {/* Localisation */}
-          {city && (
+          {!!city && (
             <View className="flex-row items-center gap-1">
               <LocalisationIcon className="w-3.5 h-3.5 text-grey-500" />
               <Text className="text-xs text-grey-600">{city}</Text>

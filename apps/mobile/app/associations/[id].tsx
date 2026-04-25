@@ -342,7 +342,6 @@ export default function AssociationPublicProfileScreen() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const [notified, setNotified] = useState(false);
   const [notifyModalVisible, setNotifyModalVisible] = useState(false);
-  const [notifyLoading, setNotifyLoading] = useState(false);
 
   usePageTitle("Association");
 
@@ -433,7 +432,6 @@ export default function AssociationPublicProfileScreen() {
     }
 
     if (!id) return;
-    setNotifyLoading(true);
     try {
       await followAssociation(Number(id));
       setNotified(true);
@@ -443,13 +441,11 @@ export default function AssociationPublicProfileScreen() {
     } catch {
       // silently ignore
     } finally {
-      setNotifyLoading(false);
     }
   };
 
   const handleUnfollow = async () => {
     if (!id) return;
-    setNotifyLoading(true);
     try {
       await unfollowAssociation(Number(id));
       setNotified(false);
@@ -459,7 +455,6 @@ export default function AssociationPublicProfileScreen() {
     } catch {
       // silently ignore
     } finally {
-      setNotifyLoading(false);
     }
   };
 

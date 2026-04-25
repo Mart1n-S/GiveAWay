@@ -214,4 +214,21 @@ export const MissionService = {
       return [];
     }
   },
+
+  checkParticipation: async (
+    missionId: number,
+  ): Promise<{ isParticipating: boolean }> => {
+    const { data } = await api.get<{ isParticipating: boolean }>(
+      `/profile/missions/${missionId}/participation`,
+    );
+    return data;
+  },
+
+  participate: async (missionId: number): Promise<void> => {
+    await api.post(`/profile/missions/${missionId}/participate`);
+  },
+
+  cancelParticipation: async (missionId: number): Promise<void> => {
+    await api.delete(`/profile/missions/${missionId}/participate`);
+  },
 };

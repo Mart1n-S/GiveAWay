@@ -6,7 +6,6 @@ import {
   Platform,
   Pressable,
 } from "react-native";
-// Pressable is used for the reset-filters button inside this file
 import { Stack, useRouter } from "expo-router";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
@@ -38,6 +37,14 @@ const iconConfig = {
 const ArrowLeftIcon = cssInterop(ArrowLeftIconSource, iconConfig);
 
 const CHART_WIDTH = Platform.OS === "web" ? 500 : 320;
+
+// ─── Composant stable pour le centre du PieChart ─────────────────────────────
+
+function PieChartCenter({ total }: { readonly total: number }) {
+  return (
+    <Text className="text-sm font-bold text-grey-900">{total}</Text>
+  );
+}
 
 // ─── Génération HTML pour PDF ─────────────────────────────────────────────────
 
@@ -256,7 +263,7 @@ export default function StatistiquesScreen() {
     );
   }
 
-  // ─── Bar chart data ───────────────────────────────────────────────
+  // ─── Chart data ───────────────────────────────────────────────────
   const barData =
     stats?.byMonth.map((m) => ({
       value: m.missions,
@@ -264,7 +271,6 @@ export default function StatistiquesScreen() {
       frontColor: colors.primary.default,
     })) ?? [];
 
-  // ─── Pie chart data ───────────────────────────────────────────────
   const pieData =
     stats?.byType.map((t) => ({
       value: t.count,
@@ -273,11 +279,213 @@ export default function StatistiquesScreen() {
       focused: false,
     })) ?? [];
 
-  // ─── Line chart data ──────────────────────────────────────────────
   const lineData =
     stats?.participationByMonth.map((m) => ({
       value: m.participants,
     })) ?? [];
+
+  // Stable factory for PieChart center label
+  const totalMissions = stats?.summary.totalMissions ?? 0;
+  const renderPieCenter = useCallback(
+    () => <PieChartCenter total={totalMissions} />,
+    [totalMissions],
+  );
+
+  // ─── Rendu du contenu principal ───────────────────────────────────
+  const renderPageContent = () => {
+    if (isLoading) {
+      return (
+        <View className="items-center justify-center py-16">
+          <ActivityIndicator size="large" color={colors.primary.default} />
+        </View>
+      );
+    }
+
+    if (!stats) {
+      return (
+        <View className="items-center justify-center py-16 gap-3">
+          <Text className="text-base text-center text-grey-500">
+            Impossible de charger les statistiques.
+          </Text>
+          <Button variant="secondary" onPress={load}>
+            Réessayer
+          </Button>
+        </View>
+      );
+    }
+
+    return (
+      <>
+        {/* ── KPI Cards ── */}
+        <View className="gap-3">
+          <View className="flex-row gap-3">
+            <KpiCard
+              label="Total missions"
+              value={stats.summary.totalMissions}
+              color={colors.primary.default}
+            />
+            <KpiCard
+              label="Total participants"
+              value={stats.summary.totalParticipants}
+              color={colors.blue[600]}
+            />
+          </View>
+          <View className="flex-row gap-3">
+            <KpiCard
+              label="Actives"
+              value={stats.summary.activeMissions}
+              color={colors.green[600]}
+            />
+            <KpiCard
+              label="Passées"
+              value={stats.summary.pastMissions}
+              color={colors.grey[600]}
+            />
+          </View>
+          <View className="flex-row gap-3">
+            <KpiCard
+              label="Archivées"
+              value={stats.summary.archivedMissions}
+              color={colors.grey[500]}
+            />
+            <KpiCard
+              label="Moy. participants"
+              value={stats.summary.averageParticipantsPerMission}
+              color={colors.primary.default}
+            />
+          </View>
+        </View>
+
+        {/* ── Bar chart — Missions par mois ── */}
+        {barData.length > 0 && (
+          <View className="p-4 bg-white border rounded-lg border-grey-100">
+            <SectionTitle title="Missions créées par mois" />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <BarChart
+                data={barData}
+                width={Math.max(CHART_WIDTH, barData.length * 48)}
+                height={180}
+                barWidth={28}
+                spacing={16}
+                roundedTop
+                xAxisColor={colors.grey[200]}
+                yAxisColor={colors.grey[200]}
+                yAxisTextStyle={{ color: colors.grey[500], fontSize: 10 }}
+                xAxisLabelTextStyle={{ color: colors.grey[500], fontSize: 10 }}
+                noOfSections={4}
+                isAnimated
+              />
+            </ScrollView>
+          </View>
+        )}
+
+        {/* ── Pie chart — Répartition par type ── */}
+        {pieData.length > 0 && (
+          <View className="p-4 bg-white border rounded-lg border-grey-100">
+            <SectionTitle title="Répartition par type" />
+            <View className="flex-row items-center gap-4 flex-wrap">
+              <PieChart
+                data={pieData}
+                radius={80}
+                donut
+                innerRadius={50}
+                centerLabelComponent={renderPieCenter}
+              />
+              <View className="gap-2 flex-1">
+                {stats.byType.map((t) => (
+                  <View key={t.type} className="flex-row items-center gap-2">
+                    <View
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: TYPE_COLORS[t.type] }}
+                    />
+                    <Text className="text-xs text-grey-700 flex-1">
+                      {t.label}
+                    </Text>
+                    <Text className="text-xs font-semibold text-grey-900">
+                      {t.count}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* ── Line chart — Tendance participations ── */}
+        {lineData.length > 1 && (
+          <View className="p-4 bg-white border rounded-lg border-grey-100">
+            <SectionTitle title="Tendance des inscriptions par mois" />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <LineChart
+                data={lineData}
+                width={Math.max(CHART_WIDTH, lineData.length * 48)}
+                height={160}
+                color={colors.primary.default}
+                thickness={2}
+                dataPointsColor={colors.primary.default}
+                xAxisColor={colors.grey[200]}
+                yAxisColor={colors.grey[200]}
+                yAxisTextStyle={{ color: colors.grey[500], fontSize: 10 }}
+                noOfSections={4}
+                curved
+                isAnimated
+              />
+            </ScrollView>
+            <View className="flex-row flex-wrap gap-x-3 mt-1">
+              {stats.participationByMonth.map((m) => (
+                <Text key={m.month} className="text-xs text-grey-400">
+                  {m.label.split(" ")[0]}
+                </Text>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* ── Top missions ── */}
+        {stats.topMissions.length > 0 && (
+          <View className="gap-2 p-4 bg-white border rounded-lg border-grey-100">
+            <SectionTitle title="Top missions (participants)" />
+            {stats.topMissions.map((m, i) => (
+              <View
+                key={m.id}
+                className="flex-row items-center gap-3 py-2 border-b border-grey-100 last:border-0"
+              >
+                <Text className="text-sm font-bold text-grey-400 w-5 text-center">
+                  {i + 1}
+                </Text>
+                <View
+                  className="w-2 h-2 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: TYPE_COLORS[m.type] }}
+                />
+                <Text
+                  className="flex-1 text-sm text-grey-900"
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {m.title}
+                </Text>
+                <Text className="text-sm font-bold text-primary">
+                  {m.participantsCount}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Aucune donnée */}
+        {stats.summary.totalMissions === 0 && (
+          <View className="items-center justify-center py-12 gap-2">
+            <Text className="text-base font-semibold text-grey-700">
+              Aucune donnée disponible
+            </Text>
+            <Text className="text-sm text-center text-grey-500">
+              Créez des missions pour voir apparaître vos statistiques.
+            </Text>
+          </View>
+        )}
+      </>
+    );
+  };
 
   return (
     <>
@@ -290,7 +498,6 @@ export default function StatistiquesScreen() {
       >
         <View className="w-full max-w-2xl gap-5 px-4 pt-4 mx-auto">
 
-          {/* Bouton retour + titre + export — web uniquement */}
           {Platform.OS === "web" && (
             <>
               <View className="items-start">
@@ -318,7 +525,6 @@ export default function StatistiquesScreen() {
             </>
           )}
 
-          {/* Bouton export — mobile uniquement (le retour est géré par le header natif) */}
           {Platform.OS !== "web" && !isLoading && stats && (
             <View className="items-end">
               <Button
@@ -355,195 +561,7 @@ export default function StatistiquesScreen() {
             )}
           </View>
 
-          {isLoading ? (
-            <View className="items-center justify-center py-16">
-              <ActivityIndicator size="large" color={colors.primary.default} />
-            </View>
-          ) : !stats ? (
-            <View className="items-center justify-center py-16 gap-3">
-              <Text className="text-base text-center text-grey-500">
-                Impossible de charger les statistiques.
-              </Text>
-              <Button variant="secondary" onPress={load}>
-                Réessayer
-              </Button>
-            </View>
-          ) : (
-            <>
-              {/* ── KPI Cards ── */}
-              <View className="gap-3">
-                <View className="flex-row gap-3">
-                  <KpiCard
-                    label="Total missions"
-                    value={stats.summary.totalMissions}
-                    color={colors.primary.default}
-                  />
-                  <KpiCard
-                    label="Total participants"
-                    value={stats.summary.totalParticipants}
-                    color={colors.blue[600]}
-                  />
-                </View>
-                <View className="flex-row gap-3">
-                  <KpiCard
-                    label="Actives"
-                    value={stats.summary.activeMissions}
-                    color={colors.green[600]}
-                  />
-                  <KpiCard
-                    label="Passées"
-                    value={stats.summary.pastMissions}
-                    color={colors.grey[600]}
-                  />
-                </View>
-                <View className="flex-row gap-3">
-                  <KpiCard
-                    label="Archivées"
-                    value={stats.summary.archivedMissions}
-                    color={colors.grey[500]}
-                  />
-                  <KpiCard
-                    label="Moy. participants"
-                    value={stats.summary.averageParticipantsPerMission}
-                    color={colors.primary.default}
-                  />
-                </View>
-              </View>
-
-              {/* ── Bar chart — Missions par mois ── */}
-              {barData.length > 0 && (
-                <View className="p-4 bg-white border rounded-lg border-grey-100">
-                  <SectionTitle title="Missions créées par mois" />
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    <BarChart
-                      data={barData}
-                      width={Math.max(CHART_WIDTH, barData.length * 48)}
-                      height={180}
-                      barWidth={28}
-                      spacing={16}
-                      roundedTop
-                      xAxisColor={colors.grey[200]}
-                      yAxisColor={colors.grey[200]}
-                      yAxisTextStyle={{ color: colors.grey[500], fontSize: 10 }}
-                      xAxisLabelTextStyle={{ color: colors.grey[500], fontSize: 10 }}
-                      noOfSections={4}
-                      isAnimated
-                    />
-                  </ScrollView>
-                </View>
-              )}
-
-              {/* ── Pie chart — Répartition par type ── */}
-              {pieData.length > 0 && (
-                <View className="p-4 bg-white border rounded-lg border-grey-100">
-                  <SectionTitle title="Répartition par type" />
-                  <View className="flex-row items-center gap-4 flex-wrap">
-                    <PieChart
-                      data={pieData}
-                      radius={80}
-                      donut
-                      innerRadius={50}
-                      centerLabelComponent={() => (
-                        <Text className="text-sm font-bold text-grey-900">
-                          {stats.summary.totalMissions}
-                        </Text>
-                      )}
-                    />
-                    <View className="gap-2 flex-1">
-                      {stats.byType.map((t) => (
-                        <View key={t.type} className="flex-row items-center gap-2">
-                          <View
-                            className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: TYPE_COLORS[t.type] }}
-                          />
-                          <Text className="text-xs text-grey-700 flex-1">
-                            {t.label}
-                          </Text>
-                          <Text className="text-xs font-semibold text-grey-900">
-                            {t.count}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                </View>
-              )}
-
-              {/* ── Line chart — Tendance participations ── */}
-              {lineData.length > 1 && (
-                <View className="p-4 bg-white border rounded-lg border-grey-100">
-                  <SectionTitle title="Tendance des inscriptions par mois" />
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    <LineChart
-                      data={lineData}
-                      width={Math.max(CHART_WIDTH, lineData.length * 48)}
-                      height={160}
-                      color={colors.primary.default}
-                      thickness={2}
-                      dataPointsColor={colors.primary.default}
-                      xAxisColor={colors.grey[200]}
-                      yAxisColor={colors.grey[200]}
-                      yAxisTextStyle={{ color: colors.grey[500], fontSize: 10 }}
-                      noOfSections={4}
-                      curved
-                      isAnimated
-                    />
-                  </ScrollView>
-                  <View className="flex-row flex-wrap gap-x-3 mt-1">
-                    {stats.participationByMonth.map((m) => (
-                      <Text key={m.month} className="text-xs text-grey-400">
-                        {m.label.split(" ")[0]}
-                      </Text>
-                    ))}
-                  </View>
-                </View>
-              )}
-
-              {/* ── Top missions ── */}
-              {stats.topMissions.length > 0 && (
-                <View className="gap-2 p-4 bg-white border rounded-lg border-grey-100">
-                  <SectionTitle title="Top missions (participants)" />
-                  {stats.topMissions.map((m, i) => (
-                    <View
-                      key={m.id}
-                      className="flex-row items-center gap-3 py-2 border-b border-grey-100 last:border-0"
-                    >
-                      <Text className="text-sm font-bold text-grey-400 w-5 text-center">
-                        {i + 1}
-                      </Text>
-                      <View
-                        className="w-2 h-2 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: TYPE_COLORS[m.type] }}
-                      />
-                      <Text
-                        className="flex-1 text-sm text-grey-900"
-                        numberOfLines={1}
-                        ellipsizeMode="tail"
-                      >
-                        {m.title}
-                      </Text>
-                      <Text className="text-sm font-bold text-primary">
-                        {m.participantsCount}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              {/* Aucune donnée */}
-              {stats.summary.totalMissions === 0 && (
-                <View className="items-center justify-center py-12 gap-2">
-                  <Text className="text-base font-semibold text-grey-700">
-                    Aucune donnée disponible
-                  </Text>
-                  <Text className="text-sm text-center text-grey-500">
-                    Créez des missions pour voir apparaître vos statistiques.
-                  </Text>
-                </View>
-              )}
-
-            </>
-          )}
+          {renderPageContent()}
         </View>
       </ScrollView>
     </>

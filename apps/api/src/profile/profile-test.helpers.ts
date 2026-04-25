@@ -76,8 +76,14 @@ export const createMockAuthService = () => ({
     userAvailability: {
       upsert: jest.fn(),
     },
+    mission: {
+      findUnique: jest.fn(),
+    },
     missionParticipant: {
       findMany: jest.fn(),
+      findFirst: jest.fn(),
+      upsert: jest.fn(),
+      deleteMany: jest.fn(),
     },
     userAssociationFollow: {
       findMany: jest.fn(),

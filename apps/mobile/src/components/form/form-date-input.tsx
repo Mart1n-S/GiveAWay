@@ -7,6 +7,7 @@ interface FormDateInputProps<T extends FieldValues> {
   readonly control: Control<T>;
   readonly name: Path<T>;
   readonly label: string;
+  readonly required?: boolean;
 }
 
 /**
@@ -20,6 +21,7 @@ export function FormDateInput<T extends FieldValues>({
   control,
   name,
   label,
+  required,
 }: FormDateInputProps<T>) {
   return (
     <Controller
@@ -33,7 +35,10 @@ export function FormDateInput<T extends FieldValues>({
 
         return (
           <View className="gap-1">
-            <Text className="text-sm font-semibold text-grey-800">{label}</Text>
+            <Text className="text-sm font-semibold text-grey-800">
+              {label}
+              {required && <Text className="text-error-100"> *</Text>}
+            </Text>
             <View
               className={`h-11 px-3 border rounded-lg justify-center bg-white ${
                 error ? "border-red-400" : "border-grey-200"
