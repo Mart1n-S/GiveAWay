@@ -4,6 +4,9 @@ import { UpdateMissionSchema } from './update-mission.dto';
 // Payload de référence (optionnel — tous les champs sont partiels)
 // ----------------------------------------------------------------
 
+const FUTURE_START = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+const FUTURE_END   = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString();
+
 const VALID_FULL_UPDATE = {
   title: 'Titre modifié de la mission',
   description: 'Description modifiée suffisamment longue pour passer la validation minimale.',
@@ -60,8 +63,8 @@ describe('UpdateMissionSchema', () => {
         volunteersNeeded: 5,
         durationInt: 2,
         frequency: 'WEEKLY',
-        startDate: '2025-07-01T08:00:00.000Z',
-        endDate: '2025-07-31T18:00:00.000Z',
+        startDate: FUTURE_START,
+        endDate: FUTURE_END,
         address: {
           street: '10 rue de la Paix',
           postalCode: '75001',
@@ -342,22 +345,22 @@ describe('UpdateMissionSchema', () => {
 
     it('accepte endDate postérieure à startDate', () => {
       const result = UpdateMissionSchema.safeParse({
-        startDate: '2025-06-01T00:00:00.000Z',
-        endDate: '2025-06-30T00:00:00.000Z',
+        startDate: FUTURE_START,
+        endDate: FUTURE_END,
       });
       expect(result.success).toBe(true);
     });
 
     it('accepte startDate seule (sans endDate)', () => {
       const result = UpdateMissionSchema.safeParse({
-        startDate: '2025-06-01T00:00:00.000Z',
+        startDate: FUTURE_START,
       });
       expect(result.success).toBe(true);
     });
 
     it('accepte endDate seule (sans startDate)', () => {
       const result = UpdateMissionSchema.safeParse({
-        endDate: '2025-06-30T00:00:00.000Z',
+        endDate: FUTURE_END,
       });
       expect(result.success).toBe(true);
     });
