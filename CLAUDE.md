@@ -355,11 +355,7 @@ GET `/profile` → PATCH `/profile` (FormData) → transaction Prisma (infos + p
 - Design system complet
 - Tests unitaires + E2E backend + E2E frontend (Playwright)
 
-### Non implémenté (prévu)
-- CRUD missions
-- CRUD associations
+### Non implémenté (A faire)
 - Algorithme de matching (géolocalisation + tags)
 - Panel admin
-- Notifications push
 - WebSocket (temps réel)
-- Redis (cache serveur)

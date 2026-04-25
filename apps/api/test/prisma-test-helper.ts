@@ -6,6 +6,7 @@ import {
   AssociationRole,
   MissionStatus,
   ActivityType,
+  AvailabilityType,
 } from '../src/generated/prisma/client';
 
 // 1. On récupère l'URL de test
@@ -113,6 +114,7 @@ export async function createTestMission(
   options: {
     title?: string;
     type?: ActivityType;
+    availabilityType?: AvailabilityType;
     status?: MissionStatus;
     withAddress?: boolean;
     lat?: number;
@@ -123,8 +125,9 @@ export async function createTestMission(
   const {
     title = 'Mission E2E Test',
     type = ActivityType.MISSION,
+    availabilityType = AvailabilityType.ON_SITE,
     status = MissionStatus.ACTIVE,
-    withAddress = false,
+    withAddress = true,
     lat = 48.85,
     lng = 2.35,
     volunteersNeeded,
@@ -136,6 +139,7 @@ export async function createTestMission(
       description:
         'Description de la mission de test E2E pour les tests automatisés.',
       type,
+      availabilityType,
       hasRegistration: true,
       status,
       volunteersNeeded: volunteersNeeded ?? null,
@@ -152,6 +156,18 @@ export async function createTestMission(
         },
       }),
     },
+  });
+}
+
+/**
+ * Inscrit un utilisateur à une mission (crée une entrée MissionParticipant).
+ */
+export async function createTestMissionParticipant(
+  missionId: number,
+  userId: number,
+) {
+  return prisma.missionParticipant.create({
+    data: { missionId, userId },
   });
 }
 

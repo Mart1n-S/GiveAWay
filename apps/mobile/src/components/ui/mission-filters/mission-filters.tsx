@@ -668,7 +668,6 @@ export function MissionFilters({
       )}
       style={{ height: 36 }}
     >
-      <LocalisationIcon className="flex-shrink-0 w-4 h-4 text-grey-400" />
       <TextInput
         value={cityInput}
         onChangeText={handleCityChange}
@@ -729,7 +728,7 @@ export function MissionFilters({
               { key: "startDateTo" as const, label: "Jusqu'au" },
             ].map(({ key, label }) => (
               <View key={key} className="flex-row items-center gap-3">
-                <Text className="text-sm font-semibold text-grey-700 w-16">
+                <Text className="w-16 text-sm font-semibold text-grey-700">
                   {label}
                 </Text>
                 <View

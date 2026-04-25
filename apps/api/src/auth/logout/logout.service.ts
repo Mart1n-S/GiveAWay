@@ -23,8 +23,15 @@ export class LogoutService {
         // On le supprime de la base de données.
         // Résultat : Ce token ne pourra plus jamais être utilisé pour rafraîchir la session.
         await prisma.refreshToken.delete({ where: { id: t.id } });
-        break; // On arrête la boucle, le travail est fini.
+        break;
       }
     }
+
+    // Supprime le push token de l'appareil pour éviter de recevoir
+    // des notifications après déconnexion
+    await prisma.user.update({
+      where: { id: userId },
+      data: { pushToken: null },
+    });
   }
 }

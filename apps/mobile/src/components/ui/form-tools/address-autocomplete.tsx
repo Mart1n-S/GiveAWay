@@ -75,9 +75,10 @@ export const AddressAutocomplete = ({
   // Synchronisation avec la valeur externe
   useEffect(() => {
     if (value) {
-      setStreet(value.street || value.label || "");
-      setPostalCode(value.postcode || (value as any).postalCode || "");
-      setCity(value.city || "");
+      // Utilise ?? pour conserver une chaîne vide plutôt que de se rabattre sur `label`
+      setStreet(value.street ?? "");
+      setPostalCode(value.postcode ?? (value as any).postalCode ?? "");
+      setCity(value.city ?? "");
     } else {
       setStreet("");
       setPostalCode("");

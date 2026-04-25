@@ -1,17 +1,19 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   View,
   ScrollView,
-  Animated,
   Platform,
   Image,
   Linking,
+  Pressable,
 } from "react-native";
+import { Skeleton } from "@/components/ui/skeleton/Skeleton";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, Stack, useRouter } from "expo-router";
 import { isAxiosError } from "axios";
 import { cssInterop } from "nativewind";
 import clsx from "clsx";
+import Toast from "react-native-toast-message";
 
 import type {
   MissionDetail,
@@ -20,8 +22,12 @@ import type {
   ActivityType,
 } from "@repo/shared";
 import { MissionService } from "@/services/mission.service";
+import { ProfileService } from "@/services/profile.service";
+import { useAuthStore } from "@/stores/auth.store";
+import { useProfileStore } from "@/stores/profile.store";
 import { Text, Button, TagBadge, colors } from "@/components/ui";
 import { MissionMap } from "@/components/ui/mission-map";
+import { ConfirmModal } from "@/components/ui/confirm-modal/ConfirmModal";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 import LocalisationIconSource from "@assets/icons/ic_localisation.svg";
@@ -147,26 +153,6 @@ const TYPE_CONFIG: Record<
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
-function Skeleton({ className = "" }: { className?: string }) {
-  const anim = useRef(new Animated.Value(0.5)).current;
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(anim, { toValue: 0.9, duration: 900, useNativeDriver: true }),
-        Animated.timing(anim, { toValue: 0.4, duration: 900, useNativeDriver: true }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [anim]);
-  return (
-    <Animated.View
-      className={clsx("bg-grey-300 rounded-xl", className)}
-      style={{ opacity: anim }}
-    />
-  );
-}
-
 function SkeletonScreen() {
   return (
     <View className="flex-1 bg-grey-50">
@@ -219,9 +205,9 @@ function ErrorScreen({
   onRetry,
   onBack,
 }: {
-  type: "network" | "notfound" | null;
-  onRetry: () => void;
-  onBack: () => void;
+  readonly type: "network" | "notfound" | null;
+  readonly onRetry: () => void;
+  readonly onBack: () => void;
 }) {
   const isNotFound = type === "notfound";
   return (
@@ -258,7 +244,7 @@ function ErrorScreen({
 
 // ─── Helper components ────────────────────────────────────────────────────────
 
-function SectionLabel({ label }: { label: string }) {
+function SectionLabel({ label }: { readonly label: string }) {
   return (
     <Text className="text-xs font-semibold tracking-wider uppercase text-grey-700">
       {label}
@@ -274,8 +260,8 @@ function MetaRow({
   icon: Icon,
   children,
 }: {
-  icon: ReturnType<typeof cssInterop>;
-  children: React.ReactNode;
+  readonly icon: ReturnType<typeof cssInterop>;
+  readonly children: React.ReactNode;
 }) {
   return (
     <View className="flex-row items-start gap-3">
@@ -292,9 +278,9 @@ function TagGroup({
   items,
   variant,
 }: {
-  label: string;
-  items: { id: number; label: string }[];
-  variant: "orange" | "green" | "blue" | "surface" | "red";
+  readonly label: string;
+  readonly items: { readonly id: number; readonly label: string }[];
+  readonly variant: "orange" | "green" | "blue" | "surface" | "red";
 }) {
   if (items.length === 0) return null;
   return (
@@ -320,10 +306,15 @@ export default function MissionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const user = useAuthStore((state) => state.user);
 
   const [mission, setMission] = useState<MissionDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorType, setErrorType] = useState<"network" | "notfound" | null>(null);
+  const [isParticipating, setIsParticipating] = useState(false);
+  const [isParticipationChecked, setIsParticipationChecked] = useState(!user);
+  const [participationLoading, setParticipationLoading] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   usePageTitle("Détail mission");
 
@@ -347,9 +338,25 @@ export default function MissionDetailScreen() {
     loadMission();
   }, [id]);
 
+  // Vérifie la participation si l'utilisateur est connecté
+  useEffect(() => {
+    if (!id || !user) {
+      setIsParticipationChecked(true);
+      return;
+    }
+    MissionService.checkParticipation(Number(id))
+      .then(({ isParticipating: result }) => setIsParticipating(result))
+      .catch(() => {})
+      .finally(() => setIsParticipationChecked(true));
+  }, [id, user]);
+
   const handleBack = () => {
     if (router.canGoBack()) router.back();
     else router.push("/missions");
+  };
+
+  const handleAssociationPress = () => {
+    router.push(`/associations/${mission?.association.id}`);
   };
 
   // ─── Mémoïsation ────────────────────────────────────────────────────────────
@@ -364,9 +371,37 @@ export default function MissionDetailScreen() {
     [mission?.startDate, mission?.endDate],
   );
 
+  const isMissionExpired = useMemo(() => {
+    if (!mission?.endDate) return false;
+    return new Date(mission.endDate) < new Date();
+  }, [mission?.endDate]);
+
+  const isAssociationMember = useMemo(
+    () =>
+      mission != null &&
+      (user?.associations ?? []).some(
+        (a) => a.associationId === mission.association.id,
+      ),
+    [mission, user?.associations],
+  );
+
+  // Vrai si la mission n'est plus accessible en lecture publique
+  // (archivée ou expirée) et que l'utilisateur n'est ni membre ni participant
+  const isRestrictedAccess = useMemo(() => {
+    if (!mission || !isParticipationChecked) return false;
+    const isArchived = mission.status === "ARCHIVED";
+    if (!isArchived && !isMissionExpired) return false;
+    return !isAssociationMember && !isParticipating;
+  }, [mission, isParticipationChecked, isMissionExpired, isAssociationMember, isParticipating]);
+
   const canRegister = useMemo(
-    () => mission?.hasRegistration === true && mission?.status === "ACTIVE",
-    [mission?.hasRegistration, mission?.status],
+    () =>
+      !isAssociationMember &&
+      !isParticipating &&
+      !isMissionExpired &&
+      mission?.hasRegistration === true &&
+      mission?.status === "ACTIVE",
+    [isAssociationMember, isParticipating, isMissionExpired, mission?.hasRegistration, mission?.status],
   );
 
   const isFull = useMemo(
@@ -387,7 +422,7 @@ export default function MissionDetailScreen() {
 
   // ─── États ──────────────────────────────────────────────────────────────────
 
-  if (isLoading) {
+  if (isLoading || !isParticipationChecked) {
     return (
       <>
         <Stack.Screen options={{ title: "Mission" }} />
@@ -405,13 +440,154 @@ export default function MissionDetailScreen() {
     );
   }
 
+  if (isRestrictedAccess) {
+    return (
+      <>
+        <Stack.Screen options={{ title: "Mission" }} />
+        <ErrorScreen type="notfound" onRetry={loadMission} onBack={handleBack} />
+      </>
+    );
+  }
+
   // ─── Mission chargée ────────────────────────────────────────────────────────
 
   const tc = TYPE_CONFIG[mission.type];
   const hasAddress = mission.address !== null;
   const mapLat = mission.address?.latitude ?? null;
   const mapLng = mission.address?.longitude ?? null;
-  const ctaBottomOffset = canRegister ? insets.bottom + 84 : 32;
+
+  const isInteractive = mission.status === "ACTIVE" && !isMissionExpired;
+  const showCta = isInteractive && (canRegister || isAssociationMember || isParticipating);
+
+  let statusBanner: { text: string; color: string; bg: string } | null = null;
+  if (mission.status === "ARCHIVED") {
+    statusBanner = { text: "Cette mission est archivée — elle n'est plus ouverte aux candidatures.", color: colors.grey[600], bg: colors.grey[100] };
+  } else if (isMissionExpired) {
+    statusBanner = { text: "Cette mission est terminée — elle n'accepte plus de nouvelles candidatures.", color: colors.grey[600], bg: colors.grey[100] };
+  }
+
+  const handleParticipate = async () => {
+    setParticipationLoading(true);
+    try {
+      await MissionService.participate(mission.id);
+      setIsParticipating(true);
+      // Mise à jour locale du compteur de participants
+      setMission((m) =>
+        m ? { ...m, participantsCount: m.participantsCount + 1 } : m,
+      );
+      // Marque le profil comme obsolète et recharge depuis l'API en arrière-plan
+      useProfileStore.getState().markStale();
+      ProfileService.getProfile().catch(() => {});
+      Toast.show({
+        type: "success",
+        text1: "Inscription confirmée !",
+        text2: "Vous participez désormais à cette mission.",
+        visibilityTime: 4000,
+        onPress: () => Toast.hide(),
+      });
+    } catch {
+      Toast.show({
+        type: "error",
+        text1: "Erreur",
+        text2: "Impossible de s'inscrire à cette mission.",
+        visibilityTime: 4000,
+        onPress: () => Toast.hide(),
+      });
+    } finally {
+      setParticipationLoading(false);
+    }
+  };
+
+  const handleCancelParticipation = async () => {
+    setShowCancelModal(false);
+    setParticipationLoading(true);
+    try {
+      await MissionService.cancelParticipation(mission.id);
+      setIsParticipating(false);
+      // Mise à jour locale du compteur de participants
+      setMission((m) =>
+        m
+          ? { ...m, participantsCount: Math.max(0, m.participantsCount - 1) }
+          : m,
+      );
+      // Marque le profil comme obsolète et recharge depuis l'API en arrière-plan
+      useProfileStore.getState().markStale();
+      ProfileService.getProfile().catch(() => {});
+      Toast.show({
+        type: "success",
+        text1: "Participation annulée",
+        text2: "Vous n'êtes plus inscrit à cette mission.",
+        visibilityTime: 4000,
+        onPress: () => Toast.hide(),
+      });
+    } catch {
+      Toast.show({
+        type: "error",
+        text1: "Erreur",
+        text2: "Impossible d'annuler votre participation.",
+        visibilityTime: 4000,
+        onPress: () => Toast.hide(),
+      });
+    } finally {
+      setParticipationLoading(false);
+    }
+  };
+
+  let ctaButton: React.ReactNode;
+  if (isAssociationMember) {
+    ctaButton = (
+      <Button
+        testID="btn-manage-mission"
+        variant="secondary"
+        onPress={() => {
+          router.navigate("/association/missions" as any);
+          setTimeout(() => {
+            router.push(`/association/missions/${mission.id}` as any);
+          }, 0);
+        }}
+        className="w-full"
+      >
+        Gérer cette mission
+      </Button>
+    );
+  } else if (isParticipating) {
+    ctaButton = (
+      <Button
+        testID="btn-cancel-participation"
+        variant="secondary"
+        onPress={() => setShowCancelModal(true)}
+        loading={participationLoading}
+        className="w-full"
+      >
+        Ne plus faire cette mission
+      </Button>
+    );
+  } else if (isFull) {
+    ctaButton = (
+      <Button
+        testID="btn-mission-full"
+        variant="primary"
+        disabled
+        onPress={() => {}}
+        className="w-full"
+      >
+        Complet — toutes les places sont prises
+      </Button>
+    );
+  } else {
+    ctaButton = (
+      <Button
+        testID="btn-candidater"
+        variant="primary"
+        onPress={handleParticipate}
+        loading={participationLoading}
+        className="w-full"
+      >
+        Candidater à cette mission
+      </Button>
+    );
+  }
+  const ctaBottomOffset = showCta ? insets.bottom + 84 : 32;
 
   const assocInitials = mission.association.name
     .split(" ")
@@ -424,14 +600,15 @@ export default function MissionDetailScreen() {
     value: string;
     label: string;
   }> = [
-    {
-      Icon: HandHeartIcon,
-      value:
-        mission.volunteersNeeded != null
-          ? `${mission.participantsCount} / ${mission.volunteersNeeded}`
-          : String(mission.participantsCount),
-      label: "bénévole" + (mission.participantsCount > 1 ? "s" : ""),
-    },
+    ...(mission.hasRegistration && mission.volunteersNeeded != null
+      ? [
+          {
+            Icon: HandHeartIcon,
+            value: `${mission.participantsCount} / ${mission.volunteersNeeded}`,
+            label: "bénévole" + (mission.participantsCount > 1 ? "s" : ""),
+          },
+        ]
+      : []),
     ...(formattedDuration
       ? [{ Icon: ClockIcon, value: formattedDuration, label: "durée" }]
       : []),
@@ -483,6 +660,19 @@ export default function MissionDetailScreen() {
 
   return (
     <>
+      <ConfirmModal
+        visible={showCancelModal}
+        title="Annuler la participation ?"
+        message="Vous ne serez plus inscrit à cette mission. Vous pourrez vous réinscrire si des places sont encore disponibles."
+        confirmLabel="Annuler ma participation"
+        cancelLabel="Garder ma place"
+        destructive
+        layout="vertical"
+        loading={participationLoading}
+        onConfirm={handleCancelParticipation}
+        onCancel={() => setShowCancelModal(false)}
+      />
+
       <Stack.Screen options={{ title: mission.title }} />
 
       <View className="flex-1 bg-grey-50">
@@ -510,7 +700,9 @@ export default function MissionDetailScreen() {
                       <ArrowLeftIcon className="w-5 h-5 text-primary group-hover:text-primary-hover group-active:text-primary-active" />
                     }
                     accessibilityLabel="Retour"
-                  />
+                  >
+                    Retour
+                  </Button>
                 </View>
               )}
 
@@ -546,6 +738,21 @@ export default function MissionDetailScreen() {
               </Text>
             </View>
           </View>
+
+          {/* ──────────────────────────── BANDEAU STATUT ── */}
+          {!!statusBanner && (
+            <View
+              className="px-4 py-3"
+              style={{ backgroundColor: statusBanner.bg }}
+            >
+              <Text
+                className="text-sm text-center font-medium"
+                style={{ color: statusBanner.color }}
+              >
+                {statusBanner.text}
+              </Text>
+            </View>
+          )}
 
           {/* ─────────────────────────────────────── STATS ── */}
           {stats.length > 0 && (
@@ -605,9 +812,19 @@ export default function MissionDetailScreen() {
                       </View>
                     )}
                     <View className="flex-1 gap-1">
-                      <Text testID="mission-detail-association" className="text-base font-bold text-grey-900">
-                        {mission.association.name}
-                      </Text>
+                      <Pressable
+                        onPress={handleAssociationPress}
+                        className="self-start rounded-md web:cursor-pointer"
+                        accessibilityRole="button"
+                        accessibilityLabel={`Voir le profil de ${mission.association.name}`}
+                      >
+                        <Text
+                          testID="mission-detail-association"
+                          className="text-base font-bold underline text-primary"
+                        >
+                          {mission.association.name}
+                        </Text>
+                      </Pressable>
                       {mission.association.description && (
                         <Text
                           className="text-sm leading-5 text-grey-700"
@@ -644,16 +861,18 @@ export default function MissionDetailScreen() {
                   <SectionLabel label="Informations pratiques" />
 
                   {/* Modalité (+ adresse inline si sur place ou hybride) */}
-                  <MetaRow icon={LocalisationIcon}>
-                    <Text className="text-sm font-medium text-grey-900">
-                      {AVAILABILITY_LABELS[mission.availabilityType]}
-                    </Text>
-                    {mission.availabilityType !== "REMOTE" && hasAddress && (
-                      <Text className="text-xs text-grey-700 mt-0.5">
-                        {formatAddress(mission.address!)}
+                  {mission.availabilityType && (
+                    <MetaRow icon={LocalisationIcon}>
+                      <Text className="text-sm font-medium text-grey-900">
+                        {AVAILABILITY_LABELS[mission.availabilityType]}
                       </Text>
-                    )}
-                  </MetaRow>
+                      {mission.availabilityType !== "REMOTE" && hasAddress && (
+                        <Text className="text-xs text-grey-700 mt-0.5">
+                          {formatAddress(mission.address!)}
+                        </Text>
+                      )}
+                    </MetaRow>
+                  )}
 
                   {/* Adresse séparée pour les missions à distance */}
                   {mission.availabilityType === "REMOTE" && hasAddress && (
@@ -715,7 +934,7 @@ export default function MissionDetailScreen() {
         </ScrollView>
 
         {/* ─────────────────────────────────────── CTA FIXE ── */}
-        {canRegister && (
+        {showCta && (
           <View
             testID="mission-detail-cta"
             className="absolute bottom-0 left-0 right-0 px-4 bg-white border-t border-grey-100"
@@ -725,21 +944,7 @@ export default function MissionDetailScreen() {
             }}
           >
             <View className="w-full max-w-4xl mx-auto">
-              {isFull ? (
-                <Button
-                  testID="btn-mission-full"
-                  variant="primary"
-                  disabled
-                  onPress={() => {}}
-                  className="w-full"
-                >
-                  Complet — toutes les places sont prises
-                </Button>
-              ) : (
-                <Button testID="btn-candidater" variant="primary" onPress={() => {}} className="w-full">
-                  Candidater à cette mission
-                </Button>
-              )}
+              {ctaButton}
             </View>
           </View>
         )}

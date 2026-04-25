@@ -37,6 +37,7 @@ async function loginUser(
   await page.getByTestId("btn-login-submit").filter({ visible: true }).click();
 
   await expect(page).toHaveURL("/");
+  await page.waitForLoadState("networkidle");
 }
 
 // ===========================================================================

@@ -46,11 +46,19 @@ export class MissionService {
       startDateTo,
       hasAvailableSpots,
       locationMode,
+      associationId,
     } = query;
 
+    const now = new Date();
     const where: Prisma.MissionWhereInput = {
       status: MissionStatus.ACTIVE,
+      OR: [{ endDate: null }, { endDate: { gt: now } }],
     };
+
+    // ── Association ─────────────────────────────────────────────────────────
+    if (associationId) {
+      where.associationId = associationId;
+    }
 
     // ── Mode localisation ───────────────────────────────────────────────────
     if (locationMode === 'remote') {
@@ -266,6 +274,7 @@ export class MissionService {
   ): Promise<MissionMapItem[]> {
     const where: Prisma.MissionWhereInput = {
       status: MissionStatus.ACTIVE,
+      OR: [{ endDate: null }, { endDate: { gt: new Date() } }],
       address: {
         latitude: { not: null },
         longitude: { not: null },
@@ -473,7 +482,7 @@ export class MissionService {
       },
     });
 
-    if (!mission) {
+    if (!mission || mission.status === MissionStatus.DELETED) {
       throw new NotFoundException(`Mission #${id} introuvable`);
     }
 

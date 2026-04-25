@@ -6,6 +6,7 @@ export interface TextAreaProps extends TextInputProps {
   errorMessage?: string;
   error?: boolean;
   disabled?: boolean;
+  required?: boolean;
 
   /** Affiche un compteur de caractères (ex: 0/200) si maxLength est défini */
   showCharacterCount?: boolean;

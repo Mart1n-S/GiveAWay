@@ -9,7 +9,9 @@ export interface NavLink {
     | "settings"
     | "logout"
     | "hand-heart"
-    | "building";
+    | "gestion"
+    | "building"
+    | "associations";
   isDestructive?: boolean;
   hideInMobileDrawer?: boolean;
   testID?: string;
@@ -29,6 +31,12 @@ export const PUBLIC_LINKS: NavLink[] = [
     label: "Missions",
     href: "/missions",
     iconName: "hand-heart",
+  },
+  {
+    id: "associations",
+    label: "Associations",
+    href: "/associations",
+    iconName: "building",
   },
 ];
 
@@ -69,10 +77,10 @@ export const USER_LINKS: NavLink[] = [
     testID: "link-association",
   },
   {
-    id: "settings",
-    label: "Paramètres",
-    href: "/parametres", // TODO: Page à créer
-    iconName: "settings",
+    id: "gestion-des-missions",
+    label: "Gestion des Missions",
+    href: "/association/missions",
+    iconName: "gestion",
   },
 ];
 

@@ -1,5 +1,6 @@
-import { useEffect } from "react";
-import { Stack, SplashScreen } from "expo-router";
+import { useEffect, useRef } from "react";
+import { Platform } from "react-native";
+import { Stack, SplashScreen, useRouter } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as WebBrowser from "expo-web-browser";
 
@@ -13,6 +14,7 @@ import {
 import Toast from "react-native-toast-message";
 import { toastConfig } from "@/components/ui";
 import * as Notifications from "expo-notifications";
+import { ProfileService } from "@/services/profile.service";
 import "../global.css";
 
 // Affiche les notifications même quand l'app est au premier plan
@@ -37,9 +39,31 @@ configureReanimatedLogger({
   strict: false,
 });
 
+async function registerPushToken(): Promise<void> {
+  if (Platform.OS === "web") return;
+  try {
+    const { status: existing } = await Notifications.getPermissionsAsync();
+    const finalStatus =
+      existing === "granted"
+        ? existing
+        : (await Notifications.requestPermissionsAsync()).status;
+    if (finalStatus !== "granted") return;
+
+    const projectId = process.env.EXPO_PUBLIC_PROJECT_ID;
+    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+    await ProfileService.registerPushToken({ pushToken: tokenData.data });
+  } catch {
+    // Non-bloquant : si l'enregistrement échoue, l'app fonctionne quand même
+  }
+}
+
 export default function RootLayout() {
   // 2. Récupérer l'état d'hydratation depuis le store
   const isHydrated = useAuthStore((state) => state.isHydrated);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const router = useRouter();
+  const notificationListener = useRef<Notifications.EventSubscription | null>(null);
+  const responseListener = useRef<Notifications.EventSubscription | null>(null);
 
   useEffect(() => {
     // 3. Dès que le store a fini de charger
@@ -47,6 +71,30 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [isHydrated]);
+
+  // Enregistrement du push token dès que l'utilisateur se connecte
+  useEffect(() => {
+    if (isAuthenticated) {
+      void registerPushToken();
+    }
+  }, [isAuthenticated]);
+
+  // Deep link : navigation vers la mission au tap sur une notification
+  useEffect(() => {
+    responseListener.current = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        const missionId = response.notification.request.content.data?.missionId;
+        if (typeof missionId === "number") {
+          router.push(`/missions/${missionId}`);
+        }
+      },
+    );
+
+    return () => {
+      notificationListener.current?.remove();
+      responseListener.current?.remove();
+    };
+  }, [router]);
 
   // 4. Tant que ce n'est pas chargé, on ne rend RIEN
   if (!isHydrated) {
