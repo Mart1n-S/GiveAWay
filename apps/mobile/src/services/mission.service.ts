@@ -56,6 +56,8 @@ function buildParams(query: MissionListQuery): Record<string, string> {
   if (query.volunteerTypeIds?.length)
     p.volunteerTypeIds = serializeIds(query.volunteerTypeIds);
 
+  if (query.withMatching) p.withMatching = "true";
+
   return p;
 }
 

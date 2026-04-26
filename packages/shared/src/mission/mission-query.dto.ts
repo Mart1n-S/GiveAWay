@@ -136,6 +136,18 @@ export const MissionListQuerySchema = z.object({
     toNumber,
     z.number().int().min(1).optional(),
   ),
+
+  /** Si true ET requête authentifiée : enrichit chaque mission d'un matchScore (0-100)
+   *  basé sur le profil de l'utilisateur (causes, skills, dispo, distance, historique). */
+  withMatching: z.preprocess(
+    (val) => {
+      if (val === undefined || val === "") return undefined;
+      if (val === "true" || val === true) return true;
+      if (val === "false" || val === false) return false;
+      return undefined;
+    },
+    z.boolean().optional(),
+  ),
 });
 
 export type MissionListQueryDto = z.output<typeof MissionListQuerySchema>;

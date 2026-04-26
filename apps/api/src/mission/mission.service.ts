@@ -13,13 +13,54 @@ import {
   MissionFrequency as PrismaMissionFrequency,
   MissionStatus,
 } from '../generated/prisma/client';
+import {
+  MatchingService,
+  type MissionForScoring,
+  type UserForScoring,
+} from '../matching/matching.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 const MAX_MAP_RESULTS = 500;
 
 @Injectable()
 export class MissionService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly matching: MatchingService,
+  ) {}
+
+  /**
+   * Charge l'utilisateur avec les données nécessaires au scoring.
+   * Retourne null si l'utilisateur n'existe pas (ne devrait pas arriver
+   * avec un token valide, mais sécurité défensive).
+   */
+  private async loadUserForScoring(
+    userId: number,
+  ): Promise<UserForScoring | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        skills: { select: { skill: { select: { id: true } } } },
+        causes: { select: { cause: { select: { id: true } } } },
+        availability: { select: { type: true, timeSlot: true } },
+        address: { select: { latitude: true, longitude: true } },
+        participations: {
+          where: { mission: { status: MissionStatus.ACTIVE } },
+          select: {
+            mission: {
+              select: {
+                causes: { select: { cause: { select: { id: true } } } },
+                skills: { select: { skill: { select: { id: true } } } },
+              },
+            },
+          },
+          take: 10,
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    });
+    return user as UserForScoring | null;
+  }
 
   /**
    * Retourne la liste paginée des missions actives avec leurs relations.
@@ -27,8 +68,12 @@ export class MissionService {
    * fréquence, plage de dates, mode présentiel/distanciel.
    *
    * @param query — paramètres validés par MissionListQuerySchema
+   * @param userId — id de l'utilisateur authentifié, requis pour le matching
    */
-  async findAll(query: MissionListQueryDto): Promise<MissionListResponse> {
+  async findAll(
+    query: MissionListQueryDto,
+    userId?: number,
+  ): Promise<MissionListResponse> {
     const {
       page,
       pageSize,
@@ -229,31 +274,61 @@ export class MissionService {
         )
       : missions;
 
+    // Charge l'utilisateur une seule fois si scoring activé
+    const shouldScore = !!(userId && query.withMatching);
+    const userForScoring = shouldScore
+      ? await this.loadUserForScoring(userId)
+      : null;
+
     // Aplatir les relations pivot en tableaux simples
-    const mapped: MissionListItem[] = filtered.map((m) => ({
-      id: m.id,
-      title: m.title,
-      description: m.description,
-      type: m.type,
-      availabilityType: m.availabilityType,
-      hasRegistration: m.hasRegistration,
-      volunteersNeeded: m.volunteersNeeded,
-      durationInt: m.durationInt,
-      frequency: m.frequency,
-      startDate: m.startDate,
-      endDate: m.endDate,
-      association: m.association,
-      address: m.address
-        ? {
-            ...m.address,
-            latitude: m.address.latitude ? Number(m.address.latitude) : null,
-            longitude: m.address.longitude ? Number(m.address.longitude) : null,
-          }
-        : null,
-      causes: m.causes.map((c) => c.cause),
-      skills: m.skills.map((s) => s.skill),
-      volunteerTypes: m.volunteerTypes.map((v) => v.volunteerType),
-    }));
+    const mapped: MissionListItem[] = filtered.map((m) => {
+      const item: MissionListItem = {
+        id: m.id,
+        title: m.title,
+        description: m.description,
+        type: m.type,
+        availabilityType: m.availabilityType,
+        hasRegistration: m.hasRegistration,
+        volunteersNeeded: m.volunteersNeeded,
+        durationInt: m.durationInt,
+        frequency: m.frequency,
+        startDate: m.startDate,
+        endDate: m.endDate,
+        association: m.association,
+        address: m.address
+          ? {
+              ...m.address,
+              latitude: m.address.latitude ? Number(m.address.latitude) : null,
+              longitude: m.address.longitude
+                ? Number(m.address.longitude)
+                : null,
+            }
+          : null,
+        causes: m.causes.map((c) => c.cause),
+        skills: m.skills.map((s) => s.skill),
+        volunteerTypes: m.volunteerTypes.map((v) => v.volunteerType),
+      };
+
+      if (userForScoring) {
+        const scoringMission: MissionForScoring = {
+          causes: m.causes,
+          skills: m.skills,
+          availabilityType: m.availabilityType ?? '',
+          address: m.address
+            ? { latitude: m.address.latitude, longitude: m.address.longitude }
+            : null,
+          startDate: m.startDate,
+        };
+        const score = this.matching.scoreUserMission(
+          userForScoring,
+          scoringMission,
+        );
+        item.matchScore = score.total;
+        item.matchBreakdown = score.breakdown;
+      }
+
+      return item;
+    });
 
     return {
       missions: mapped,
@@ -271,7 +346,9 @@ export class MissionService {
    */
   async findForMap(
     query?: Partial<MissionListQueryDto>,
+    userId?: number,
   ): Promise<MissionMapItem[]> {
+    const shouldScore = !!(userId && query?.withMatching);
     const where: Prisma.MissionWhereInput = {
       status: MissionStatus.ACTIVE,
       OR: [{ endDate: null }, { endDate: { gt: new Date() } }],
@@ -402,6 +479,12 @@ export class MissionService {
             logoUrl: true,
           },
         },
+        // Champs supplémentaires pour le matching (uniquement quand demandé).
+        ...(shouldScore && {
+          startDate: true,
+          causes: { select: { cause: { select: { id: true } } } },
+          skills: { select: { skill: { select: { id: true } } } },
+        }),
       },
     });
 
@@ -414,17 +497,48 @@ export class MissionService {
         )
       : missions;
 
-    return filtered.map((m) => ({
-      id: m.id,
-      title: m.title,
-      description: m.description,
-      type: m.type,
-      availabilityType: m.availabilityType,
-      latitude: Number(m.address.latitude),
-      longitude: Number(m.address.longitude),
-      city: m.address.city ?? null,
-      association: m.association,
-    }));
+    const userForScoring = shouldScore
+      ? await this.loadUserForScoring(userId)
+      : null;
+
+    return filtered.map((m) => {
+      const item: MissionMapItem = {
+        id: m.id,
+        title: m.title,
+        description: m.description,
+        type: m.type,
+        availabilityType: m.availabilityType,
+        latitude: Number(m.address.latitude),
+        longitude: Number(m.address.longitude),
+        city: m.address.city ?? null,
+        association: m.association,
+      };
+
+      if (userForScoring && 'causes' in m && 'skills' in m) {
+        const withScoring = m as typeof m & {
+          startDate: Date | null;
+          causes: { cause: { id: number } }[];
+          skills: { skill: { id: number } }[];
+        };
+        const scoringMission: MissionForScoring = {
+          causes: withScoring.causes,
+          skills: withScoring.skills,
+          availabilityType: m.availabilityType ?? '',
+          address: m.address
+            ? { latitude: m.address.latitude, longitude: m.address.longitude }
+            : null,
+          startDate: withScoring.startDate,
+        };
+        const score = this.matching.scoreUserMission(
+          userForScoring,
+          scoringMission,
+        );
+        item.matchScore = score.total;
+        item.matchBreakdown = score.breakdown;
+      }
+
+      return item;
+    });
   }
 
   /**

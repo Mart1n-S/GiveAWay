@@ -1,12 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
 import { View, ScrollView, ActivityIndicator } from "react-native";
+import Toast from "react-native-toast-message";
 import { Stack, useRouter } from "expo-router";
 import { MissionListItem, MissionListQuery } from "@repo/shared";
 import { MissionService } from "@/services/mission.service";
 import { MissionFilters } from "@/components/ui/mission-filters";
 import { MissionCounter } from "@/components/ui/mission-counter/mission-counter";
 import { MissionGrid } from "@/components/ui/mission-grid/mission-grid";
-import { Text, Button, colors } from "@/components/ui";
+import { Text, Button, colors, MatchToggle } from "@/components/ui";
+import { useAuthStore } from "@/stores/auth.store";
+import { usePreferencesStore } from "@/stores/preferences.store";
 import { useReferenceStore } from "@/stores/reference.store";
 import { useFilterReferencesStore } from "@/stores/filter-references.store";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -17,6 +20,12 @@ const EMPTY_FILTERS: MissionListQuery = {};
 export default function MissionsScreen() {
   const router = useRouter();
   usePageTitle("Missions");
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const highlightMatching = usePreferencesStore((s) => s.highlightMatching);
+  const setHighlightMatching = usePreferencesStore(
+    (s) => s.setHighlightMatching,
+  );
+
   const [missions, setMissions] = useState<MissionListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -26,6 +35,19 @@ export default function MissionsScreen() {
 
   const [filters, setFilters] = useState<MissionListQuery>(EMPTY_FILTERS);
   const [debouncedSearch, setDebouncedSearch] = useState<string | undefined>();
+
+  const handleToggleMatching = (next: boolean) => {
+    setHighlightMatching(next);
+    if (next) {
+      Toast.show({
+        type: "info",
+        text1: "Mise en avant activée",
+        text2:
+          "Les missions qui correspondent à votre profil sont désormais surlignées.",
+        visibilityTime: 5000,
+      });
+    }
+  };
 
   // Référentiels pour les chips de filtres
   const { causes, skills, fetchReferences } = useReferenceStore();
@@ -56,6 +78,7 @@ export default function MissionsScreen() {
           search: debouncedSearch,
           page: pageToLoad,
           pageSize: PAGE_SIZE,
+          withMatching: isAuthenticated && highlightMatching,
         });
 
         setMissions((prev) =>
@@ -70,7 +93,7 @@ export default function MissionsScreen() {
         setIsLoadingMore(false);
       }
     },
-    [filters, debouncedSearch],
+    [filters, debouncedSearch, isAuthenticated, highlightMatching],
   );
 
   useEffect(() => {
@@ -127,6 +150,16 @@ export default function MissionsScreen() {
             volunteerTypes={volunteerTypes}
             className="mb-6"
           />
+
+          {/* Toggle "Pour moi" — visible uniquement aux utilisateurs authentifiés */}
+          {isAuthenticated && (
+            <View className="flex-row justify-end mb-4">
+              <MatchToggle
+                value={highlightMatching}
+                onChange={handleToggleMatching}
+              />
+            </View>
+          )}
 
           {/* Compteur */}
           <MissionCounter

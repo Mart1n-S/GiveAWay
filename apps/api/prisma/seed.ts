@@ -414,6 +414,173 @@ async function main() {
           'Valorisation du patrimoine',
         ] satisfies CauseLabel[],
       },
+
+      // ========================================================================
+      // 🎯 PROFILS DE TEST POUR LE MATCHING (mot de passe : "password")
+      // Ces utilisateurs sont conçus pour démontrer l'algorithme de matching
+      // (apps/api/src/matching/matching.service.ts) et la mise en avant côté
+      // mobile (toggle "Pour moi" sur la carte et la liste des missions).
+      // Seuil de match : 40 / 100.
+      // ========================================================================
+
+      // index 9 — match-strong : profil aligné sur "Distribution de repas chauds"
+      // (Restos du Cœur). Skills = Cuisine + Logistique (overlap 100%) ;
+      // Causes = Distribution + Maraude (overlap 100%) ; Dispo ON_SITE compatible ;
+      // Adresse à Aix (distance < 5 km → 15 pts). Score attendu ≥ 80.
+      {
+        email: 'match-strong@gmail.com',
+        firstName: 'Strong',
+        lastName: 'Match',
+        age: 30,
+        status: UserStatus.ACTIVE,
+        emailVerified: true,
+        street: '60 Avenue Sainte-Victoire',
+        cp: '13100',
+        city: 'Aix-en-Provence',
+        lat: 43.5328,
+        lng: 5.458,
+        availability: {
+          frequency: [AvailabilityFrequency.HOURS_WEEK],
+          timeSlot: [AvailabilityTime.ALL_TIME],
+          type: AvailabilityType.ON_SITE,
+        },
+        skills: ['Cuisine', 'Logistique'] satisfies SkillLabel[],
+        causes: [
+          'Distribution',
+          'Maraude',
+          "Lutte contre l'isolement",
+        ] satisfies CauseLabel[],
+      },
+
+      // index 10 — match-medium : profil partiellement aligné. Match modéré
+      // attendu sur plusieurs missions (40-65), aucun match parfait.
+      {
+        email: 'match-medium@gmail.com',
+        firstName: 'Medium',
+        lastName: 'Match',
+        age: 27,
+        status: UserStatus.ACTIVE,
+        emailVerified: true,
+        street: '14 Rue Granet',
+        cp: '13100',
+        city: 'Aix-en-Provence',
+        lat: 43.5298,
+        lng: 5.4482,
+        availability: {
+          frequency: [AvailabilityFrequency.PUNCTUAL],
+          timeSlot: [AvailabilityTime.WEEKEND],
+          type: AvailabilityType.HYBRID,
+        },
+        skills: ['Animation', 'Communication'] satisfies SkillLabel[],
+        causes: ['Événementiel'] satisfies CauseLabel[],
+      },
+
+      // index 11 — match-none : profil rempli mais orthogonal aux missions
+      // existantes (skills/causes peu sollicités). Score attendu < 40 partout.
+      {
+        email: 'match-none@gmail.com',
+        firstName: 'None',
+        lastName: 'Match',
+        age: 40,
+        status: UserStatus.ACTIVE,
+        emailVerified: true,
+        street: '5 Rue Espariat',
+        cp: '13100',
+        city: 'Aix-en-Provence',
+        lat: 43.5288,
+        lng: 5.4459,
+        availability: {
+          frequency: [AvailabilityFrequency.HOURS_MONTH],
+          timeSlot: [AvailabilityTime.WEEKDAY],
+          type: AvailabilityType.ON_SITE,
+        },
+        skills: [
+          'Droit et conseil juridique',
+          'Gestion financière / comptabilité',
+        ] satisfies SkillLabel[],
+        causes: [
+          "Droits de l'homme",
+          'Dialogue interculturel',
+        ] satisfies CauseLabel[],
+      },
+
+      // index 12 — match-remote : profil 100% distanciel, pour tester la
+      // mission "Traduction collaborative" (REMOTE). Distance neutralisée
+      // (REMOTE = 15 pts pleins). Score attendu fort (~80-95) sur cette mission.
+      {
+        email: 'match-remote@gmail.com',
+        firstName: 'Remote',
+        lastName: 'Match',
+        age: 33,
+        status: UserStatus.ACTIVE,
+        emailVerified: true,
+        street: '12 Rue de la République',
+        cp: '69002',
+        city: 'Lyon',
+        lat: 45.7578,
+        lng: 4.832,
+        availability: {
+          frequency: [AvailabilityFrequency.HOURS_WEEK],
+          timeSlot: [AvailabilityTime.EVENING, AvailabilityTime.WEEKEND],
+          type: AvailabilityType.REMOTE,
+        },
+        skills: ['Traduction', 'Informatique'] satisfies SkillLabel[],
+        causes: [
+          'Valorisation du patrimoine',
+          'Médiation culturelle',
+        ] satisfies CauseLabel[],
+      },
+
+      // index 13 — match-far : skills/causes parfaitement alignés sur "Maraude
+      // de nuit" (Croix-Rouge), mais habite Marseille (~30 km). Sert à
+      // démontrer l'impact du score distance dans le breakdown.
+      {
+        email: 'match-far@gmail.com',
+        firstName: 'Far',
+        lastName: 'Match',
+        age: 38,
+        status: UserStatus.ACTIVE,
+        emailVerified: true,
+        street: '20 Rue de la République',
+        cp: '13002',
+        city: 'Marseille',
+        lat: 43.299,
+        lng: 5.3781,
+        availability: {
+          frequency: [AvailabilityFrequency.PUNCTUAL],
+          timeSlot: [AvailabilityTime.EVENING],
+          type: AvailabilityType.ON_SITE,
+        },
+        skills: [
+          'Secourisme et sécurité civile',
+          'Logistique',
+        ] satisfies SkillLabel[],
+        causes: [
+          'Maraude',
+          "Lutte contre l'isolement",
+          'Distribution',
+        ] satisfies CauseLabel[],
+      },
+
+      // index 14 — match-empty : profil minimal, sans skills/causes/dispo.
+      // Permet de vérifier le comportement edge (score = 0 partout, badge
+      // "Complétez votre profil" éventuel côté UI).
+      {
+        email: 'match-empty@gmail.com',
+        firstName: 'Empty',
+        lastName: 'Profile',
+        age: 22,
+        status: UserStatus.ACTIVE,
+        emailVerified: true,
+        street: '1 Place de la Mairie',
+        cp: '13100',
+        city: 'Aix-en-Provence',
+        lat: 43.5283,
+        lng: 5.4474,
+        availability: null,
+        skills: [] as SkillLabel[],
+        causes: [] as CauseLabel[],
+      },
     ];
 
     const createdUsers: User[] = [];
@@ -486,6 +653,8 @@ async function main() {
       causes: CauseLabel[];
       publics: PublicLabel[];
       volunteerTypes: VolunteerTypeLabel[];
+      /** Mode d'exécution. Défaut : ON_SITE (cohérent avec le schéma Prisma). */
+      availabilityType?: AvailabilityType;
     }
 
     interface AssociationSeed {
@@ -943,6 +1112,23 @@ async function main() {
             publics: [],
             volunteerTypes: ['Experts / Professionnels', 'Étudiants'],
           },
+          {
+            title: 'Traduction collaborative de récits provençaux',
+            description:
+              'Mission 100% à distance : traduisez des témoignages historiques provençaux en anglais ou en italien depuis chez vous. Travail asynchrone, à votre rythme.',
+            type: ActivityType.MISSION,
+            status: MissionStatus.ACTIVE,
+            availabilityType: AvailabilityType.REMOTE,
+            hasRegistration: true,
+            volunteersNeeded: 5,
+            durationInt: 120,
+            frequency: MissionFrequency.WEEKLY,
+            startDate: now,
+            skills: ['Traduction', 'Informatique'],
+            causes: ['Valorisation du patrimoine', 'Médiation culturelle'],
+            publics: [],
+            volunteerTypes: ['Bilingue requis', 'Experts / Professionnels'],
+          },
         ],
       },
 
@@ -1064,6 +1250,7 @@ async function main() {
             description: m.description,
             type: m.type,
             status: m.status,
+            availabilityType: m.availabilityType ?? AvailabilityType.ON_SITE,
             hasRegistration: m.hasRegistration,
             volunteersNeeded: m.volunteersNeeded ?? null,
             durationInt: m.durationInt ?? null,
@@ -1143,19 +1330,53 @@ async function main() {
       });
     }
 
+    // Participations pour le bonus "history" du matching :
+    // match-strong (index 9) a déjà participé à une collecte alimentaire,
+    // ce qui doit lui donner +10 pts d'historique sur les missions partageant
+    // une cause/skill (Distribution, Logistique, etc.).
+    const missionCollecte = await tx.mission.findFirst({
+      where: { title: 'Collecte alimentaire de printemps' },
+    });
+    if (missionCollecte) {
+      await tx.missionParticipant.create({
+        data: { missionId: missionCollecte.id, userId: createdUsers[9].id },
+      });
+    }
+
     console.log('✅ Transaction terminée');
   });
 
   console.log('🚀 Seed terminé avec succès !');
   console.log(`
 📊 Résumé :
-  - 9 utilisateurs (1 admin test, 2 bénévoles actifs, 2 responsables d'association, 1 pending, 1 suspendu, 1 supprimé)
+  - 15 utilisateurs au total (mot de passe : "password")
+      • 1 admin test, 2 bénévoles actifs, 2 responsables d'association
+      • 1 pending, 1 suspendu, 1 supprimé
+      • 6 profils dédiés au test du matching (voir ci-dessous)
   - Chaque utilisateur actif est propriétaire d'au plus une association
   - 6 associations validées à Aix-en-Provence
-      (avec objet statutaire, statut juridique, RNA, téléphone, site web, email vérifié)
-  - 20 missions (MISSION, EVENT, COLLECT, INFO — ACTIVE et ARCHIVED)
-  - Skills, causes, publics et types bénévoles typés statiquement
-  - 3 participations de démonstration
+  - 21 missions (MISSION, EVENT, COLLECT, INFO — ACTIVE et ARCHIVED)
+      dont 1 mission REMOTE ("Traduction collaborative de récits provençaux")
+  - 4 participations de démonstration (dont 1 pour le bonus "history")
+
+🎯 Profils de test pour le matching ("Pour moi" toggle, seuil 40/100) :
+  • match-strong@gmail.com  → match très fort (~95+) sur "Distribution de
+                              repas chauds" (Restos du Cœur). Bonus history
+                              actif via participation "Collecte alimentaire".
+  • match-medium@gmail.com  → match modéré (40-65) sur les missions Event /
+                              Animation. Aucun match parfait.
+  • match-none@gmail.com    → profil rempli mais orthogonal aux missions
+                              existantes → score < 40 partout, aucune mise
+                              en avant attendue.
+  • match-remote@gmail.com  → match fort sur "Traduction collaborative"
+                              (REMOTE) malgré une adresse à Lyon (distance
+                              neutralisée pour les missions distancielles).
+  • match-far@gmail.com     → skills/causes alignés sur "Maraude de nuit"
+                              (Croix-Rouge) mais adresse à Marseille (~30 km)
+                              → match probable mais pénalisé par la distance.
+  • match-empty@gmail.com   → profil sans skills/causes/dispo → score 0
+                              partout, edge case (UI : "Complétez votre
+                              profil pour profiter du matching").
   `);
 }
 

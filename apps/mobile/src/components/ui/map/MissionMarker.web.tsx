@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
 import { useState } from "react";
 import { useRouter } from "expo-router";
-import type { MissionMapItem } from "@repo/shared";
+import { MATCH_THRESHOLD, type MissionMapItem } from "@repo/shared";
 
 interface MissionMarkerProps {
   missions: MissionMapItem[];
@@ -36,6 +36,12 @@ const TYPE_COLORS: Record<MissionMapItem["type"], string> = {
 const POPUP_CSS = `
 .mm-popup { font-family: inherit; position: relative; }
 .mm-popup *, .mm-popup *::before, .mm-popup *::after { box-sizing: border-box; }
+
+/* ── Mise en avant ─────────────────────────────────────────────────────────── */
+.leaflet-popup-content-wrapper:has(.mm-popup-highlighted) {
+  border: 2px solid #F59E0B;
+  box-shadow: 0 0 0 4px rgba(245,158,11,0.2), 0 3px 14px rgba(0,0,0,0.18);
+}
 
 /* ── Bouton fermer ─────────────────────────────────────────────────────────── */
 .mm-close-btn {
@@ -126,13 +132,28 @@ const S = {
     fontSize: 18, flexShrink: 0, marginTop: 2,
   },
   meta: { flex: 1, minWidth: 0 },
+  badgeRow: {
+    display: "flex" as const,
+    flexWrap: "wrap" as const,
+    alignItems: "center" as const,
+    gap: 6,
+    marginBottom: 4,
+  },
   badge: (type: MissionMapItem["type"]) => ({
     display: "inline-block" as const,
     padding: "2px 8px", borderRadius: 20,
     fontSize: 10, fontWeight: 700,
     textTransform: "uppercase" as const, letterSpacing: "0.5px",
-    color: "#fff", background: TYPE_COLORS[type], marginBottom: 4,
+    color: "#fff", background: TYPE_COLORS[type],
   }),
+  matchBadge: {
+    display: "inline-block" as const,
+    padding: "2px 8px", borderRadius: 20,
+    fontSize: 10, fontWeight: 700,
+    letterSpacing: "0.3px",
+    color: "#B45309", background: "#FEF3C7",
+    border: "1px solid #FCD34D",
+  },
   title: { fontWeight: 700, fontSize: 13, color: "#111", lineHeight: 1.35, margin: 0 },
   assoc: { fontSize: 11, color: "#666", marginTop: 2 },
   divider: { height: 1, background: "#EBEBEB", margin: "8px 0" },
@@ -209,8 +230,19 @@ function PopupContent({ missions, currentIndex, setCurrentIndex, useMap }: Popup
   const isPrevDisabled = currentIndex === 0;
   const isNextDisabled = currentIndex === missions.length - 1;
 
+  // Match courant + nombre de matchs dans le groupe pour le compteur.
+  const isCurrentMatch =
+    typeof current.matchScore === "number" &&
+    current.matchScore >= MATCH_THRESHOLD;
+  const matchCount = missions.filter(
+    (m) => typeof m.matchScore === "number" && m.matchScore >= MATCH_THRESHOLD,
+  ).length;
+
   return (
-    <div className="mm-popup" style={S.popup}>
+    <div
+      className={`mm-popup${isCurrentMatch ? " mm-popup-highlighted" : ""}`}
+      style={S.popup}
+    >
       {/* Bouton fermer (remplace celui de Leaflet) */}
       <button
         className="mm-close-btn"
@@ -229,7 +261,14 @@ function PopupContent({ missions, currentIndex, setCurrentIndex, useMap }: Popup
           <div style={S.logoPlaceholder} aria-hidden="true">🤝</div>
         )}
         <div style={S.meta}>
-          <span style={S.badge(current.type)}>{TYPE_LABELS[current.type]}</span>
+          <div style={S.badgeRow}>
+            <span style={S.badge(current.type)}>{TYPE_LABELS[current.type]}</span>
+            {isCurrentMatch && (
+              <span style={S.matchBadge}>
+                ★ Recommandé · {current.matchScore}%
+              </span>
+            )}
+          </div>
           <p style={S.title}>{current.title}</p>
           <p style={S.assoc}>{current.association.name}</p>
         </div>
@@ -264,6 +303,7 @@ function PopupContent({ missions, currentIndex, setCurrentIndex, useMap }: Popup
 
           <span style={S.navCounter} aria-live="polite">
             {currentIndex + 1} / {missions.length}
+            {matchCount > 0 ? `  ·  ★ ${matchCount}` : ""}
           </span>
 
           <button
