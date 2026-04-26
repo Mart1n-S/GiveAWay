@@ -4,8 +4,8 @@ import { Text } from "../text/text";
 import { Button } from "../button/button";
 
 export interface MatchInfoModalProps {
-  visible: boolean;
-  onClose: () => void;
+  readonly visible: boolean;
+  readonly onClose: () => void;
 }
 
 interface AxisRow {

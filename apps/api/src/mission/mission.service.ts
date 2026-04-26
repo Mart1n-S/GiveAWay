@@ -195,7 +195,7 @@ export class MissionService {
     }
 
     // ── Places disponibles ──────────────────────────────────────────────────
-    // TODO: Prisma ne supporte pas nativement la comparaison _count vs champ.
+    // Prisma ne supporte pas nativement la comparaison _count vs champ.
     // Pour la pagination, on pré-filtre sur volunteersNeeded != null et on
     // délègue le filtrage exact à la couche JS post-fetch si le volume le permet.
     // Pour les grands volumes, privilégier une vue SQL matérialisée.
@@ -515,19 +515,14 @@ export class MissionService {
       };
 
       if (userForScoring && 'causes' in m && 'skills' in m) {
-        const withScoring = m as typeof m & {
-          startDate: Date | null;
-          causes: { cause: { id: number } }[];
-          skills: { skill: { id: number } }[];
-        };
         const scoringMission: MissionForScoring = {
-          causes: withScoring.causes,
-          skills: withScoring.skills,
+          causes: m.causes,
+          skills: m.skills,
           availabilityType: m.availabilityType ?? '',
           address: m.address
             ? { latitude: m.address.latitude, longitude: m.address.longitude }
             : null,
-          startDate: withScoring.startDate,
+          startDate: m.startDate,
         };
         const score = this.matching.scoreUserMission(
           userForScoring,

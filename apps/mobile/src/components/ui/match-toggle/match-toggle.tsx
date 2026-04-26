@@ -10,19 +10,19 @@ const focusRing =
 
 export interface MatchToggleProps {
   /** État actuel du toggle. */
-  value: boolean;
+  readonly value: boolean;
   /** Callback au changement d'état. */
-  onChange: (next: boolean) => void;
+  readonly onChange: (next: boolean) => void;
   /** Label personnalisable (défaut : "Pour moi"). */
-  label?: string;
+  readonly label?: string;
   /** Désactive le toggle (ex. pendant un chargement). */
-  disabled?: boolean;
+  readonly disabled?: boolean;
   /** Affiche le bouton "?" qui ouvre l'explication du matching. Défaut : true. */
-  showInfoButton?: boolean;
+  readonly showInfoButton?: boolean;
   /** Classes additionnelles sur le wrapper. */
-  className?: string;
+  readonly className?: string;
   /** Identifiant de test. */
-  testID?: string;
+  readonly testID?: string;
 }
 
 /**
