@@ -6,6 +6,8 @@ import {
   Param,
   ParseIntPipe,
   Query,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import {
   MissionDetail,
@@ -14,8 +16,13 @@ import {
   MissionListQueryDto,
   MissionListQuerySchema,
 } from '@repo/shared';
+import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt.guard';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { MissionService } from './mission.service';
+
+interface RequestWithOptionalUser {
+  user?: { id: number };
+}
 
 @Controller('missions')
 export class MissionController {
@@ -24,18 +31,20 @@ export class MissionController {
   /**
    * GET /missions/map
    * Retourne les missions géolocalisées pour affichage sur la carte.
-   * Route publique — pas d'authentification requise.
+   * Auth optionnelle : si présente + withMatching=true, enrichit chaque item d'un matchScore.
    * Doit être déclaré AVANT :id pour éviter que NestJS l'interprète comme un paramètre.
    *
    * Accepte les mêmes filtres que GET /missions (sauf page/pageSize).
    */
   @Get('map')
+  @UseGuards(OptionalJwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async findForMap(
     @Query(new ZodValidationPipe(MissionListQuerySchema))
     query: MissionListQueryDto,
+    @Req() req: RequestWithOptionalUser,
   ): Promise<MissionMapItem[]> {
-    return this.missionService.findForMap(query);
+    return this.missionService.findForMap(query, req.user?.id);
   }
 
   /**
@@ -54,18 +63,20 @@ export class MissionController {
   /**
    * GET /missions
    * Retourne la liste paginée des missions actives.
-   * Route publique — pas d'authentification requise.
+   * Auth optionnelle : si présente + withMatching=true, enrichit chaque item d'un matchScore.
    *
    * Query params validés par MissionListQuerySchema :
    *   page (défaut 1), pageSize (défaut 12, max 100),
-   *   type (MISSION|EVENT|COLLECT|INFO), causeId, city, search
+   *   type (MISSION|EVENT|COLLECT|INFO), causeId, city, search, withMatching
    */
   @Get()
+  @UseGuards(OptionalJwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async findAll(
     @Query(new ZodValidationPipe(MissionListQuerySchema))
     query: MissionListQueryDto,
+    @Req() req: RequestWithOptionalUser,
   ): Promise<MissionListResponse> {
-    return this.missionService.findAll(query);
+    return this.missionService.findAll(query, req.user?.id);
   }
 }

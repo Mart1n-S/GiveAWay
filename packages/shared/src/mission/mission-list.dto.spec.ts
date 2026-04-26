@@ -2,7 +2,9 @@ import type {
   MissionListItem,
   MissionListResponse,
   MissionListQuery,
+  MatchBreakdown,
 } from "./mission-list.dto";
+import { MATCH_THRESHOLD } from "./mission-list.dto";
 
 describe("MissionListItem", () => {
   const baseAssociation = {
@@ -182,5 +184,92 @@ describe("MissionListQuery", () => {
       const query: MissionListQuery = { locationMode: "remote" };
       expect(query.locationMode).toBe("remote");
     });
+
+    it("Doit accepter withMatching=true", () => {
+      const query: MissionListQuery = { withMatching: true };
+      expect(query.withMatching).toBe(true);
+    });
+
+    it("Doit accepter withMatching=false", () => {
+      const query: MissionListQuery = { withMatching: false };
+      expect(query.withMatching).toBe(false);
+    });
+  });
+});
+
+describe("MatchBreakdown / matchScore", () => {
+  it("Doit définir MATCH_THRESHOLD à 40", () => {
+    expect(MATCH_THRESHOLD).toBe(40);
+  });
+
+  it("Doit accepter un MatchBreakdown valide", () => {
+    const breakdown: MatchBreakdown = {
+      causes: 30,
+      skills: 25,
+      availability: 20,
+      distance: 15,
+      history: 10,
+    };
+    const total =
+      breakdown.causes +
+      breakdown.skills +
+      breakdown.availability +
+      breakdown.distance +
+      breakdown.history;
+    expect(total).toBe(100);
+  });
+
+  it("Doit accepter un MissionListItem avec matchScore et matchBreakdown", () => {
+    const item: MissionListItem = {
+      id: 1,
+      title: "Distribution",
+      description: "...",
+      type: "MISSION",
+      availabilityType: "ON_SITE",
+      hasRegistration: true,
+      volunteersNeeded: 5,
+      durationInt: null,
+      frequency: null,
+      startDate: null,
+      endDate: null,
+      association: { id: 1, name: "Asso", logoUrl: null },
+      address: null,
+      causes: [],
+      skills: [],
+      volunteerTypes: [],
+      matchScore: 75,
+      matchBreakdown: {
+        causes: 30,
+        skills: 25,
+        availability: 20,
+        distance: 0,
+        history: 0,
+      },
+    };
+    expect(item.matchScore).toBe(75);
+    expect(item.matchBreakdown?.causes).toBe(30);
+  });
+
+  it("Doit accepter un MissionListItem sans matchScore (cas non authentifié)", () => {
+    const item: MissionListItem = {
+      id: 1,
+      title: "Distribution",
+      description: "...",
+      type: "MISSION",
+      availabilityType: "ON_SITE",
+      hasRegistration: true,
+      volunteersNeeded: 5,
+      durationInt: null,
+      frequency: null,
+      startDate: null,
+      endDate: null,
+      association: { id: 1, name: "Asso", logoUrl: null },
+      address: null,
+      causes: [],
+      skills: [],
+      volunteerTypes: [],
+    };
+    expect(item.matchScore).toBeUndefined();
+    expect(item.matchBreakdown).toBeUndefined();
   });
 });

@@ -356,4 +356,185 @@ describe('Mission Module (E2E)', () => {
       await request(httpServer).get('/missions/-1').expect(404);
     });
   });
+
+  // ===========================================================================
+  // Matching — auth optionnelle + withMatching
+  // ===========================================================================
+  describe('Matching (withMatching + auth optionnelle)', () => {
+    interface BackendTokens {
+      accessToken: string;
+      refreshToken: string;
+      expiresIn: number;
+    }
+    interface LoginResponseBody {
+      backendTokens?: BackendTokens;
+    }
+
+    /** Authentifie l'utilisateur de test e2e.0 et retourne son access token. */
+    const loginAsTestUser = async (): Promise<string> => {
+      const res = await request(httpServer)
+        .post('/auth/login')
+        .set('x-client-type', 'mobile')
+        .send({ email: 'e2e.0@test.com', password: 'Password123!' });
+
+      const body = res.body as LoginResponseBody;
+      return body.backendTokens?.accessToken ?? '';
+    };
+
+    /**
+     * Prépare un contexte de matching :
+     * - crée 1 skill + 1 cause
+     * - les attache à l'utilisateur ET à la mission existante
+     * → assure un score > 0 sur les axes causes (30) et skills (25).
+     */
+    const seedMatchingProfile = async (
+      userId: number,
+      missionIdLocal: number,
+    ) => {
+      // upsert : skill et cause ne sont pas reset entre tests par cleanDatabase().
+      const skill = await prisma.skill.upsert({
+        where: { label: 'Cuisine E2E' },
+        update: {},
+        create: { label: 'Cuisine E2E' },
+      });
+      const cause = await prisma.cause.upsert({
+        where: { label: 'Distribution E2E' },
+        update: {},
+        create: { label: 'Distribution E2E' },
+      });
+
+      await prisma.userSkill.create({ data: { userId, skillId: skill.id } });
+      await prisma.userCause.create({ data: { userId, causeId: cause.id } });
+      await prisma.missionSkill.create({
+        data: { missionId: missionIdLocal, skillId: skill.id },
+      });
+      await prisma.missionCause.create({
+        data: { missionId: missionIdLocal, causeId: cause.id },
+      });
+    };
+
+    it('✅ GET /missions sans token + withMatching=true → pas de matchScore (auth requise)', async () => {
+      const res = await request(httpServer)
+        .get('/missions?withMatching=true')
+        .expect(200);
+
+      const body = res.body as {
+        missions: Array<{ matchScore?: number; matchBreakdown?: unknown }>;
+      };
+      expect(body.missions.length).toBeGreaterThan(0);
+      for (const m of body.missions) {
+        expect(m.matchScore).toBeUndefined();
+        expect(m.matchBreakdown).toBeUndefined();
+      }
+    });
+
+    it('✅ GET /missions avec token mais sans withMatching → pas de matchScore (opt-in)', async () => {
+      const token = await loginAsTestUser();
+
+      const res = await request(httpServer)
+        .get('/missions')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      const body = res.body as {
+        missions: Array<{ matchScore?: number }>;
+      };
+      expect(body.missions.length).toBeGreaterThan(0);
+      for (const m of body.missions) {
+        expect(m.matchScore).toBeUndefined();
+      }
+    });
+
+    it('✅ GET /missions avec token + withMatching=true → matchScore présent', async () => {
+      const owner = await prisma.user.findUnique({
+        where: { email: 'e2e.0@test.com' },
+      });
+      await seedMatchingProfile(owner.id, missionId);
+
+      const token = await loginAsTestUser();
+
+      const res = await request(httpServer)
+        .get('/missions?withMatching=true')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      const body = res.body as {
+        missions: Array<{
+          id: number;
+          matchScore?: number;
+          matchBreakdown?: {
+            causes: number;
+            skills: number;
+            availability: number;
+            distance: number;
+            history: number;
+          };
+        }>;
+      };
+
+      const target = body.missions.find((m) => m.id === missionId);
+      expect(target).toBeDefined();
+      expect(target.matchScore).toBeDefined();
+      expect(typeof target.matchScore).toBe('number');
+      expect(target.matchScore).toBeGreaterThanOrEqual(0);
+      expect(target.matchScore).toBeLessThanOrEqual(100);
+
+      expect(target.matchBreakdown).toBeDefined();
+      expect(target.matchBreakdown.causes).toBe(30);
+      expect(target.matchBreakdown.skills).toBe(25);
+    });
+
+    it('✅ GET /missions/map avec token + withMatching=true → matchScore sur les items', async () => {
+      const owner = await prisma.user.findUnique({
+        where: { email: 'e2e.0@test.com' },
+      });
+      await seedMatchingProfile(owner.id, missionId);
+
+      const token = await loginAsTestUser();
+
+      const res = await request(httpServer)
+        .get('/missions/map?withMatching=true')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      const body = res.body as Array<{
+        id: number;
+        matchScore?: number;
+        matchBreakdown?: { causes: number; skills: number };
+      }>;
+
+      const target = body.find((m) => m.id === missionId);
+      expect(target).toBeDefined();
+      expect(target.matchScore).toBeDefined();
+      expect(target.matchBreakdown.causes).toBe(30);
+      expect(target.matchBreakdown.skills).toBe(25);
+    });
+
+    it('✅ GET /missions/map sans token + withMatching=true → endpoint reste accessible (auth optionnelle)', async () => {
+      const res = await request(httpServer)
+        .get('/missions/map?withMatching=true')
+        .expect(200);
+
+      const body = res.body as Array<{ matchScore?: number }>;
+      // L'endpoint répond malgré le param withMatching, mais sans matchScore.
+      for (const m of body) {
+        expect(m.matchScore).toBeUndefined();
+      }
+    });
+
+    it('✅ Token invalide sur /missions → endpoint accessible, pas de matchScore', async () => {
+      const res = await request(httpServer)
+        .get('/missions?withMatching=true')
+        .set('Authorization', 'Bearer invalid.jwt.token')
+        .expect(200);
+
+      const body = res.body as {
+        missions: Array<{ matchScore?: number }>;
+      };
+      // OptionalJwtAuthGuard : token invalide → req.user undefined → comportement anonyme
+      for (const m of body.missions) {
+        expect(m.matchScore).toBeUndefined();
+      }
+    });
+  });
 });

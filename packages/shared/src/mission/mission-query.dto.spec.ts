@@ -496,4 +496,45 @@ describe('MissionListQuerySchema', () => {
       expect(result.locationMode).toBe('nearby');
     });
   });
+
+  // =========================================================================
+  // withMatching — opt-in pour le scoring de matching
+  // =========================================================================
+  describe('withMatching', () => {
+    it('✅ Doit être undefined si absent', () => {
+      const result = MissionListQuerySchema.parse({});
+      expect(result.withMatching).toBeUndefined();
+    });
+
+    it('✅ Doit accepter le boolean true', () => {
+      const result = MissionListQuerySchema.parse({ withMatching: true });
+      expect(result.withMatching).toBe(true);
+    });
+
+    it('✅ Doit accepter le boolean false', () => {
+      const result = MissionListQuerySchema.parse({ withMatching: false });
+      expect(result.withMatching).toBe(false);
+    });
+
+    it('✅ Doit convertir la string "true" en boolean true (query-string)', () => {
+      const result = MissionListQuerySchema.parse({ withMatching: 'true' });
+      expect(result.withMatching).toBe(true);
+      expect(typeof result.withMatching).toBe('boolean');
+    });
+
+    it('✅ Doit convertir la string "false" en boolean false', () => {
+      const result = MissionListQuerySchema.parse({ withMatching: 'false' });
+      expect(result.withMatching).toBe(false);
+    });
+
+    it('✅ Doit convertir une string vide en undefined', () => {
+      const result = MissionListQuerySchema.parse({ withMatching: '' });
+      expect(result.withMatching).toBeUndefined();
+    });
+
+    it('❌ Doit rejeter une valeur non parsable (string arbitraire → undefined → OK car optional)', () => {
+      const result = MissionListQuerySchema.parse({ withMatching: 'maybe' });
+      expect(result.withMatching).toBeUndefined();
+    });
+  });
 });

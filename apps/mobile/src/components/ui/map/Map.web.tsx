@@ -1,15 +1,32 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import "leaflet/dist/leaflet.css";
 import { MissionMarker } from "./MissionMarker.web";
-import { MARKER_SVG } from "./marker-icon.web";
-import type { MissionMapItem } from "@repo/shared";
+import { MARKER_SVG, MARKER_SVG_HIGHLIGHTED } from "./marker-icon.web";
+import { MATCH_THRESHOLD, type MissionMapItem } from "@repo/shared";
 
 type ReactLeaflet = typeof import("react-leaflet");
 type LeafletLib = typeof import("leaflet");
 const INITIAL_CENTER: [number, number] = [43.52916259033478, 5.442325981514346];
 
-/** Cluster marker HTML */
-function clusterIconHtml(count: number): string {
+/** Cluster marker HTML — variante neutre OU dorée si contient au moins un match. */
+function clusterIconHtml(count: number, highlighted: boolean): string {
+  if (highlighted) {
+    return `<div style="
+      position:relative;
+      width:44px;height:44px;border-radius:50%;
+      background:#F59E0B;color:#fff;
+      display:flex;align-items:center;justify-content:center;
+      font-weight:700;font-size:13px;
+      border:2px solid #fff;
+      box-shadow:0 0 0 4px rgba(245,158,11,0.35), 0 2px 8px rgba(0,0,0,0.3);
+    ">${count}<span style="
+      position:absolute;top:-4px;right:-4px;
+      width:18px;height:18px;border-radius:50%;
+      background:#fff;color:#F59E0B;
+      font-size:11px;line-height:18px;text-align:center;font-weight:700;
+      border:1px solid #F59E0B;
+    ">★</span></div>`;
+  }
   return `<div style="
     width:38px;height:38px;border-radius:50%;
     background:#CC460F;color:#fff;
@@ -210,11 +227,22 @@ export default function MapWeb({
       const [lng, lat] = cluster.geometry.coordinates;
       const count: number = cluster.properties.point_count;
       const clusterId: number = cluster.properties.cluster_id;
+
+      // Le cluster est doré si au moins une de ses missions descendantes
+      // dépasse le seuil de matching.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const leaves = scInstance.getLeaves(clusterId, Infinity) as any[];
+      const hasMatch = leaves.some(
+        (leaf) =>
+          typeof leaf.properties.mission?.matchScore === "number" &&
+          leaf.properties.mission.matchScore >= MATCH_THRESHOLD,
+      );
+
       const icon = L.divIcon({
-        html: clusterIconHtml(count),
+        html: clusterIconHtml(count, hasMatch),
         className: "",
-        iconSize: [38, 38],
-        iconAnchor: [19, 19],
+        iconSize: hasMatch ? [44, 44] : [38, 38],
+        iconAnchor: hasMatch ? [22, 22] : [19, 19],
       });
       return (
         <Marker
@@ -244,6 +272,17 @@ export default function MapWeb({
     });
   }, [L]);
 
+  const highlightedIcon = useMemo(() => {
+    if (!L) return undefined;
+    return L.divIcon({
+      html: MARKER_SVG_HIGHLIGHTED,
+      className: "",
+      iconSize: [48, 48],
+      iconAnchor: [24, 44],
+      popupAnchor: [0, -46],
+    });
+  }, [L]);
+
   // ---------------------------------------------------------------- chargement Leaflet ---
 
   useEffect(() => {
@@ -259,7 +298,7 @@ export default function MapWeb({
 
   // ---------------------------------------------------------------- render ---
 
-  if (!Leaflet || !missionIcon) return null;
+  if (!Leaflet || !missionIcon || !highlightedIcon) return null;
 
   const { MapContainer, TileLayer } = Leaflet;
 
@@ -308,16 +347,26 @@ export default function MapWeb({
           ))}
 
           {/* Missions — une par groupe de coordonnées identiques */}
-          {missionGroups.map((group) => (
-            <MissionMarker
-              key={`group-${group[0].id}`}
-              missions={group}
-              Marker={Leaflet.Marker}
-              Popup={Leaflet.Popup}
-              useMap={Leaflet.useMap}
-              icon={missionIcon}
-            />
-          ))}
+          {missionGroups.map((group) => {
+            const bestScore = group.reduce(
+              (max, m) =>
+                typeof m.matchScore === "number" && m.matchScore > max
+                  ? m.matchScore
+                  : max,
+              0,
+            );
+            const isHighlighted = bestScore >= MATCH_THRESHOLD;
+            return (
+              <MissionMarker
+                key={`group-${group[0].id}`}
+                missions={group}
+                Marker={Leaflet.Marker}
+                Popup={Leaflet.Popup}
+                useMap={Leaflet.useMap}
+                icon={isHighlighted ? highlightedIcon : missionIcon}
+              />
+            );
+          })}
         </MapContainer>
       </div>
     </div>
