@@ -225,4 +225,45 @@ describe('AdminLogInterceptor', () => {
     interceptor.intercept(ctx, buildHandler(null));
     expect(reflector.get).toHaveBeenCalledWith(LOG_ACTION_KEY, handler);
   });
+
+  it('✅ Gère un body null et une réponse null sans lever d\'exception', async () => {
+    reflector.get.mockReturnValue({
+      action: AdminLogAction.UPDATE_ADMIN,
+      entityType: 'ADMIN',
+    });
+    const ctx = buildContext({
+      method: 'PATCH',
+      originalUrl: '/admin/admins/1',
+      params: { id: '1' },
+      body: null as unknown as Record<string, unknown>,
+      user: { id: 1 },
+    });
+
+    await lastValueFrom(interceptor.intercept(ctx, buildHandler(null)));
+    await new Promise((r) => setTimeout(r, 5));
+
+    const data = prisma.adminLog.create.mock.calls[0][0].data;
+    expect(data.adminId).toBe(1);
+    expect(data.details.body).toBeNull();
+  });
+
+  it('✅ Gère une réponse primitive (string) sans lever d\'exception', async () => {
+    reflector.get.mockReturnValue({
+      action: AdminLogAction.UPDATE_ADMIN,
+      entityType: 'ADMIN',
+    });
+    const ctx = buildContext({
+      method: 'PATCH',
+      originalUrl: '/admin/admins/1',
+      params: { id: '1' },
+      body: {},
+      user: { id: 1 },
+    });
+
+    await lastValueFrom(interceptor.intercept(ctx, buildHandler('plain-string')));
+    await new Promise((r) => setTimeout(r, 5));
+
+    const data = prisma.adminLog.create.mock.calls[0][0].data;
+    expect(data.details.response).toBe('plain-string');
+  });
 });

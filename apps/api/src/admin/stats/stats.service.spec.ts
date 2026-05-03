@@ -193,6 +193,147 @@ describe('AdminStatsService', () => {
     });
   });
 
+  describe('breakdown (branches supplémentaires)', () => {
+    it('mission_frequency → groupBy mission.frequency', async () => {
+      mockPrisma.mission.groupBy.mockResolvedValue([
+        { frequency: 'WEEKLY', _count: { _all: 2 } },
+      ]);
+      const res = await service.breakdown({
+        dimension: 'mission_frequency',
+        limit: 10,
+      });
+      expect(mockPrisma.mission.groupBy).toHaveBeenCalledWith(
+        expect.objectContaining({ by: ['frequency'] }),
+      );
+      expect(res).toEqual([{ frequency: 'WEEKLY', _count: { _all: 2 } }]);
+    });
+
+    it('user_status → groupBy user.status', async () => {
+      mockPrisma.user.groupBy.mockResolvedValue([
+        { status: 'ACTIVE', _count: { _all: 8 } },
+      ]);
+      const res = await service.breakdown({
+        dimension: 'user_status',
+        limit: 10,
+      });
+      expect(mockPrisma.user.groupBy).toHaveBeenCalledWith(
+        expect.objectContaining({ by: ['status'] }),
+      );
+      expect(res).toEqual([{ status: 'ACTIVE', _count: { _all: 8 } }]);
+    });
+
+    it('association_status → groupBy association.status', async () => {
+      mockPrisma.association.groupBy.mockResolvedValue([
+        { status: 'VALIDATED', _count: { _all: 3 } },
+      ]);
+      const res = await service.breakdown({
+        dimension: 'association_status',
+        limit: 10,
+      });
+      expect(mockPrisma.association.groupBy).toHaveBeenCalledWith(
+        expect.objectContaining({ by: ['status'] }),
+      );
+      expect(res).toEqual([{ status: 'VALIDATED', _count: { _all: 3 } }]);
+    });
+
+    it('top_skills → mappe avec labels des skills', async () => {
+      mockPrisma.userSkill.groupBy.mockResolvedValue([
+        { skillId: 1, _count: { _all: 4 } },
+      ]);
+      mockPrisma.skill.findMany.mockResolvedValue([
+        { id: 1, label: 'Informatique' },
+      ]);
+      const res = await service.breakdown({
+        dimension: 'top_skills',
+        limit: 5,
+      });
+      expect(res).toEqual([{ skillId: 1, label: 'Informatique', count: 4 }]);
+    });
+
+    it('association_category → label existant si categoryId connu', async () => {
+      mockPrisma.association.groupBy.mockResolvedValue([
+        { categoryId: 1, _count: { _all: 2 } },
+      ]);
+      mockPrisma.associationCategory.findMany.mockResolvedValue([
+        { id: 1, name: 'Humanitaire' },
+      ]);
+      const res = (await service.breakdown({
+        dimension: 'association_category',
+        limit: 10,
+      })) as { name: string }[];
+      expect(res[0].name).toBe('Humanitaire');
+    });
+  });
+
+  describe('top (branches supplémentaires)', () => {
+    it('missions_by_participants → enrichit avec title et association', async () => {
+      mockPrisma.missionParticipant.groupBy.mockResolvedValue([
+        { missionId: 1, _count: { _all: 10 } },
+      ]);
+      mockPrisma.mission.findMany.mockResolvedValue([
+        { id: 1, title: 'Mission A', association: { name: 'Asso X' } },
+      ]);
+      const res = await service.top({
+        entity: 'missions_by_participants',
+        limit: 5,
+      });
+      expect(res).toEqual([
+        { missionId: 1, title: 'Mission A', association: 'Asso X', participants: 10 },
+      ]);
+    });
+
+    it('recent_associations → retourne les associations PENDING récentes', async () => {
+      mockPrisma.association.findMany.mockResolvedValue([{ id: 1, name: 'Asso B' }]);
+      const res = await service.top({ entity: 'recent_associations', limit: 5 });
+      expect(res).toEqual([{ id: 1, name: 'Asso B' }]);
+      expect(mockPrisma.association.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ orderBy: { createdAt: 'desc' }, take: 5 }),
+      );
+    });
+  });
+
+  describe('adminLogs (branches supplémentaires)', () => {
+    it('filtre par adminId, entityType et entityId', async () => {
+      mockPrisma.adminLog.findMany.mockResolvedValue([]);
+      mockPrisma.adminLog.count.mockResolvedValue(0);
+      await service.adminLogs({
+        adminId: 1,
+        entityType: 'USER',
+        entityId: 5,
+        page: 1,
+        limit: 20,
+      });
+      const arg = mockPrisma.adminLog.findMany.mock.calls[0][0] as {
+        where: Record<string, unknown>;
+      };
+      expect(arg.where.adminId).toBe(1);
+      expect(arg.where.entityType).toBe('USER');
+      expect(arg.where.entityId).toBe(5);
+    });
+
+    it('applique uniquement from sans to', async () => {
+      mockPrisma.adminLog.findMany.mockResolvedValue([]);
+      mockPrisma.adminLog.count.mockResolvedValue(0);
+      await service.adminLogs({ from: '2026-01-01', page: 1, limit: 20 });
+      const arg = mockPrisma.adminLog.findMany.mock.calls[0][0] as {
+        where: Record<string, unknown> & { createdAt: Record<string, unknown> };
+      };
+      expect(arg.where.createdAt?.gte).toEqual(new Date('2026-01-01'));
+      expect(arg.where.createdAt?.lte).toBeUndefined();
+    });
+
+    it('applique uniquement to sans from', async () => {
+      mockPrisma.adminLog.findMany.mockResolvedValue([]);
+      mockPrisma.adminLog.count.mockResolvedValue(0);
+      await service.adminLogs({ to: '2026-12-31', page: 1, limit: 20 });
+      const arg = mockPrisma.adminLog.findMany.mock.calls[0][0] as {
+        where: Record<string, unknown> & { createdAt: Record<string, unknown> };
+      };
+      expect(arg.where.createdAt?.lte).toEqual(new Date('2026-12-31'));
+      expect(arg.where.createdAt?.gte).toBeUndefined();
+    });
+  });
+
   describe('exportCsv', () => {
     it('retourne chaîne vide si aucune ligne', () => {
       const res = service.exportCsv([]);
