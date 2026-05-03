@@ -23,7 +23,7 @@ export class AdminUserService {
   private genTempPassword(): string {
     // Mot de passe temporaire respectant PASSWORD_REGEX (maj/min/chiffre/spécial)
     // et MIN 12 chars (cf. RegisterDto). On ajoute un suffixe garantissant la classe de chars.
-    const base = randomBytes(12).toString('base64').replace(/[+/=]/g, '');
+    const base = randomBytes(12).toString('base64').replaceAll(/[+/=]/g, '');
     return (base + 'Aa1!').slice(0, 16);
   }
 

@@ -25,7 +25,7 @@ export class AdminManagementService {
 
   private genTempPassword(): string {
     return (
-      randomBytes(12).toString('base64').replace(/[+/=]/g, '') + 'A1!'
+      randomBytes(12).toString('base64').replaceAll(/[+/=]/g, '') + 'A1!'
     ).slice(0, 16);
   }
 

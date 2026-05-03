@@ -8,6 +8,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { Observable, tap } from 'rxjs';
 import { Request } from 'express';
+import type { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   LOG_ACTION_KEY,
@@ -63,14 +64,12 @@ export class AdminLogInterceptor implements NestInterceptor {
               action: meta.action,
               entityType: meta.entityType,
               entityId: finalEntityId || 0,
-              details: JSON.parse(
-                JSON.stringify({
-                  http: { method: req.method, url: req.originalUrl },
-                  params,
-                  body: safeBody,
-                  response: this.sanitize(response),
-                }),
-              ),
+              details: structuredClone({
+                http: { method: req.method, url: req.originalUrl },
+                params,
+                body: safeBody,
+                response: this.sanitize(response),
+              }) as unknown as Prisma.InputJsonValue,
             },
           })
           .catch((err) => this.logger.error('AdminLog write failed', err));

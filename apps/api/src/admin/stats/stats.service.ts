@@ -28,7 +28,7 @@ function resolveRange(from?: string, to?: string): RangeBounds {
     ? new Date(from)
     : new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   const span = toDate.getTime() - fromDate.getTime();
-  const prevTo = new Date(fromDate.getTime());
+  const prevTo = new Date(fromDate);
   const prevFrom = new Date(fromDate.getTime() - span);
   return { from: fromDate, to: toDate, prevFrom, prevTo };
 }
@@ -364,7 +364,7 @@ export class AdminStatsService {
       if (typeof v === 'object') s = JSON.stringify(v);
       else if (typeof v === 'string') s = v;
       else s = String(v as number | boolean | bigint);
-      if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+      if (/[",\n]/.test(s)) return `"${s.replaceAll('"', '""')}"`;
       return s;
     };
     const lines = [headers.join(',')];

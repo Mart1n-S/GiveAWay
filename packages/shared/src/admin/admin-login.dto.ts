@@ -19,7 +19,7 @@ export const AdminChangePasswordSchema = z.object({
     .min(12, { message: "Mot de passe trop court (12 caractères min)" })
     .regex(/[A-Z]/, { message: "Doit contenir une majuscule" })
     .regex(/[a-z]/, { message: "Doit contenir une minuscule" })
-    .regex(/[0-9]/, { message: "Doit contenir un chiffre" })
+    .regex(/\d/, { message: "Doit contenir un chiffre" })
     .regex(/[^A-Za-z0-9]/, { message: "Doit contenir un caractère spécial" }),
 });
 

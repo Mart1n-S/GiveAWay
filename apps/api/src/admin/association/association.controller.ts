@@ -51,8 +51,8 @@ export class AdminAssociationController {
   @Get('pending')
   async pending(@Query('page') page?: string, @Query('limit') limit?: string) {
     return this.service.listPending(
-      page ? parseInt(page, 10) : 1,
-      limit ? parseInt(limit, 10) : 20,
+      page ? Number.parseInt(page, 10) : 1,
+      limit ? Number.parseInt(limit, 10) : 20,
     );
   }
 
@@ -66,8 +66,8 @@ export class AdminAssociationController {
     return this.service.list({
       search,
       status,
-      page: page ? parseInt(page, 10) : 1,
-      limit: limit ? parseInt(limit, 10) : 20,
+      page: page ? Number.parseInt(page, 10) : 1,
+      limit: limit ? Number.parseInt(limit, 10) : 20,
     });
   }
 

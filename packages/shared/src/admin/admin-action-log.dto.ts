@@ -1,10 +1,9 @@
 import { z } from "zod";
-import { AdminLogAction, AdminLogEntityType } from "./admin.enums";
 
 export interface AdminLogEntry {
   id: number;
-  action: AdminLogAction | string;
-  entityType: AdminLogEntityType | string;
+  action: string;
+  entityType: string;
   entityId: number;
   details: unknown;
   adminId: number;
