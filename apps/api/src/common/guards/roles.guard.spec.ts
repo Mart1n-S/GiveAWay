@@ -38,7 +38,7 @@ describe('RolesGuard', () => {
     expect(guard.canActivate(buildContext(undefined))).toBe(true);
   });
 
-  it('retourne true si le rôle de l\'utilisateur correspond', () => {
+  it("retourne true si le rôle de l'utilisateur correspond", () => {
     reflector.getAllAndOverride.mockReturnValue([
       AdminRole.ADMIN,
       AdminRole.SUPER_ADMIN,
@@ -48,21 +48,21 @@ describe('RolesGuard', () => {
     ).toBe(true);
   });
 
-  it('throw ForbiddenException si l\'utilisateur n\'a pas le rôle requis', () => {
+  it("throw ForbiddenException si l'utilisateur n'a pas le rôle requis", () => {
     reflector.getAllAndOverride.mockReturnValue([AdminRole.SUPER_ADMIN]);
     expect(() =>
       guard.canActivate(buildContext({ role: AdminRole.ADMIN })),
     ).toThrow(ForbiddenException);
   });
 
-  it('throw ForbiddenException si l\'utilisateur est absent (non authentifié)', () => {
+  it("throw ForbiddenException si l'utilisateur est absent (non authentifié)", () => {
     reflector.getAllAndOverride.mockReturnValue([AdminRole.ADMIN]);
     expect(() => guard.canActivate(buildContext(undefined))).toThrow(
       ForbiddenException,
     );
   });
 
-  it('throw ForbiddenException si le rôle de l\'utilisateur est undefined', () => {
+  it("throw ForbiddenException si le rôle de l'utilisateur est undefined", () => {
     reflector.getAllAndOverride.mockReturnValue([AdminRole.ADMIN]);
     expect(() => guard.canActivate(buildContext({}))).toThrow(
       ForbiddenException,

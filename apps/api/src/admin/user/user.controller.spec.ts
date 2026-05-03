@@ -22,7 +22,10 @@ describe('AdminUserController', () => {
       providers: [{ provide: AdminUserService, useValue: mockService }],
     })
       .overrideInterceptor(AdminLogInterceptor)
-      .useValue({ intercept: (_ctx: unknown, next: { handle: () => unknown }) => next.handle() })
+      .useValue({
+        intercept: (_ctx: unknown, next: { handle: () => unknown }) =>
+          next.handle(),
+      })
       .compile();
 
     controller = module.get(AdminUserController);
@@ -54,7 +57,11 @@ describe('AdminUserController', () => {
 
   describe('create', () => {
     it('appelle service.create avec le DTO', async () => {
-      const dto = { email: 'user@test.fr', firstName: 'User', lastName: 'Test' };
+      const dto = {
+        email: 'user@test.fr',
+        firstName: 'User',
+        lastName: 'Test',
+      };
       mockService.create.mockResolvedValue({ id: 10, ...dto });
       const result = await controller.create(dto as never);
       expect(mockService.create).toHaveBeenCalledWith(dto);
@@ -63,7 +70,7 @@ describe('AdminUserController', () => {
   });
 
   describe('update', () => {
-    it('appelle service.update avec l\'id et le DTO', async () => {
+    it("appelle service.update avec l'id et le DTO", async () => {
       const dto = { firstName: 'Updated' };
       mockService.update.mockResolvedValue({ id: 5, ...dto });
       const result = await controller.update(5, dto as never);
@@ -73,9 +80,11 @@ describe('AdminUserController', () => {
   });
 
   describe('setStatus', () => {
-    it('appelle service.setStatus avec l\'id et le statut', async () => {
+    it("appelle service.setStatus avec l'id et le statut", async () => {
       mockService.setStatus.mockResolvedValue({ id: 5, status: 'SUSPENDED' });
-      const result = await controller.setStatus(5, { status: 'SUSPENDED' as never });
+      const result = await controller.setStatus(5, {
+        status: 'SUSPENDED' as never,
+      });
       expect(mockService.setStatus).toHaveBeenCalledWith(5, 'SUSPENDED');
       expect(result).toEqual({ id: 5, status: 'SUSPENDED' });
     });

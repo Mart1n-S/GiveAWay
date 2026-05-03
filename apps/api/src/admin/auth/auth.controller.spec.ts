@@ -3,7 +3,6 @@ import { Response } from 'express';
 import { AdminAuthController } from './auth.controller';
 import { AdminAuthService } from './auth.service';
 import { AdminCookieService } from './cookie.service';
-import { PrismaService } from '../../prisma/prisma.service';
 import { AuthenticatedRequest } from '../../common/interfaces/authenticated-request.interface';
 import { AdminRole } from '@repo/shared';
 import { Admin as PrismaAdmin } from '../../generated/prisma/client';
@@ -170,7 +169,9 @@ describe('AdminAuthController', () => {
         accessToken: 'new-at',
         refreshToken: 'new-rt',
       });
-      mockAuthService.buildAuthResponse.mockReturnValue({ message: 'refreshed' });
+      mockAuthService.buildAuthResponse.mockReturnValue({
+        message: 'refreshed',
+      });
 
       const res = buildRes();
       const req = {
@@ -197,8 +198,10 @@ describe('AdminAuthController', () => {
   });
 
   describe('me', () => {
-    it('retourne l\'admin courant mappé', async () => {
-      mockAuthService.prisma.admin.findUniqueOrThrow.mockResolvedValue(baseAdmin);
+    it("retourne l'admin courant mappé", async () => {
+      mockAuthService.prisma.admin.findUniqueOrThrow.mockResolvedValue(
+        baseAdmin,
+      );
       mockAuthService.mapAdminToResponse.mockReturnValue({
         id: 1,
         email: 'admin@test.fr',
@@ -210,9 +213,9 @@ describe('AdminAuthController', () => {
         role: AdminRole.ADMIN,
       });
 
-      expect(mockAuthService.prisma.admin.findUniqueOrThrow).toHaveBeenCalledWith(
-        { where: { id: 1 } },
-      );
+      expect(
+        mockAuthService.prisma.admin.findUniqueOrThrow,
+      ).toHaveBeenCalledWith({ where: { id: 1 } });
       expect(result).toEqual({ admin: { id: 1, email: 'admin@test.fr' } });
     });
   });

@@ -34,7 +34,7 @@ describe('AdminJwtStrategy', () => {
   });
 
   describe('validate', () => {
-    it('retourne l\'admin si payload valide et admin trouvé en BDD', async () => {
+    it("retourne l'admin si payload valide et admin trouvé en BDD", async () => {
       mockPrisma.admin.findUnique.mockResolvedValue({
         id: 1,
         email: 'admin@test.fr',
@@ -55,7 +55,10 @@ describe('AdminJwtStrategy', () => {
     });
 
     it('throw UnauthorizedException si scope !== "admin"', async () => {
-      const invalidPayload = { ...basePayload, scope: 'user' as unknown as 'admin' };
+      const invalidPayload = {
+        ...basePayload,
+        scope: 'user' as unknown as 'admin',
+      };
       await expect(strategy.validate(invalidPayload)).rejects.toBeInstanceOf(
         UnauthorizedException,
       );

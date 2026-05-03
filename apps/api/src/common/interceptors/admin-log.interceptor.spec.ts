@@ -226,7 +226,7 @@ describe('AdminLogInterceptor', () => {
     expect(reflector.get).toHaveBeenCalledWith(LOG_ACTION_KEY, handler);
   });
 
-  it('✅ Gère un body null et une réponse null sans lever d\'exception', async () => {
+  it("✅ Gère un body null et une réponse null sans lever d'exception", async () => {
     reflector.get.mockReturnValue({
       action: AdminLogAction.UPDATE_ADMIN,
       entityType: 'ADMIN',
@@ -247,7 +247,7 @@ describe('AdminLogInterceptor', () => {
     expect(data.details.body).toBeNull();
   });
 
-  it('✅ Gère une réponse primitive (string) sans lever d\'exception', async () => {
+  it("✅ Gère une réponse primitive (string) sans lever d'exception", async () => {
     reflector.get.mockReturnValue({
       action: AdminLogAction.UPDATE_ADMIN,
       entityType: 'ADMIN',
@@ -260,7 +260,9 @@ describe('AdminLogInterceptor', () => {
       user: { id: 1 },
     });
 
-    await lastValueFrom(interceptor.intercept(ctx, buildHandler('plain-string')));
+    await lastValueFrom(
+      interceptor.intercept(ctx, buildHandler('plain-string')),
+    );
     await new Promise((r) => setTimeout(r, 5));
 
     const data = prisma.adminLog.create.mock.calls[0][0].data;

@@ -26,12 +26,13 @@ describe('AdminManagementController', () => {
     jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AdminManagementController],
-      providers: [
-        { provide: AdminManagementService, useValue: mockService },
-      ],
+      providers: [{ provide: AdminManagementService, useValue: mockService }],
     })
       .overrideInterceptor(AdminLogInterceptor)
-      .useValue({ intercept: (_ctx: unknown, next: { handle: () => unknown }) => next.handle() })
+      .useValue({
+        intercept: (_ctx: unknown, next: { handle: () => unknown }) =>
+          next.handle(),
+      })
       .compile();
 
     controller = module.get(AdminManagementController);
@@ -76,7 +77,7 @@ describe('AdminManagementController', () => {
   });
 
   describe('resetPassword', () => {
-    it('réinitialise le mot de passe d\'un admin', async () => {
+    it("réinitialise le mot de passe d'un admin", async () => {
       mockService.resetPassword.mockResolvedValue({ tempPassword: 'Tmp!123' });
       const result = await controller.resetPassword(2);
       expect(mockService.resetPassword).toHaveBeenCalledWith(2);

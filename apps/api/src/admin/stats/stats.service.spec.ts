@@ -278,13 +278,23 @@ describe('AdminStatsService', () => {
         limit: 5,
       });
       expect(res).toEqual([
-        { missionId: 1, title: 'Mission A', association: 'Asso X', participants: 10 },
+        {
+          missionId: 1,
+          title: 'Mission A',
+          association: 'Asso X',
+          participants: 10,
+        },
       ]);
     });
 
     it('recent_associations → retourne les associations PENDING récentes', async () => {
-      mockPrisma.association.findMany.mockResolvedValue([{ id: 1, name: 'Asso B' }]);
-      const res = await service.top({ entity: 'recent_associations', limit: 5 });
+      mockPrisma.association.findMany.mockResolvedValue([
+        { id: 1, name: 'Asso B' },
+      ]);
+      const res = await service.top({
+        entity: 'recent_associations',
+        limit: 5,
+      });
       expect(res).toEqual([{ id: 1, name: 'Asso B' }]);
       expect(mockPrisma.association.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ orderBy: { createdAt: 'desc' }, take: 5 }),

@@ -5,6 +5,12 @@ import { AdminAssociationController } from './association.controller';
 import { AdminAssociationService } from './association.service';
 import { AdminLogInterceptor } from '../../common/interceptors/admin-log.interceptor';
 
+jest.mock('../../common/pipes/documents-validation.pipe', () => ({
+  DocumentsValidationPipe: jest.fn().mockImplementation(() => ({
+    transform: jest.fn().mockReturnValue([]),
+  })),
+}));
+
 const mockService = {
   listPending: jest.fn(),
   list: jest.fn(),
@@ -42,12 +48,13 @@ describe('AdminAssociationController', () => {
     jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AdminAssociationController],
-      providers: [
-        { provide: AdminAssociationService, useValue: mockService },
-      ],
+      providers: [{ provide: AdminAssociationService, useValue: mockService }],
     })
       .overrideInterceptor(AdminLogInterceptor)
-      .useValue({ intercept: (_ctx: unknown, next: { handle: () => unknown }) => next.handle() })
+      .useValue({
+        intercept: (_ctx: unknown, next: { handle: () => unknown }) =>
+          next.handle(),
+      })
       .compile();
 
     controller = module.get(AdminAssociationController);
@@ -92,7 +99,7 @@ describe('AdminAssociationController', () => {
   });
 
   describe('detail', () => {
-    it('appelle service.getById avec l\'id', async () => {
+    it("appelle service.getById avec l'id", async () => {
       mockService.getById.mockResolvedValue({ id: 1 });
       await controller.detail(1);
       expect(mockService.getById).toHaveBeenCalledWith(1);
@@ -115,7 +122,10 @@ describe('AdminAssociationController', () => {
       });
       const res = buildRes();
       await controller.downloadDocument(1, res);
-      expect(res.redirect).toHaveBeenCalledWith(302, 'https://cdn.example.com/doc.pdf');
+      expect(res.redirect).toHaveBeenCalledWith(
+        302,
+        'https://cdn.example.com/doc.pdf',
+      );
       expect(res.send).not.toHaveBeenCalled();
     });
 
@@ -129,7 +139,10 @@ describe('AdminAssociationController', () => {
       });
       const res = buildRes();
       await controller.downloadDocument(1, res);
-      expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/pdf');
+      expect(res.setHeader).toHaveBeenCalledWith(
+        'Content-Type',
+        'application/pdf',
+      );
       expect(res.setHeader).toHaveBeenCalledWith(
         'Content-Disposition',
         'attachment; filename="doc.pdf"',
@@ -180,7 +193,11 @@ describe('AdminAssociationController', () => {
 
     it('throw BadRequestException si aucun fichier', async () => {
       await expect(
-        controller.uploadDocument(1, 'STATUTS', undefined as unknown as Express.Multer.File),
+        controller.uploadDocument(
+          1,
+          'STATUTS',
+          undefined as unknown as Express.Multer.File,
+        ),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
@@ -197,11 +214,6 @@ describe('AdminAssociationController', () => {
     });
 
     it('appelle service.uploadDocument si fichier et type valides', async () => {
-      jest.spyOn(
-        require('../../common/pipes/documents-validation.pipe'),
-        'DocumentsValidationPipe',
-      ).mockImplementation(() => ({ transform: jest.fn() }));
-
       mockService.uploadDocument.mockResolvedValue({ id: 10 });
 
       await controller.uploadDocument(1, 'STATUTS', validFile);
@@ -246,7 +258,7 @@ describe('AdminAssociationController', () => {
   });
 
   describe('update', () => {
-    it('appelle service.update avec l\'id et le DTO', async () => {
+    it("appelle service.update avec l'id et le DTO", async () => {
       const dto = { name: 'Asso Updated' };
       mockService.update.mockResolvedValue({ id: 1 });
       await controller.update(1, dto as never);
@@ -274,7 +286,7 @@ describe('AdminAssociationController', () => {
   });
 
   describe('delete', () => {
-    it('appelle service.delete avec l\'id et la raison', async () => {
+    it("appelle service.delete avec l'id et la raison", async () => {
       mockService.delete.mockResolvedValue({ ok: true });
       await controller.delete(1, 'Raison');
       expect(mockService.delete).toHaveBeenCalledWith(1, 'Raison');
@@ -282,7 +294,7 @@ describe('AdminAssociationController', () => {
   });
 
   describe('purge', () => {
-    it('appelle service.purge avec l\'id', async () => {
+    it("appelle service.purge avec l'id", async () => {
       mockService.purge.mockResolvedValue({ ok: true });
       await controller.purge(1);
       expect(mockService.purge).toHaveBeenCalledWith(1);

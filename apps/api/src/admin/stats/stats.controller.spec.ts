@@ -42,7 +42,10 @@ describe('AdminStatsController', () => {
     it('transmet from et to à service.overview', async () => {
       mockService.overview.mockResolvedValue({});
       await controller.overview({ from: '2026-01-01', to: '2026-03-31' });
-      expect(mockService.overview).toHaveBeenCalledWith('2026-01-01', '2026-03-31');
+      expect(mockService.overview).toHaveBeenCalledWith(
+        '2026-01-01',
+        '2026-03-31',
+      );
     });
   });
 
