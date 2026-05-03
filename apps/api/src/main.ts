@@ -13,7 +13,8 @@ async function bootstrap() {
   // En prod, restreindre aux domaines connus (mobile + admin).
   // En dev, on autorise toutes les origines pour faciliter Expo Web/Native.
   const isProd = process.env.NODE_ENV === 'production';
-  const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS.split(',')
+  const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS ?? '')
+    .split(',')
     .map((o) => o.trim())
     .filter(Boolean);
 
