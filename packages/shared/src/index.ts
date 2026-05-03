@@ -49,3 +49,4 @@ export * from "./association/followed-association.dto";
 export * from "./notification/register-push-token.dto";
 export * from "./public-type/public-type.dto";
 export * from "./volunteer-type/volunteer-type.dto";
+export * from "./admin";

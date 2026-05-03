@@ -123,6 +123,42 @@ Ensuite, complétez les variables nécessaires.
 
 ---
 
+## 🛠️ Configuration admin (Vite + React)
+
+Copier le fichier d'exemple de la console d'administration :
+
+```bash
+cp apps/admin/.env.example apps/admin/.env
+```
+
+Variables disponibles dans `apps/admin/.env` :
+
+- `VITE_API_URL` : URL de l'API NestJS (par défaut `http://localhost:3000`).
+
+### Variables admin à ajouter dans le `.env` racine (consommé par l'API)
+
+```env
+JWT_ADMIN_ACCESS_SECRET=<random_long>
+JWT_ADMIN_REFRESH_SECRET=<random_long>
+JWT_ADMIN_ACCESS_EXPIRES_IN=15m
+JWT_ADMIN_REFRESH_EXPIRES_IN=7d
+ADMIN_LOGIN_URL=http://localhost:5173/login
+
+CONTACT_ADMIN_EMAIL="contact.giiveaway@gmail.com"
+CORS_ALLOWED_ORIGINS="https://nom-de-domaine.fr,https://sous-nom-de-domaine.fr"
+ADMIN_BASE_URL="http://localhost:5173"
+```
+
+Pour `JWT_ADMIN_ACCESS_SECRET` et `JWT_ADMIN_REFRESH_SECRET`, générer **deux** secrets différents avec :
+
+```bash
+openssl rand -base64 62
+```
+
+> 👤 **Compte admin de test** (créé par le seed Prisma) : `admin@gmail.com` / `password`. C'est ce compte qui est utilisé par les tests E2E admin (`apps/admin/tests`).
+
+---
+
 Pour le `JWT_ACCESS_SECRET` et `JWT_REFRESH_SECRET`, générer des clés secrètes sécurisées différentes en utilisant la commande suivante 2 fois :
 ```bash
 openssl rand -base64 62
@@ -353,12 +389,42 @@ Une fois les services démarrés, lancez les tests depuis la racine :
 
 ---
 
+## 🛠️ Tests Frontend Admin (Playwright)
+
+Même principe que pour le mobile, mais avec la console d'administration **Vite + React** (port `5173`).
+
+> ℹ️ Pas besoin de relancer `db:test:setup` : la commande `test:e2e:admin` exécute automatiquement un reset + seed (`pretest:e2e` du workspace admin) pour garantir la présence du compte admin de test (`admin@gmail.com / password`).
+
+#### 1. Lancement des services
+
+Deux terminaux :
+
+- **Terminal A (API en mode test) :**
+  ```bash
+  npm run start:test --workspace=apps/api
+  ```
+- **Terminal B (Frontend Admin) :**
+  ```bash
+  npm run dev --workspace=apps/admin
+  ```
+
+#### 2. Exécution des tests
+Une fois les services démarrés, lancez les tests depuis la racine :
+
+| Commande                       | Description                                       |
+| ------------------------------ | ------------------------------------------------- |
+| `npm run test:e2e:admin`       | Lance tous les tests admin en headless.           |
+| `npm run test:e2e:admin:ui`    | Ouvre l'interface interactive de Playwright.      |
+
+---
+
 ### 💡 Astuces
 
 Pour lancer un fichier de test spécifique :
 
 ```bash
 npm run test:e2e --workspace=apps/mobile -- tests/profil/profil.spec.ts
+npm run test:e2e --workspace=apps/admin -- tests/login.spec.ts
 ```
 
 ---

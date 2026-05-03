@@ -14,7 +14,7 @@ export async function googleSignOut(): Promise<void> {
 export async function googleSignIn(): Promise<string> {
   if (!isNativeBuild) {
     throw new Error(
-      "Google Sign-In natif non disponible — utilisez le Development Build",
+      "Google Sign-In natif non disponible - utilisez le Development Build",
     );
   }
   const mod = await import("./google-signin.dev").catch(() => null);

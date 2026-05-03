@@ -42,7 +42,6 @@ describe('LogoutController', () => {
 
     const result = await controller.logout(req, mockResponse, {});
 
-    /* eslint-disable @typescript-eslint/unbound-method */
     expect(mockLogoutService.logout).toHaveBeenCalledWith(1, 'token');
     expect(mockResponse.clearCookie).toHaveBeenCalledWith('access_token');
     expect(mockResponse.clearCookie).toHaveBeenCalledWith('refresh_token');
