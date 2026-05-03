@@ -6,12 +6,21 @@ import { Eye, Pencil, Plus, Search, ShieldOff, Trash2, UserCheck } from 'lucide-
 import { UsersService } from '@/services/users.service';
 import { Badge, statusColor } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardBody, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { FieldError } from '@/components/ui/field-error';
-import { formatDate } from '@/lib/utils';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { cn, formatDate } from '@/lib/utils';
 import { parseApiError, toastApiError, type FieldErrors } from '@/lib/errors';
 
 const NAME_REGEX = /^[a-zA-ZÀ-ÿ\s\-']+$/;
@@ -50,6 +59,9 @@ const emptyForm: CreateForm = {
   city: '',
 };
 
+const errInput = (hasErr: boolean) =>
+  cn(hasErr && 'border-destructive focus-visible:ring-destructive');
+
 export function UsersPage() {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
@@ -65,7 +77,6 @@ export function UsersPage() {
   const [editForm, setEditForm] = useState({ firstName: '', lastName: '', biography: '' });
   const [editErrors, setEditErrors] = useState<FieldErrors>({});
 
-  // Charge la biographie courante quand on ouvre la modale d'édition (pas dans la liste)
   useEffect(() => {
     if (!editing) return;
     let cancelled = false;
@@ -75,9 +86,7 @@ export function UsersPage() {
           setEditForm((prev) => ({ ...prev, biography: u.biography ?? '' }));
         }
       })
-      .catch(() => {
-        /* on garde la valeur par défaut (vide) en cas d'échec */
-      });
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -86,29 +95,39 @@ export function UsersPage() {
   const validateCreate = (): FieldErrors => {
     const errs: FieldErrors = {};
     if (!form.email.trim()) errs.email = "L'email est obligatoire";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = "Format d'email invalide";
-    if (form.firstName.trim().length < 2) errs.firstName = 'Le prénom est trop court (2 caractères minimum)';
-    else if (!NAME_REGEX.test(form.firstName.trim())) errs.firstName = "Caractères invalides (lettres, espaces, tirets, apostrophes)";
-    if (form.lastName.trim().length < 2) errs.lastName = 'Le nom est trop court (2 caractères minimum)';
-    else if (!NAME_REGEX.test(form.lastName.trim())) errs.lastName = "Caractères invalides (lettres, espaces, tirets, apostrophes)";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
+      errs.email = "Format d'email invalide";
+    if (form.firstName.trim().length < 2)
+      errs.firstName = 'Le prénom est trop court (2 caractères minimum)';
+    else if (!NAME_REGEX.test(form.firstName.trim()))
+      errs.firstName = 'Caractères invalides (lettres, espaces, tirets, apostrophes)';
+    if (form.lastName.trim().length < 2)
+      errs.lastName = 'Le nom est trop court (2 caractères minimum)';
+    else if (!NAME_REGEX.test(form.lastName.trim()))
+      errs.lastName = 'Caractères invalides (lettres, espaces, tirets, apostrophes)';
     const ageNum = Number(form.age);
     if (!form.age) errs.age = "L'âge est obligatoire";
     else if (!Number.isInteger(ageNum)) errs.age = "L'âge doit être un nombre entier";
     else if (ageNum < 18) errs.age = "L'utilisateur doit avoir au moins 18 ans";
-    else if (ageNum > 100) errs.age = "Veuillez entrer un âge valide";
+    else if (ageNum > 100) errs.age = 'Veuillez entrer un âge valide';
     if (!form.street.trim()) errs['address.street'] = "L'adresse est obligatoire";
-    if (!/^\d{5}$/.test(form.postalCode.trim())) errs['address.postalCode'] = 'Le code postal doit contenir 5 chiffres';
+    if (!/^\d{5}$/.test(form.postalCode.trim()))
+      errs['address.postalCode'] = 'Le code postal doit contenir 5 chiffres';
     if (!form.city.trim()) errs['address.city'] = 'La ville est obligatoire';
     return errs;
   };
 
   const validateEdit = (): FieldErrors => {
     const errs: FieldErrors = {};
-    if (editForm.firstName.trim().length < 2) errs.firstName = 'Le prénom est trop court (2 caractères minimum)';
-    else if (!NAME_REGEX.test(editForm.firstName.trim())) errs.firstName = 'Caractères invalides';
-    if (editForm.lastName.trim().length < 2) errs.lastName = 'Le nom est trop court (2 caractères minimum)';
+    if (editForm.firstName.trim().length < 2)
+      errs.firstName = 'Le prénom est trop court (2 caractères minimum)';
+    else if (!NAME_REGEX.test(editForm.firstName.trim()))
+      errs.firstName = 'Caractères invalides';
+    if (editForm.lastName.trim().length < 2)
+      errs.lastName = 'Le nom est trop court (2 caractères minimum)';
     else if (!NAME_REGEX.test(editForm.lastName.trim())) errs.lastName = 'Caractères invalides';
-    if (editForm.biography.length > 1000) errs.biography = 'La biographie est trop longue (1000 caractères max)';
+    if (editForm.biography.length > 1000)
+      errs.biography = 'La biographie est trop longue (1000 caractères max)';
     return errs;
   };
 
@@ -125,24 +144,19 @@ export function UsersPage() {
         firstName: form.firstName,
         lastName: form.lastName,
         age: Number(form.age),
-        address: {
-          street: form.street,
-          postalCode: form.postalCode,
-          city: form.city,
-        },
+        address: { street: form.street, postalCode: form.postalCode, city: form.city },
       }),
     onSuccess: () => {
       setCreating(false);
       setForm(emptyForm);
       setCreateErrors({});
-      toast.success('Utilisateur créé — un email avec un mot de passe temporaire lui a été envoyé');
+      toast.success('Utilisateur créé - un email avec un mot de passe temporaire lui a été envoyé');
       qc.invalidateQueries({ queryKey: ['users'] });
     },
     onError: (err) => {
       const { fieldErrors, generalMessage } = parseApiError(err, 'Échec de la création');
       setCreateErrors(fieldErrors);
-      if (Object.keys(fieldErrors).length === 0) toast.error(generalMessage);
-      else toast.error(generalMessage);
+      toast.error(generalMessage);
     },
   });
 
@@ -162,8 +176,7 @@ export function UsersPage() {
     onError: (err) => {
       const { fieldErrors, generalMessage } = parseApiError(err, 'Échec de la mise à jour');
       setEditErrors(fieldErrors);
-      if (Object.keys(fieldErrors).length === 0) toast.error(generalMessage);
-      else toast.error(generalMessage);
+      toast.error(generalMessage);
     },
   });
 
@@ -229,19 +242,19 @@ export function UsersPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Utilisateurs</h1>
-          <p className="text-sm text-slate-500">Gestion des comptes bénévoles</p>
+          <h1 className="text-2xl font-bold tracking-tight">Utilisateurs</h1>
+          <p className="text-sm text-muted-foreground">Gestion des comptes bénévoles</p>
         </div>
         <Button onClick={() => setCreating(true)}>
-          <Plus size={16} className="mr-1.5" /> Nouvel utilisateur
+          <Plus className="mr-1.5 h-4 w-4" /> Nouvel utilisateur
         </Button>
       </div>
 
       <Card>
-        <CardBody>
-          <div className="flex gap-3 flex-wrap items-center">
+        <CardContent className="p-4">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="relative max-w-sm flex-1">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Recherche nom / email…"
                 value={search}
@@ -250,7 +263,7 @@ export function UsersPage() {
               />
             </div>
             <select
-              className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="flex h-10 items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
               value={status}
               onChange={(e) => setStatus(e.target.value)}
             >
@@ -261,45 +274,47 @@ export function UsersPage() {
               <option value="DELETED">Supprimé</option>
             </select>
           </div>
-        </CardBody>
+        </CardContent>
       </Card>
 
       <Card>
-        <CardHeader>
-          <p className="text-sm text-slate-500">{data?.total ?? 0} utilisateur(s)</p>
+        <CardHeader className="py-4">
+          <p className="text-sm text-muted-foreground">{data?.total ?? 0} utilisateur(s)</p>
         </CardHeader>
-        <CardBody className="p-0">
+        <CardContent className="p-0">
           {isLoading ? (
-            <div className="p-6 text-slate-400">Chargement…</div>
+            <div className="p-6 text-muted-foreground">Chargement…</div>
           ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
-                <tr>
-                  <th className="px-4 py-3">Nom</th>
-                  <th className="px-4 py-3">Email</th>
-                  <th className="px-4 py-3">Statut</th>
-                  <th className="px-4 py-3">Inscrit le</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nom</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead>Inscrit le</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {items.map((u) => (
-                  <tr key={u.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 font-medium text-slate-900">
+                  <TableRow key={u.id}>
+                    <TableCell className="font-medium">
                       {u.firstName} {u.lastName}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">{u.email}</td>
-                    <td className="px-4 py-3">
-                      <Badge color={statusColor(u.status)}>{u.status}</Badge>
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">{formatDate(u.createdAt)}</td>
-                    <td className="px-4 py-3 text-right">
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{u.email}</TableCell>
+                    <TableCell>
+                      <Badge variant={statusColor(u.status)}>{u.status}</Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatDate(u.createdAt)}
+                    </TableCell>
+                    <TableCell className="text-right">
                       <div className="flex justify-end gap-1.5">
-                        <Link to={`/users/${u.id}`}>
-                          <Button size="sm" variant="outline" title="Voir le détail">
-                            <Eye size={14} className="mr-1" /> Détail
-                          </Button>
-                        </Link>
+                        <Button asChild size="sm" variant="outline" title="Voir le détail">
+                          <Link to={`/users/${u.id}`}>
+                            <Eye className="mr-1 h-3.5 w-3.5" /> Détail
+                          </Link>
+                        </Button>
                         {u.status !== 'DELETED' && (
                           <Button
                             size="sm"
@@ -315,7 +330,7 @@ export function UsersPage() {
                               setEditErrors({});
                             }}
                           >
-                            <Pencil size={14} />
+                            <Pencil className="h-3.5 w-3.5" />
                           </Button>
                         )}
                         {u.status === 'ACTIVE' && (
@@ -325,7 +340,7 @@ export function UsersPage() {
                             title="Suspendre"
                             onClick={() => setStatusMut.mutate({ id: u.id, s: 'SUSPENDED' })}
                           >
-                            <ShieldOff size={14} className="mr-1" /> Suspendre
+                            <ShieldOff className="mr-1 h-3.5 w-3.5" /> Suspendre
                           </Button>
                         )}
                         {u.status === 'SUSPENDED' && (
@@ -335,39 +350,48 @@ export function UsersPage() {
                             title="Réactiver"
                             onClick={() => setStatusMut.mutate({ id: u.id, s: 'ACTIVE' })}
                           >
-                            <UserCheck size={14} className="mr-1" /> Réactiver
+                            <UserCheck className="mr-1 h-3.5 w-3.5" /> Réactiver
                           </Button>
                         )}
                         {u.status !== 'DELETED' && (
-                          <Button size="sm" variant="danger" title="Supprimer" onClick={() => setDeleting(u)}>
-                            <Trash2 size={14} />
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            title="Supprimer"
+                            onClick={() => setDeleting(u)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         )}
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
                 {items.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="p-6 text-center text-slate-400">
+                  <TableRow>
+                    <TableCell colSpan={5} className="p-6 text-center text-muted-foreground">
                       Aucun utilisateur ne correspond à votre recherche.
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           )}
-        </CardBody>
+        </CardContent>
       </Card>
 
       <Dialog
         open={creating}
-        onClose={() => { setCreating(false); setCreateErrors({}); }}
+        onClose={() => {
+          setCreating(false);
+          setCreateErrors({});
+        }}
         title="Créer un utilisateur"
         size="lg"
       >
-        <p className="mb-4 text-sm text-slate-500">
-          Un mot de passe temporaire sera généré automatiquement et envoyé par email à l'utilisateur.
+        <p className="mb-4 text-sm text-muted-foreground">
+          Un mot de passe temporaire sera généré automatiquement et envoyé par email à
+          l&apos;utilisateur.
         </p>
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2">
@@ -376,8 +400,11 @@ export function UsersPage() {
               type="email"
               value={form.email}
               aria-invalid={!!createErrors.email}
-              className={createErrors.email ? 'border-red-500 focus:ring-red-500' : ''}
-              onChange={(e) => { setForm({ ...form, email: e.target.value }); clearCreateErr('email'); }}
+              className={errInput(!!createErrors.email)}
+              onChange={(e) => {
+                setForm({ ...form, email: e.target.value });
+                clearCreateErr('email');
+              }}
             />
             <FieldError message={createErrors.email} />
           </div>
@@ -386,8 +413,11 @@ export function UsersPage() {
               placeholder="Prénom *"
               value={form.firstName}
               aria-invalid={!!createErrors.firstName}
-              className={createErrors.firstName ? 'border-red-500 focus:ring-red-500' : ''}
-              onChange={(e) => { setForm({ ...form, firstName: e.target.value }); clearCreateErr('firstName'); }}
+              className={errInput(!!createErrors.firstName)}
+              onChange={(e) => {
+                setForm({ ...form, firstName: e.target.value });
+                clearCreateErr('firstName');
+              }}
             />
             <FieldError message={createErrors.firstName} />
           </div>
@@ -396,8 +426,11 @@ export function UsersPage() {
               placeholder="Nom *"
               value={form.lastName}
               aria-invalid={!!createErrors.lastName}
-              className={createErrors.lastName ? 'border-red-500 focus:ring-red-500' : ''}
-              onChange={(e) => { setForm({ ...form, lastName: e.target.value }); clearCreateErr('lastName'); }}
+              className={errInput(!!createErrors.lastName)}
+              onChange={(e) => {
+                setForm({ ...form, lastName: e.target.value });
+                clearCreateErr('lastName');
+              }}
             />
             <FieldError message={createErrors.lastName} />
           </div>
@@ -409,8 +442,11 @@ export function UsersPage() {
               max={100}
               value={form.age}
               aria-invalid={!!createErrors.age}
-              className={createErrors.age ? 'border-red-500 focus:ring-red-500' : ''}
-              onChange={(e) => { setForm({ ...form, age: e.target.value }); clearCreateErr('age'); }}
+              className={errInput(!!createErrors.age)}
+              onChange={(e) => {
+                setForm({ ...form, age: e.target.value });
+                clearCreateErr('age');
+              }}
             />
             <FieldError message={createErrors.age} />
           </div>
@@ -420,8 +456,11 @@ export function UsersPage() {
               placeholder="Adresse *"
               value={form.street}
               aria-invalid={!!createErrors['address.street']}
-              className={createErrors['address.street'] ? 'border-red-500 focus:ring-red-500' : ''}
-              onChange={(e) => { setForm({ ...form, street: e.target.value }); clearCreateErr('address.street'); }}
+              className={errInput(!!createErrors['address.street'])}
+              onChange={(e) => {
+                setForm({ ...form, street: e.target.value });
+                clearCreateErr('address.street');
+              }}
             />
             <FieldError message={createErrors['address.street']} />
           </div>
@@ -430,8 +469,11 @@ export function UsersPage() {
               placeholder="Code postal *"
               value={form.postalCode}
               aria-invalid={!!createErrors['address.postalCode']}
-              className={createErrors['address.postalCode'] ? 'border-red-500 focus:ring-red-500' : ''}
-              onChange={(e) => { setForm({ ...form, postalCode: e.target.value }); clearCreateErr('address.postalCode'); }}
+              className={errInput(!!createErrors['address.postalCode'])}
+              onChange={(e) => {
+                setForm({ ...form, postalCode: e.target.value });
+                clearCreateErr('address.postalCode');
+              }}
             />
             <FieldError message={createErrors['address.postalCode']} />
           </div>
@@ -440,14 +482,19 @@ export function UsersPage() {
               placeholder="Ville *"
               value={form.city}
               aria-invalid={!!createErrors['address.city']}
-              className={createErrors['address.city'] ? 'border-red-500 focus:ring-red-500' : ''}
-              onChange={(e) => { setForm({ ...form, city: e.target.value }); clearCreateErr('address.city'); }}
+              className={errInput(!!createErrors['address.city'])}
+              onChange={(e) => {
+                setForm({ ...form, city: e.target.value });
+                clearCreateErr('address.city');
+              }}
             />
             <FieldError message={createErrors['address.city']} />
           </div>
         </div>
         <div className="mt-5 flex justify-end gap-2">
-          <Button variant="ghost" onClick={() => setCreating(false)}>Annuler</Button>
+          <Button variant="ghost" onClick={() => setCreating(false)}>
+            Annuler
+          </Button>
           <Button disabled={create.isPending} onClick={submitCreate}>
             {create.isPending ? 'Création…' : 'Créer'}
           </Button>
@@ -456,49 +503,64 @@ export function UsersPage() {
 
       <Dialog
         open={!!editing}
-        onClose={() => { setEditing(null); setEditErrors({}); }}
+        onClose={() => {
+          setEditing(null);
+          setEditErrors({});
+        }}
         title={`Modifier ${editing?.email}`}
       >
-        <p className="mb-3 text-xs text-slate-500">
+        <p className="mb-3 text-xs text-muted-foreground">
           Pour modération de contenu : seuls le prénom, le nom et la biographie sont éditables.
-          L'email et l'âge restent à la main de l'utilisateur.
+          L&apos;email et l&apos;âge restent à la main de l&apos;utilisateur.
         </p>
         <div className="space-y-3">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700">Prénom *</label>
+          <div className="space-y-1.5">
+            <Label>Prénom *</Label>
             <Input
               value={editForm.firstName}
               aria-invalid={!!editErrors.firstName}
-              className={editErrors.firstName ? 'border-red-500 focus:ring-red-500' : ''}
-              onChange={(e) => { setEditForm({ ...editForm, firstName: e.target.value }); clearEditErr('firstName'); }}
+              className={errInput(!!editErrors.firstName)}
+              onChange={(e) => {
+                setEditForm({ ...editForm, firstName: e.target.value });
+                clearEditErr('firstName');
+              }}
             />
             <FieldError message={editErrors.firstName} />
           </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700">Nom *</label>
+          <div className="space-y-1.5">
+            <Label>Nom *</Label>
             <Input
               value={editForm.lastName}
               aria-invalid={!!editErrors.lastName}
-              className={editErrors.lastName ? 'border-red-500 focus:ring-red-500' : ''}
-              onChange={(e) => { setEditForm({ ...editForm, lastName: e.target.value }); clearEditErr('lastName'); }}
+              className={errInput(!!editErrors.lastName)}
+              onChange={(e) => {
+                setEditForm({ ...editForm, lastName: e.target.value });
+                clearEditErr('lastName');
+              }}
             />
             <FieldError message={editErrors.lastName} />
           </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700">
-              Biographie <span className="text-slate-400">({editForm.biography.length}/1000)</span>
-            </label>
+          <div className="space-y-1.5">
+            <Label>
+              Biographie{' '}
+              <span className="text-muted-foreground">({editForm.biography.length}/1000)</span>
+            </Label>
             <Textarea
               placeholder="Biographie (laisser vide pour ne pas la modifier)"
               value={editForm.biography}
               aria-invalid={!!editErrors.biography}
-              className={editErrors.biography ? 'border-red-500 focus:ring-red-500' : ''}
-              onChange={(e) => { setEditForm({ ...editForm, biography: e.target.value }); clearEditErr('biography'); }}
+              className={errInput(!!editErrors.biography)}
+              onChange={(e) => {
+                setEditForm({ ...editForm, biography: e.target.value });
+                clearEditErr('biography');
+              }}
             />
             <FieldError message={editErrors.biography} />
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setEditing(null)}>Annuler</Button>
+            <Button variant="ghost" onClick={() => setEditing(null)}>
+              Annuler
+            </Button>
             <Button disabled={update.isPending} onClick={submitUpdate}>
               {update.isPending ? 'Enregistrement…' : 'Enregistrer'}
             </Button>
@@ -515,17 +577,21 @@ export function UsersPage() {
         title={`Supprimer ${deleting?.email}`}
       >
         <div className="space-y-3">
-          <p className="text-sm text-red-600">
-            ⚠️ Suppression RGPD : email/nom/prénom/photo seront anonymisés. Cette action est irréversible.
+          <p className="text-sm font-medium text-destructive">
+            ⚠️ Suppression RGPD : email/nom/prénom/photo seront anonymisés. Cette action est
+            irréversible.
           </p>
-          <p className="text-sm text-slate-600">
-            Tapez <code className="bg-slate-100 px-2 py-0.5 rounded">SUPPRIMER</code> pour confirmer :
+          <p className="text-sm text-muted-foreground">
+            Tapez <code className="rounded bg-muted px-2 py-0.5 font-mono">SUPPRIMER</code> pour
+            confirmer :
           </p>
           <Input value={confirmText} onChange={(e) => setConfirmText(e.target.value)} />
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setDeleting(null)}>Annuler</Button>
+            <Button variant="ghost" onClick={() => setDeleting(null)}>
+              Annuler
+            </Button>
             <Button
-              variant="danger"
+              variant="destructive"
               disabled={confirmText !== 'SUPPRIMER' || remove.isPending}
               onClick={() => deleting && remove.mutate(deleting.id)}
             >

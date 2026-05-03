@@ -5,6 +5,15 @@ import { login } from '@/services/auth.service';
 import { useAuthStore } from '@/stores/auth.store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -32,45 +41,44 @@ export function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-brand-50 to-slate-50 p-4">
-      <form
-        onSubmit={onSubmit}
-        className="w-full max-w-md rounded-xl bg-white p-8 shadow-lg space-y-5"
-      >
-        <div className="text-center">
-          <h1 className="text-2xl font-extrabold text-brand-600">GiveAWay</h1>
-          <p className="text-sm text-slate-500">Console d'administration</p>
-        </div>
-        <div className="space-y-2">
-          <label htmlFor="login-email" className="text-sm font-medium text-slate-700">
-            Email
-          </label>
-          <Input
-            id="login-email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoComplete="email"
-          />
-        </div>
-        <div className="space-y-2">
-          <label htmlFor="login-password" className="text-sm font-medium text-slate-700">
-            Mot de passe
-          </label>
-          <Input
-            id="login-password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            autoComplete="current-password"
-          />
-        </div>
-        <Button type="submit" disabled={loading} className="w-full">
-          {loading ? 'Connexion…' : 'Se connecter'}
-        </Button>
-      </form>
+    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <CardTitle className="text-3xl font-extrabold">GiveAWay</CardTitle>
+          <CardDescription>Console d&apos;administration</CardDescription>
+        </CardHeader>
+        <form onSubmit={onSubmit}>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="login-email">Email</Label>
+              <Input
+                id="login-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="login-password">Mot de passe</Label>
+              <Input
+                id="login-password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+              />
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button type="submit" disabled={loading} className="w-full">
+              {loading ? 'Connexion…' : 'Se connecter'}
+            </Button>
+          </CardFooter>
+        </form>
+      </Card>
     </div>
   );
 }

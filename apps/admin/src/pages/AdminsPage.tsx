@@ -5,13 +5,23 @@ import { KeyRound, Lock, Pencil, Plus, Trash2 } from 'lucide-react';
 import { AdminsService } from '@/services/admins.service';
 import { Badge, statusColor } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardBody, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { FieldError } from '@/components/ui/field-error';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { useAuthStore } from '@/stores/auth.store';
 import { AdminRole } from '@repo/shared';
-import { formatDate } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 import { parseApiError, toastApiError, type FieldErrors } from '@/lib/errors';
 
 interface AdminRow {
@@ -40,6 +50,12 @@ const emptyForm: FormState = {
   role: AdminRole.ADMIN,
 };
 
+const errInput = (hasErr: boolean) =>
+  cn(hasErr && 'border-destructive focus-visible:ring-destructive');
+
+const selectClass =
+  'flex h-10 w-full items-center rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-60';
+
 export function AdminsPage() {
   const qc = useQueryClient();
   const current = useAuthStore((s) => s.admin);
@@ -62,15 +78,20 @@ export function AdminsPage() {
     const errs: FieldErrors = {};
     if (requireAll || state.email) {
       if (!state.email.trim()) errs.email = "L'email est obligatoire";
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.email)) errs.email = "Format d'email invalide";
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.email))
+        errs.email = "Format d'email invalide";
     }
     if (requireAll || state.firstName) {
-      if (state.firstName.trim().length < 2) errs.firstName = 'Le prénom est trop court (2 caractères minimum)';
-      else if (!NAME_REGEX.test(state.firstName.trim())) errs.firstName = 'Caractères invalides';
+      if (state.firstName.trim().length < 2)
+        errs.firstName = 'Le prénom est trop court (2 caractères minimum)';
+      else if (!NAME_REGEX.test(state.firstName.trim()))
+        errs.firstName = 'Caractères invalides';
     }
     if (requireAll || state.lastName) {
-      if (state.lastName.trim().length < 2) errs.lastName = 'Le nom est trop court (2 caractères minimum)';
-      else if (!NAME_REGEX.test(state.lastName.trim())) errs.lastName = 'Caractères invalides';
+      if (state.lastName.trim().length < 2)
+        errs.lastName = 'Le nom est trop court (2 caractères minimum)';
+      else if (!NAME_REGEX.test(state.lastName.trim()))
+        errs.lastName = 'Caractères invalides';
     }
     return errs;
   };
@@ -86,7 +107,7 @@ export function AdminsPage() {
   const create = useMutation({
     mutationFn: () => AdminsService.create(form),
     onSuccess: () => {
-      toast.success('Admin créé — email envoyé');
+      toast.success('Admin créé - email envoyé');
       setCreating(false);
       setForm(emptyForm);
       setFormErrors({});
@@ -100,7 +121,8 @@ export function AdminsPage() {
   });
 
   const update = useMutation({
-    mutationFn: ({ id, dto }: { id: number; dto: Partial<FormState> }) => AdminsService.update(id, dto),
+    mutationFn: ({ id, dto }: { id: number; dto: Partial<FormState> }) =>
+      AdminsService.update(id, dto),
     onSuccess: () => {
       toast.success('Admin modifié');
       setEditing(null);
@@ -154,7 +176,6 @@ export function AdminsPage() {
 
   const items = data ?? [];
   const superAdminCount = items.filter((a) => a.role === AdminRole.SUPER_ADMIN).length;
-
   const isLastSuperAdmin = (a: AdminRow) =>
     a.role === AdminRole.SUPER_ADMIN && superAdminCount <= 1;
   const isSelf = (a: AdminRow) => current?.id === a.id;
@@ -163,62 +184,75 @@ export function AdminsPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Comptes admin</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-2xl font-bold tracking-tight">Comptes admin</h1>
+          <p className="text-sm text-muted-foreground">
             {isSuperAdmin
               ? "Gestion des comptes d'administration de la plateforme"
-              : "Liste des administrateurs (lecture seule — réservé aux SUPER_ADMIN pour les modifications)"}
+              : 'Liste des administrateurs (lecture seule - réservé aux SUPER_ADMIN pour les modifications)'}
           </p>
         </div>
         {isSuperAdmin && (
-          <Button onClick={() => { setForm(emptyForm); setFormErrors({}); setCreating(true); }}>
-            <Plus size={16} className="mr-1.5" /> Nouvel admin
+          <Button
+            onClick={() => {
+              setForm(emptyForm);
+              setFormErrors({});
+              setCreating(true);
+            }}
+          >
+            <Plus className="mr-1.5 h-4 w-4" /> Nouvel admin
           </Button>
         )}
       </div>
 
       {!isSuperAdmin && (
-        <div className="flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-          <Lock size={16} className="mt-0.5" />
-          <div>
-            <p className="font-medium">Lecture seule</p>
-            <p className="text-amber-800">
-              Vous pouvez consulter la liste des administrateurs pour la transparence de l'équipe, mais
-              seuls les SUPER_ADMIN peuvent créer, modifier ou supprimer un compte admin.
-            </p>
-          </div>
-        </div>
+        <Alert>
+          <Lock className="h-4 w-4" />
+          <AlertTitle>Lecture seule</AlertTitle>
+          <AlertDescription>
+            Vous pouvez consulter la liste des administrateurs pour la transparence de
+            l&apos;équipe, mais seuls les SUPER_ADMIN peuvent créer, modifier ou supprimer un
+            compte admin.
+          </AlertDescription>
+        </Alert>
       )}
 
       <Card>
-        <CardHeader>
-          <p className="text-sm text-slate-500">{items.length} admin(s)</p>
+        <CardHeader className="py-4">
+          <p className="text-sm text-muted-foreground">{items.length} admin(s)</p>
         </CardHeader>
-        <CardBody className="p-0">
+        <CardContent className="p-0">
           {isLoading ? (
-            <div className="p-6 text-slate-400">Chargement…</div>
+            <div className="p-6 text-muted-foreground">Chargement…</div>
           ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
-                <tr>
-                  <th className="px-4 py-3">Email</th>
-                  <th className="px-4 py-3">Nom</th>
-                  <th className="px-4 py-3">Rôle</th>
-                  <th className="px-4 py-3">Dernier login</th>
-                  <th className="px-4 py-3">Créé le</th>
-                  {isSuperAdmin && <th className="px-4 py-3 text-right">Actions</th>}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Nom</TableHead>
+                  <TableHead>Rôle</TableHead>
+                  <TableHead>Dernier login</TableHead>
+                  <TableHead>Créé le</TableHead>
+                  {isSuperAdmin && <TableHead className="text-right">Actions</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {items.map((a) => (
-                  <tr key={a.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 font-medium text-slate-900">{a.email}</td>
-                    <td className="px-4 py-3 text-slate-600">{a.firstName} {a.lastName}</td>
-                    <td className="px-4 py-3"><Badge color={statusColor(a.role)}>{a.role}</Badge></td>
-                    <td className="px-4 py-3 text-slate-600">{a.lastLoginAt ? formatDate(a.lastLoginAt, true) : '—'}</td>
-                    <td className="px-4 py-3 text-slate-600">{formatDate(a.createdAt)}</td>
+                  <TableRow key={a.id}>
+                    <TableCell className="font-medium">{a.email}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {a.firstName} {a.lastName}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={statusColor(a.role)}>{a.role}</Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {a.lastLoginAt ? formatDate(a.lastLoginAt, true) : '-'}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatDate(a.createdAt)}
+                    </TableCell>
                     {isSuperAdmin && (
-                      <td className="px-4 py-3 text-right">
+                      <TableCell className="text-right">
                         <div className="flex justify-end gap-1.5">
                           <Button
                             size="sm"
@@ -226,55 +260,72 @@ export function AdminsPage() {
                             title="Modifier"
                             onClick={() => {
                               setEditing(a);
-                              setForm({ email: a.email, firstName: a.firstName, lastName: a.lastName, role: a.role });
+                              setForm({
+                                email: a.email,
+                                firstName: a.firstName,
+                                lastName: a.lastName,
+                                role: a.role,
+                              });
                               setFormErrors({});
                             }}
                           >
-                            <Pencil size={14} className="mr-1" /> Modifier
-                          </Button>
-                          <Button size="sm" variant="ghost" title="Reset MDP" onClick={() => reset.mutate(a.id)}>
-                            <KeyRound size={14} />
+                            <Pencil className="mr-1 h-3.5 w-3.5" /> Modifier
                           </Button>
                           <Button
                             size="sm"
-                            variant="danger"
+                            variant="ghost"
+                            title="Reset MDP"
+                            onClick={() => reset.mutate(a.id)}
+                          >
+                            <KeyRound className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
                             title={
                               isSelf(a)
                                 ? 'Vous ne pouvez pas vous supprimer'
                                 : isLastSuperAdmin(a)
-                                ? 'Dernier SUPER_ADMIN — protégé'
-                                : 'Supprimer'
+                                  ? 'Dernier SUPER_ADMIN - protégé'
+                                  : 'Supprimer'
                             }
                             disabled={isSelf(a) || isLastSuperAdmin(a)}
                             onClick={() => setDeleting(a)}
                           >
-                            <Trash2 size={14} />
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
-                      </td>
+                      </TableCell>
                     )}
-                  </tr>
+                  </TableRow>
                 ))}
                 {items.length === 0 && (
-                  <tr>
-                    <td colSpan={isSuperAdmin ? 6 : 5} className="p-6 text-center text-slate-400">
+                  <TableRow>
+                    <TableCell
+                      colSpan={isSuperAdmin ? 6 : 5}
+                      className="p-6 text-center text-muted-foreground"
+                    >
                       Aucun admin.
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           )}
-        </CardBody>
+        </CardContent>
       </Card>
 
       <Dialog
         open={creating}
-        onClose={() => { setCreating(false); setFormErrors({}); }}
+        onClose={() => {
+          setCreating(false);
+          setFormErrors({});
+        }}
         title="Créer un admin"
       >
-        <p className="mb-3 text-xs text-slate-500">
-          Un mot de passe temporaire sera envoyé par email. L'admin devra le changer à sa première connexion.
+        <p className="mb-3 text-xs text-muted-foreground">
+          Un mot de passe temporaire sera envoyé par email. L&apos;admin devra le changer à sa
+          première connexion.
         </p>
         <div className="space-y-3">
           <div>
@@ -283,8 +334,11 @@ export function AdminsPage() {
               type="email"
               value={form.email}
               aria-invalid={!!formErrors.email}
-              className={formErrors.email ? 'border-red-500 focus:ring-red-500' : ''}
-              onChange={(e) => { setForm({ ...form, email: e.target.value }); clearErr('email'); }}
+              className={errInput(!!formErrors.email)}
+              onChange={(e) => {
+                setForm({ ...form, email: e.target.value });
+                clearErr('email');
+              }}
             />
             <FieldError message={formErrors.email} />
           </div>
@@ -293,8 +347,11 @@ export function AdminsPage() {
               placeholder="Prénom *"
               value={form.firstName}
               aria-invalid={!!formErrors.firstName}
-              className={formErrors.firstName ? 'border-red-500 focus:ring-red-500' : ''}
-              onChange={(e) => { setForm({ ...form, firstName: e.target.value }); clearErr('firstName'); }}
+              className={errInput(!!formErrors.firstName)}
+              onChange={(e) => {
+                setForm({ ...form, firstName: e.target.value });
+                clearErr('firstName');
+              }}
             />
             <FieldError message={formErrors.firstName} />
           </div>
@@ -303,15 +360,18 @@ export function AdminsPage() {
               placeholder="Nom *"
               value={form.lastName}
               aria-invalid={!!formErrors.lastName}
-              className={formErrors.lastName ? 'border-red-500 focus:ring-red-500' : ''}
-              onChange={(e) => { setForm({ ...form, lastName: e.target.value }); clearErr('lastName'); }}
+              className={errInput(!!formErrors.lastName)}
+              onChange={(e) => {
+                setForm({ ...form, lastName: e.target.value });
+                clearErr('lastName');
+              }}
             />
             <FieldError message={formErrors.lastName} />
           </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700">Rôle *</label>
+          <div className="space-y-1.5">
+            <Label>Rôle *</Label>
             <select
-              className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className={selectClass}
               value={form.role}
               onChange={(e) => setForm({ ...form, role: e.target.value as AdminRole })}
             >
@@ -321,7 +381,9 @@ export function AdminsPage() {
             <FieldError message={formErrors.role} />
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="ghost" onClick={() => setCreating(false)}>Annuler</Button>
+            <Button variant="ghost" onClick={() => setCreating(false)}>
+              Annuler
+            </Button>
             <Button disabled={create.isPending} onClick={submitCreate}>
               {create.isPending ? 'Création…' : 'Créer'}
             </Button>
@@ -331,60 +393,76 @@ export function AdminsPage() {
 
       <Dialog
         open={!!editing}
-        onClose={() => { setEditing(null); setFormErrors({}); }}
+        onClose={() => {
+          setEditing(null);
+          setFormErrors({});
+        }}
         title={`Modifier ${editing?.email}`}
       >
         <div className="space-y-3">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700">Email</label>
+          <div className="space-y-1.5">
+            <Label>Email</Label>
             <Input
               type="email"
               value={form.email}
               aria-invalid={!!formErrors.email}
-              className={formErrors.email ? 'border-red-500 focus:ring-red-500' : ''}
-              onChange={(e) => { setForm({ ...form, email: e.target.value }); clearErr('email'); }}
+              className={errInput(!!formErrors.email)}
+              onChange={(e) => {
+                setForm({ ...form, email: e.target.value });
+                clearErr('email');
+              }}
             />
             <FieldError message={formErrors.email} />
           </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700">Prénom</label>
+          <div className="space-y-1.5">
+            <Label>Prénom</Label>
             <Input
               value={form.firstName}
               aria-invalid={!!formErrors.firstName}
-              className={formErrors.firstName ? 'border-red-500 focus:ring-red-500' : ''}
-              onChange={(e) => { setForm({ ...form, firstName: e.target.value }); clearErr('firstName'); }}
+              className={errInput(!!formErrors.firstName)}
+              onChange={(e) => {
+                setForm({ ...form, firstName: e.target.value });
+                clearErr('firstName');
+              }}
             />
             <FieldError message={formErrors.firstName} />
           </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700">Nom</label>
+          <div className="space-y-1.5">
+            <Label>Nom</Label>
             <Input
               value={form.lastName}
               aria-invalid={!!formErrors.lastName}
-              className={formErrors.lastName ? 'border-red-500 focus:ring-red-500' : ''}
-              onChange={(e) => { setForm({ ...form, lastName: e.target.value }); clearErr('lastName'); }}
+              className={errInput(!!formErrors.lastName)}
+              onChange={(e) => {
+                setForm({ ...form, lastName: e.target.value });
+                clearErr('lastName');
+              }}
             />
             <FieldError message={formErrors.lastName} />
           </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700">Rôle</label>
+          <div className="space-y-1.5">
+            <Label>Rôle</Label>
             <select
-              className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-60"
+              className={selectClass}
               value={form.role}
-              disabled={!!(editing && isSelf(editing) && editing.role === AdminRole.SUPER_ADMIN)}
+              disabled={
+                !!(editing && isSelf(editing) && editing.role === AdminRole.SUPER_ADMIN)
+              }
               onChange={(e) => setForm({ ...form, role: e.target.value as AdminRole })}
             >
               <option value={AdminRole.ADMIN}>ADMIN</option>
               <option value={AdminRole.SUPER_ADMIN}>SUPER_ADMIN</option>
             </select>
             {editing && isSelf(editing) && editing.role === AdminRole.SUPER_ADMIN && (
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Vous ne pouvez pas rétrograder votre propre compte SUPER_ADMIN.
               </p>
             )}
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="ghost" onClick={() => setEditing(null)}>Annuler</Button>
+            <Button variant="ghost" onClick={() => setEditing(null)}>
+              Annuler
+            </Button>
             <Button disabled={update.isPending} onClick={submitUpdate}>
               {update.isPending ? 'Enregistrement…' : 'Enregistrer'}
             </Button>
@@ -394,16 +472,27 @@ export function AdminsPage() {
 
       <Dialog
         open={!!deleting}
-        onClose={() => { setDeleting(null); setConfirmText(''); }}
+        onClose={() => {
+          setDeleting(null);
+          setConfirmText('');
+        }}
         title={`Supprimer ${deleting?.email}`}
       >
         <div className="space-y-3">
-          <p className="text-sm text-red-600">⚠️ Suppression définitive du compte admin.</p>
-          <Input placeholder="Tapez SUPPRIMER" value={confirmText} onChange={(e) => setConfirmText(e.target.value)} />
+          <p className="text-sm font-medium text-destructive">
+            ⚠️ Suppression définitive du compte admin.
+          </p>
+          <Input
+            placeholder="Tapez SUPPRIMER"
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+          />
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setDeleting(null)}>Annuler</Button>
+            <Button variant="ghost" onClick={() => setDeleting(null)}>
+              Annuler
+            </Button>
             <Button
-              variant="danger"
+              variant="destructive"
               disabled={confirmText !== 'SUPPRIMER' || remove.isPending}
               onClick={() => deleting && remove.mutate(deleting.id)}
             >

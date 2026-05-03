@@ -4,11 +4,20 @@ import { ChevronLeft, ChevronRight, Download, RotateCcw, Search } from 'lucide-r
 import { AdminLogAction } from '@repo/shared';
 import { StatsService } from '@/services/stats.service';
 import { AdminsService } from '@/services/admins.service';
-import { Badge } from '@/components/ui/badge';
+import { Badge, type BadgeVariant } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardBody, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Dialog } from '@/components/ui/dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { formatDate } from '@/lib/utils';
 import { toastApiError } from '@/lib/errors';
 
@@ -45,25 +54,25 @@ const ENTITY_OPTIONS: Array<'USER' | 'ASSOCIATION' | 'MISSION' | 'ADMIN'> = [
   'ADMIN',
 ];
 
-const ACTION_COLORS: Record<string, string> = {
-  VALIDATE_ASSOCIATION: 'green',
-  REACTIVATE_ASSOCIATION: 'green',
-  REACTIVATE_USER: 'green',
-  REJECT_ASSOCIATION: 'red',
-  SUSPEND_ASSOCIATION: 'amber',
-  SUSPEND_USER: 'amber',
-  DELETE_USER: 'red',
-  DELETE_ASSOCIATION: 'red',
-  DELETE_ADMIN: 'red',
-  CREATE_USER: 'blue',
-  CREATE_ASSOCIATION: 'blue',
-  CREATE_ADMIN: 'blue',
-  UPDATE_USER: 'default',
-  UPDATE_ASSOCIATION: 'default',
-  UPDATE_ADMIN: 'default',
-  RESET_USER_PASSWORD: 'amber',
-  RESET_ADMIN_PASSWORD: 'amber',
-  REQUEST_DOCUMENTS: 'blue',
+const ACTION_COLORS: Record<string, BadgeVariant> = {
+  VALIDATE_ASSOCIATION: 'success',
+  REACTIVATE_ASSOCIATION: 'success',
+  REACTIVATE_USER: 'success',
+  REJECT_ASSOCIATION: 'destructive',
+  SUSPEND_ASSOCIATION: 'warning',
+  SUSPEND_USER: 'warning',
+  DELETE_USER: 'destructive',
+  DELETE_ASSOCIATION: 'destructive',
+  DELETE_ADMIN: 'destructive',
+  CREATE_USER: 'info',
+  CREATE_ASSOCIATION: 'info',
+  CREATE_ADMIN: 'info',
+  UPDATE_USER: 'secondary',
+  UPDATE_ASSOCIATION: 'secondary',
+  UPDATE_ADMIN: 'secondary',
+  RESET_USER_PASSWORD: 'warning',
+  RESET_ADMIN_PASSWORD: 'warning',
+  REQUEST_DOCUMENTS: 'info',
 };
 
 interface FilterState {
@@ -83,6 +92,9 @@ const emptyFilters: FilterState = {
   from: '',
   to: '',
 };
+
+const selectClass =
+  'flex h-10 w-full items-center rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2';
 
 export function AdminLogsPage() {
   const [draft, setDraft] = useState<FilterState>(emptyFilters);
@@ -106,8 +118,6 @@ export function AdminLogsPage() {
     queryFn: () => StatsService.adminLogs(queryParams),
   });
 
-  // Liste des admins pour le sélecteur. Si l'utilisateur n'a pas accès (cas
-  // improbable car list est ouvert ADMIN+SUPER_ADMIN), on tombe en silence.
   const { data: admins } = useQuery<AdminRow[]>({
     queryKey: ['admins-for-logs'],
     queryFn: () => AdminsService.list(),
@@ -145,67 +155,72 @@ export function AdminLogsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Journal d'activité admin</h1>
-          <p className="text-sm text-slate-500">
-            Historique des actions effectuées par les administrateurs (table <code>admin_logs</code>)
+          <h1 className="text-2xl font-bold tracking-tight">Journal d&apos;activité admin</h1>
+          <p className="text-sm text-muted-foreground">
+            Historique des actions effectuées par les administrateurs (table{' '}
+            <code className="rounded bg-muted px-1 py-0.5">admin_logs</code>)
           </p>
         </div>
         <Button variant="outline" onClick={exportCsv} disabled={isLoading || total === 0}>
-          <Download size={16} className="mr-1.5" /> Exporter CSV
+          <Download className="mr-1.5 h-4 w-4" /> Exporter CSV
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <h2 className="font-semibold text-slate-900">Filtres</h2>
+          <CardTitle className="text-base">Filtres</CardTitle>
         </CardHeader>
-        <CardBody className="space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">Action</label>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div className="space-y-1.5">
+              <Label>Action</Label>
               <select
-                className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className={selectClass}
                 value={draft.action}
                 onChange={(e) => setDraft({ ...draft, action: e.target.value })}
               >
                 <option value="">Toutes</option>
                 {ACTION_OPTIONS.map((a) => (
-                  <option key={a} value={a}>{a}</option>
+                  <option key={a} value={a}>
+                    {a}
+                  </option>
                 ))}
               </select>
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">Type d'entité</label>
+            <div className="space-y-1.5">
+              <Label>Type d&apos;entité</Label>
               <select
-                className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className={selectClass}
                 value={draft.entityType}
                 onChange={(e) => setDraft({ ...draft, entityType: e.target.value })}
               >
                 <option value="">Tous</option>
                 {ENTITY_OPTIONS.map((t) => (
-                  <option key={t} value={t}>{t}</option>
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
                 ))}
               </select>
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">Admin</label>
+            <div className="space-y-1.5">
+              <Label>Admin</Label>
               <select
-                className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className={selectClass}
                 value={draft.adminId}
                 onChange={(e) => setDraft({ ...draft, adminId: e.target.value })}
               >
                 <option value="">Tous</option>
                 {(admins ?? []).map((a) => (
                   <option key={a.id} value={a.id}>
-                    {a.firstName} {a.lastName} — {a.email}
+                    {a.firstName} {a.lastName} - {a.email}
                   </option>
                 ))}
               </select>
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">ID d'entité</label>
+            <div className="space-y-1.5">
+              <Label>ID d&apos;entité</Label>
               <Input
                 type="number"
                 placeholder="ex: 42"
@@ -213,16 +228,16 @@ export function AdminLogsPage() {
                 onChange={(e) => setDraft({ ...draft, entityId: e.target.value })}
               />
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">Du</label>
+            <div className="space-y-1.5">
+              <Label>Du</Label>
               <Input
                 type="datetime-local"
                 value={draft.from}
                 onChange={(e) => setDraft({ ...draft, from: e.target.value })}
               />
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">Au</label>
+            <div className="space-y-1.5">
+              <Label>Au</Label>
               <Input
                 type="datetime-local"
                 value={draft.to}
@@ -232,26 +247,26 @@ export function AdminLogsPage() {
           </div>
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="ghost" onClick={reset}>
-              <RotateCcw size={14} className="mr-1.5" /> Réinitialiser
+              <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Réinitialiser
             </Button>
             <Button onClick={apply}>
-              <Search size={14} className="mr-1.5" /> Appliquer
+              <Search className="mr-1.5 h-3.5 w-3.5" /> Appliquer
             </Button>
           </div>
-        </CardBody>
+        </CardContent>
       </Card>
 
       <Card>
-        <CardHeader className="flex items-center justify-between">
-          <p className="text-sm text-slate-500">{total} entrée(s)</p>
-          <div className="flex items-center gap-2 text-sm text-slate-600">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 py-4">
+          <p className="text-sm text-muted-foreground">{total} entrée(s)</p>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Button
               size="sm"
               variant="outline"
               disabled={page <= 1 || isLoading}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
-              <ChevronLeft size={14} />
+              <ChevronLeft className="h-3.5 w-3.5" />
             </Button>
             <span>
               {page} / {totalPages}
@@ -262,103 +277,118 @@ export function AdminLogsPage() {
               disabled={page >= totalPages || isLoading}
               onClick={() => setPage((p) => p + 1)}
             >
-              <ChevronRight size={14} />
+              <ChevronRight className="h-3.5 w-3.5" />
             </Button>
           </div>
         </CardHeader>
-        <CardBody className="p-0">
+        <CardContent className="p-0">
           {isLoading ? (
-            <div className="p-6 text-slate-400">Chargement…</div>
+            <div className="p-6 text-muted-foreground">Chargement…</div>
           ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
-                <tr>
-                  <th className="px-4 py-3">Date</th>
-                  <th className="px-4 py-3">Admin</th>
-                  <th className="px-4 py-3">Action</th>
-                  <th className="px-4 py-3">Entité</th>
-                  <th className="px-4 py-3">ID</th>
-                  <th className="px-4 py-3 text-right">Détails</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Admin</TableHead>
+                  <TableHead>Action</TableHead>
+                  <TableHead>Entité</TableHead>
+                  <TableHead>ID</TableHead>
+                  <TableHead className="text-right">Détails</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {items.map((log) => (
-                  <tr key={log.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
+                  <TableRow key={log.id}>
+                    <TableCell className="whitespace-nowrap text-muted-foreground">
                       {formatDate(log.createdAt, true)}
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell>
                       {log.admin ? (
                         <div>
-                          <div className="font-medium text-slate-900">
+                          <div className="font-medium">
                             {log.admin.firstName} {log.admin.lastName}
                           </div>
-                          <div className="text-xs text-slate-500">{log.admin.email}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {log.admin.email}
+                          </div>
                         </div>
                       ) : (
-                        <span className="text-slate-400">#{log.adminId}</span>
+                        <span className="text-muted-foreground">#{log.adminId}</span>
                       )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge color={ACTION_COLORS[log.action] ?? 'default'}>{log.action}</Badge>
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">{log.entityType}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-slate-600">{log.entityId}</td>
-                    <td className="px-4 py-3 text-right">
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={ACTION_COLORS[log.action] ?? 'secondary'}>{log.action}</Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{log.entityType}</TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {log.entityId}
+                    </TableCell>
+                    <TableCell className="text-right">
                       {log.details ? (
                         <Button size="sm" variant="ghost" onClick={() => setDetail(log)}>
                           Voir
                         </Button>
                       ) : (
-                        <span className="text-slate-300">—</span>
+                        <span className="text-muted-foreground">-</span>
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
                 {items.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="p-6 text-center text-slate-400">
+                  <TableRow>
+                    <TableCell colSpan={6} className="p-6 text-center text-muted-foreground">
                       Aucune entrée ne correspond à ces filtres.
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           )}
-        </CardBody>
+        </CardContent>
       </Card>
 
-      <Dialog open={!!detail} onClose={() => setDetail(null)} title="Détails de l'action" size="lg">
+      <Dialog
+        open={!!detail}
+        onClose={() => setDetail(null)}
+        title="Détails de l'action"
+        size="lg"
+      >
         {detail && (
           <div className="space-y-3 text-sm">
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <div className="text-xs text-slate-500">Action</div>
+                <div className="text-xs text-muted-foreground">Action</div>
                 <div className="font-medium">{detail.action}</div>
               </div>
               <div>
-                <div className="text-xs text-slate-500">Date</div>
+                <div className="text-xs text-muted-foreground">Date</div>
                 <div className="font-medium">{formatDate(detail.createdAt, true)}</div>
               </div>
               <div>
-                <div className="text-xs text-slate-500">Entité</div>
-                <div className="font-medium">{detail.entityType} #{detail.entityId}</div>
+                <div className="text-xs text-muted-foreground">Entité</div>
+                <div className="font-medium">
+                  {detail.entityType} #{detail.entityId}
+                </div>
               </div>
               <div>
-                <div className="text-xs text-slate-500">Admin</div>
+                <div className="text-xs text-muted-foreground">Admin</div>
                 <div className="font-medium">
-                  {detail.admin ? `${detail.admin.firstName} ${detail.admin.lastName}` : `#${detail.adminId}`}
+                  {detail.admin
+                    ? `${detail.admin.firstName} ${detail.admin.lastName}`
+                    : `#${detail.adminId}`}
                 </div>
                 {detail.admin?.email && (
-                  <div className="text-xs text-slate-500">{detail.admin.email}</div>
+                  <div className="text-xs text-muted-foreground">{detail.admin.email}</div>
                 )}
               </div>
             </div>
-            <div>
-              <div className="mb-1 text-xs text-slate-500">Payload</div>
-              <pre className="max-h-80 overflow-auto rounded-md bg-slate-900 p-3 text-xs text-slate-100">
-                {JSON.stringify(detail.details, null, 2)}
-              </pre>
+            <div className="min-w-0">
+              <div className="mb-1 text-xs text-muted-foreground">Payload</div>
+              <div className="max-h-80 overflow-auto rounded-md bg-muted">
+                <pre className="w-max min-w-full p-3 text-xs">
+                  {JSON.stringify(detail.details, null, 2)}
+                </pre>
+              </div>
             </div>
           </div>
         )}

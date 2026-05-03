@@ -30,7 +30,7 @@ export class MailService {
                 </tr>
                 <tr>
                   <td style="padding: 32px; background-color: #f8fafc; text-align: center; color: #64748b; font-size: 12px; border-top: 1px solid #f1f5f9;">
-                    <p style="margin: 0 0 8px 0;">🧡 <b>GiveAWay</b> — Agir ensemble, simplement.</p>
+                    <p style="margin: 0 0 8px 0;">🧡 <b>GiveAWay</b> - Agir ensemble, simplement.</p>
                     <p style="margin: 0;">© 2026 Tous droits réservés.</p>
                   </td>
                 </tr>
@@ -309,7 +309,7 @@ export class MailService {
       this.config.get('USE_DETERMINISTIC_OTP') === 'true'
     ) {
       console.log(
-        `\n📨 [MAIL SERVICE] Mission supprimée — notif pour : ${email}`,
+        `\n📨 [MAIL SERVICE] Mission supprimée - notif pour : ${email}`,
       );
       console.log(
         `📋 Mission : ${missionTitle} | Association : ${associationName}\n`,
@@ -341,7 +341,7 @@ export class MailService {
       this.config.get('USE_DETERMINISTIC_OTP') === 'true'
     ) {
       console.log(
-        `\n📨 [MAIL SERVICE] Mission modifiée — notif pour : ${email}`,
+        `\n📨 [MAIL SERVICE] Mission modifiée - notif pour : ${email}`,
       );
       console.log(
         `📋 Mission : ${missionTitle} | Changements : ${changes.join(', ')}\n`,
@@ -394,7 +394,7 @@ export class MailService {
       this.config.get('USE_DETERMINISTIC_OTP') === 'true'
     ) {
       console.log(
-        `\n📨 [MAIL SERVICE] Participant retiré — notif pour : ${email}`,
+        `\n📨 [MAIL SERVICE] Participant retiré - notif pour : ${email}`,
       );
       console.log(
         `📋 Mission : ${missionTitle} | Association : ${associationName}\n`,
@@ -450,7 +450,7 @@ export class MailService {
       this.config.get('USE_DETERMINISTIC_OTP') === 'true'
     ) {
       console.log(
-        `\n📨 [MAIL SERVICE] Nouvelle mission — notif pour : ${email}`,
+        `\n📨 [MAIL SERVICE] Nouvelle mission - notif pour : ${email}`,
       );
       console.log(
         `📋 Mission : ${missionTitle} | Association : ${associationName}\n`,
@@ -471,7 +471,7 @@ export class MailService {
   }
 
   // ============================================================
-  // ===== ADMIN — Validation associations / users / admins =====
+  // ===== ADMIN - Validation associations / users / admins =====
   // ============================================================
 
   private getSimpleTemplate(title: string, body: string): string {
@@ -492,7 +492,7 @@ export class MailService {
   async sendAssociationValidatedEmail(email: string, associationName: string) {
     if (this.isLogMode()) {
       console.log(
-        `\n📨 [MAIL] Association validée — ${associationName} → ${email}\n`,
+        `\n📨 [MAIL] Association validée - ${associationName} → ${email}\n`,
       );
       return;
     }
@@ -514,7 +514,7 @@ export class MailService {
   ) {
     if (this.isLogMode()) {
       console.log(
-        `\n📨 [MAIL] Association refusée — ${associationName} → ${email} | raison: ${reason}\n`,
+        `\n📨 [MAIL] Association refusée - ${associationName} → ${email} | raison: ${reason}\n`,
       );
       return;
     }
@@ -527,7 +527,7 @@ export class MailService {
     );
     return this.sendApiEmail(
       email,
-      `Inscription refusée — ${associationName}`,
+      `Inscription refusée - ${associationName}`,
       html,
     );
   }
@@ -539,7 +539,7 @@ export class MailService {
   ) {
     if (this.isLogMode()) {
       console.log(
-        `\n📨 [MAIL] Association supprimée définitivement — ${associationName} → ${email}\n`,
+        `\n📨 [MAIL] Association supprimée définitivement - ${associationName} → ${email}\n`,
       );
       return;
     }
@@ -561,7 +561,7 @@ export class MailService {
   ) {
     if (this.isLogMode()) {
       console.log(
-        `\n📨 [MAIL] Association suspendue — ${associationName} → ${email} | raison: ${reason}\n`,
+        `\n📨 [MAIL] Association suspendue - ${associationName} → ${email} | raison: ${reason}\n`,
       );
       return;
     }
@@ -581,7 +581,7 @@ export class MailService {
   ) {
     if (this.isLogMode()) {
       console.log(
-        `\n📨 [MAIL] Demande justificatifs — ${associationName} → ${email} | types: ${types.join(',')} | contact: ${contactEmail}\n`,
+        `\n📨 [MAIL] Demande justificatifs - ${associationName} → ${email} | types: ${types.join(',')} | contact: ${contactEmail}\n`,
       );
       return;
     }
@@ -605,7 +605,7 @@ export class MailService {
     );
     return this.sendApiEmail(
       email,
-      `Justificatifs demandés — ${associationName}`,
+      `Justificatifs demandés - ${associationName}`,
       html,
     );
   }
@@ -619,7 +619,7 @@ export class MailService {
   ) {
     if (this.isLogMode()) {
       console.log(
-        `\n📨 [MAIL] Mission annulée (suppression asso) — ${missionTitle} → ${email}\n`,
+        `\n📨 [MAIL] Mission annulée (suppression asso) - ${missionTitle} → ${email}\n`,
       );
       return;
     }
@@ -638,7 +638,7 @@ export class MailService {
   ) {
     if (this.isLogMode()) {
       console.log(
-        `\n📨 [MAIL] Invitation admin — ${email} | password: ${tempPassword}\n`,
+        `\n📨 [MAIL] Invitation admin - ${email} | password: ${tempPassword}\n`,
       );
       return;
     }
@@ -656,7 +656,7 @@ export class MailService {
   ) {
     if (this.isLogMode()) {
       console.log(
-        `\n📨 [MAIL] Reset password admin — ${email} | password: ${tempPassword}\n`,
+        `\n📨 [MAIL] Reset password admin - ${email} | password: ${tempPassword}\n`,
       );
       return;
     }
@@ -674,7 +674,7 @@ export class MailService {
   ) {
     if (this.isLogMode()) {
       console.log(
-        `\n📨 [MAIL] User créé par admin — ${email} | password: ${tempPassword}\n`,
+        `\n📨 [MAIL] User créé par admin - ${email} | password: ${tempPassword}\n`,
       );
       return;
     }

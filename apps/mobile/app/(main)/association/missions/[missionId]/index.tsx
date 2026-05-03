@@ -71,7 +71,7 @@ const FREQUENCY_LABELS: Record<string, string> = {
 };
 
 function formatDuration(minutes: number | null | undefined): string {
-  if (!minutes) return "—";
+  if (!minutes) return "-";
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   if (h === 0) return `${m}min`;
@@ -80,7 +80,7 @@ function formatDuration(minutes: number | null | undefined): string {
 }
 
 function formatDate(date: Date | string | null): string {
-  if (!date) return "—";
+  if (!date) return "-";
   return new Date(date).toLocaleDateString("fr-FR", {
     day: "2-digit",
     month: "long",

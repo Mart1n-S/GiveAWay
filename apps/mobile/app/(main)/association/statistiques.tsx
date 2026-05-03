@@ -83,7 +83,7 @@ function buildPdfHtml(stats: AssociationMissionStats, associationName: string, f
 <html lang="fr">
 <head>
   <meta charset="UTF-8"/>
-  <title>Statistiques — ${associationName}</title>
+  <title>Statistiques - ${associationName}</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 32px; color: #333; }
     h1 { color: #CC460F; font-size: 22px; margin-bottom: 4px; }
@@ -101,7 +101,7 @@ function buildPdfHtml(stats: AssociationMissionStats, associationName: string, f
   </style>
 </head>
 <body>
-  <h1>Statistiques des missions — ${associationName}</h1>
+  <h1>Statistiques des missions - ${associationName}</h1>
   <p class="subtitle">
     Exporté le ${new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
     &nbsp;·&nbsp; ${dateRange}
@@ -153,7 +153,7 @@ function buildPdfHtml(stats: AssociationMissionStats, associationName: string, f
     <tbody>${topRows || "<tr><td colspan='4'>Aucune donnée</td></tr>"}</tbody>
   </table>
 
-  <div class="footer">GiveAWay — Rapport généré automatiquement</div>
+  <div class="footer">GiveAWay - Rapport généré automatiquement</div>
 </body>
 </html>`;
 }
@@ -308,7 +308,7 @@ export default function StatistiquesScreen() {
 
     if (!stats) {
       return (
-        <View className="items-center justify-center py-16 gap-3">
+        <View className="items-center justify-center gap-3 py-16">
           <Text className="text-base text-center text-grey-500">
             Impossible de charger les statistiques.
           </Text>
@@ -388,7 +388,7 @@ export default function StatistiquesScreen() {
         {pieData.length > 0 && (
           <View className="p-4 bg-white border rounded-lg border-grey-100">
             <SectionTitle title="Répartition par type" />
-            <View className="flex-row items-center gap-4 flex-wrap">
+            <View className="flex-row flex-wrap items-center gap-4">
               <PieChart
                 data={pieData}
                 radius={80}
@@ -396,14 +396,14 @@ export default function StatistiquesScreen() {
                 innerRadius={50}
                 centerLabelComponent={renderPieCenter}
               />
-              <View className="gap-2 flex-1">
+              <View className="flex-1 gap-2">
                 {stats.byType.map((t) => (
                   <View key={t.type} className="flex-row items-center gap-2">
                     <View
                       className="w-3 h-3 rounded-full"
                       style={{ backgroundColor: TYPE_COLORS[t.type] }}
                     />
-                    <Text className="text-xs text-grey-700 flex-1">
+                    <Text className="flex-1 text-xs text-grey-700">
                       {t.label}
                     </Text>
                     <Text className="text-xs font-semibold text-grey-900">
@@ -436,7 +436,7 @@ export default function StatistiquesScreen() {
                 isAnimated
               />
             </ScrollView>
-            <View className="flex-row flex-wrap gap-x-3 mt-1">
+            <View className="flex-row flex-wrap mt-1 gap-x-3">
               {stats.participationByMonth.map((m) => (
                 <Text key={m.month} className="text-xs text-grey-400">
                   {m.label.split(" ")[0]}
@@ -455,11 +455,11 @@ export default function StatistiquesScreen() {
                 key={m.id}
                 className="flex-row items-center gap-3 py-2 border-b border-grey-100 last:border-0"
               >
-                <Text className="text-sm font-bold text-grey-400 w-5 text-center">
+                <Text className="w-5 text-sm font-bold text-center text-grey-400">
                   {i + 1}
                 </Text>
                 <View
-                  className="w-2 h-2 rounded-full flex-shrink-0"
+                  className="flex-shrink-0 w-2 h-2 rounded-full"
                   style={{ backgroundColor: TYPE_COLORS[m.type] }}
                 />
                 <Text
@@ -479,7 +479,7 @@ export default function StatistiquesScreen() {
 
         {/* Aucune donnée */}
         {stats.summary.totalMissions === 0 && (
-          <View className="items-center justify-center py-12 gap-2">
+          <View className="items-center justify-center gap-2 py-12">
             <Text className="text-base font-semibold text-grey-700">
               Aucune donnée disponible
             </Text>

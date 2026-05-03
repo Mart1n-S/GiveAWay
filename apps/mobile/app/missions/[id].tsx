@@ -461,12 +461,23 @@ export default function MissionDetailScreen() {
 
   let statusBanner: { text: string; color: string; bg: string } | null = null;
   if (mission.status === "ARCHIVED") {
-    statusBanner = { text: "Cette mission est archivée — elle n'est plus ouverte aux candidatures.", color: colors.grey[600], bg: colors.grey[100] };
+    statusBanner = { text: "Cette mission est archivée - elle n'est plus ouverte aux candidatures.", color: colors.grey[600], bg: colors.grey[100] };
   } else if (isMissionExpired) {
-    statusBanner = { text: "Cette mission est terminée — elle n'accepte plus de nouvelles candidatures.", color: colors.grey[600], bg: colors.grey[100] };
+    statusBanner = { text: "Cette mission est terminée - elle n'accepte plus de nouvelles candidatures.", color: colors.grey[600], bg: colors.grey[100] };
   }
 
   const handleParticipate = async () => {
+    if (!user) {
+      Toast.show({
+        type: "info",
+        text1: "Connexion requise",
+        text2: "Vous devez vous connecter pour candidater à une mission.",
+        visibilityTime: 4000,
+        onPress: () => Toast.hide(),
+      });
+      router.push("/connexion");
+      return;
+    }
     setParticipationLoading(true);
     try {
       await MissionService.participate(mission.id);
@@ -571,7 +582,7 @@ export default function MissionDetailScreen() {
         onPress={() => {}}
         className="w-full"
       >
-        Complet — toutes les places sont prises
+        Complet - toutes les places sont prises
       </Button>
     );
   } else {
@@ -746,7 +757,7 @@ export default function MissionDetailScreen() {
               style={{ backgroundColor: statusBanner.bg }}
             >
               <Text
-                className="text-sm text-center font-medium"
+                className="text-sm font-medium text-center"
                 style={{ color: statusBanner.color }}
               >
                 {statusBanner.text}

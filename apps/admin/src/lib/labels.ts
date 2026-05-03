@@ -43,11 +43,11 @@ export const MISSION_FREQUENCY: Record<string, string> = {
 };
 
 export function fmtList<T extends string>(values: T[] | null | undefined, dict: Record<string, string>): string {
-  if (!values || values.length === 0) return '—';
+  if (!values || values.length === 0) return '-';
   return values.map((v) => dict[v] ?? v).join(', ');
 }
 
 export function fmtEnum(value: string | null | undefined, dict: Record<string, string>): string {
-  if (!value) return '—';
+  if (!value) return '-';
   return dict[value] ?? value;
 }

@@ -2,12 +2,22 @@ import { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { ArrowLeft } from 'lucide-react';
 import { AssociationsService } from '@/services/associations.service';
 import { Badge, statusColor } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardBody, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { formatDate } from '@/lib/utils';
 import { ACTIVITY_TYPE, DOCUMENT_TYPE, fmtEnum } from '@/lib/labels';
 import { toastApiError } from '@/lib/errors';
@@ -24,9 +34,26 @@ interface AssoDetail {
   createdAt: string;
   category?: { name: string } | null;
   address?: { street: string; postalCode: string; city: string } | null;
-  members: Array<{ user: { id: number; email: string; firstName: string; lastName: string }; role: string }>;
-  missions: Array<{ id: number; title: string; status: string; type: string; startDate: string | null }>;
+  members: Array<{
+    user: { id: number; email: string; firstName: string; lastName: string };
+    role: string;
+  }>;
+  missions: Array<{
+    id: number;
+    title: string;
+    status: string;
+    type: string;
+    startDate: string | null;
+  }>;
   documents: Array<{ id: number; type: string; fileUrl: string; createdAt: string }>;
+}
+
+function Field({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div>
+      <span className="text-muted-foreground">{label} :</span> {value}
+    </div>
+  );
 }
 
 export function AssociationDetailPage() {
@@ -44,7 +71,9 @@ export function AssociationDetailPage() {
   const [suspendReason, setSuspendReason] = useState('');
   const [purgeOpen, setPurgeOpen] = useState(false);
   const [purgeConfirm, setPurgeConfirm] = useState('');
-  const [missionToDelete, setMissionToDelete] = useState<{ id: number; title: string } | null>(null);
+  const [missionToDelete, setMissionToDelete] = useState<{ id: number; title: string } | null>(
+    null,
+  );
   const [missionDeleteReason, setMissionDeleteReason] = useState('');
 
   const suspend = useMutation({
@@ -92,17 +121,13 @@ export function AssociationDetailPage() {
     try {
       const { blob, filename } = await AssociationsService.downloadDocument(documentId);
       const url = URL.createObjectURL(blob);
-      // Le PDF/JPEG s'ouvre dans un onglet ; en cas de document servi en attachment,
-      // le navigateur déclenchera le téléchargement.
       const w = window.open(url, '_blank', 'noopener,noreferrer');
       if (!w && filename) {
-        // Popup bloquée → fallback : déclenche un téléchargement
         const a = document.createElement('a');
         a.href = url;
         a.download = filename;
         a.click();
       }
-      // Libère l'URL après quelques secondes (le temps que l'onglet la consomme)
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (err) {
       toastApiError(err, "Impossible d'ouvrir le document");
@@ -110,7 +135,9 @@ export function AssociationDetailPage() {
   };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadType, setUploadType] = useState<'STATUTS' | 'RNA_ATTESTATION' | 'OFFICE_PROOF'>('STATUTS');
+  const [uploadType, setUploadType] = useState<'STATUTS' | 'RNA_ATTESTATION' | 'OFFICE_PROOF'>(
+    'STATUTS',
+  );
   const [uploadFile, setUploadFile] = useState<File | null>(null);
 
   const uploadDoc = useMutation({
@@ -146,17 +173,19 @@ export function AssociationDetailPage() {
     onError: () => toast.error('Échec de la suppression'),
   });
 
-  if (isLoading) return <div className="text-slate-400">Chargement…</div>;
-  if (!data) return <div className="text-slate-400">Introuvable.</div>;
+  if (isLoading) return <div className="text-muted-foreground">Chargement…</div>;
+  if (!data) return <div className="text-muted-foreground">Introuvable.</div>;
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3 flex-wrap">
-        <Link to="/associations">
-          <Button variant="ghost" size="sm">← Retour</Button>
-        </Link>
-        <h1 className="text-2xl font-bold text-slate-900">{data.name}</h1>
-        <Badge color={statusColor(data.status)}>{data.status}</Badge>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button asChild variant="ghost" size="sm">
+          <Link to="/associations">
+            <ArrowLeft className="mr-1 h-4 w-4" /> Retour
+          </Link>
+        </Button>
+        <h1 className="text-2xl font-bold tracking-tight">{data.name}</h1>
+        <Badge variant={statusColor(data.status)}>{data.status}</Badge>
         <div className="ml-auto flex gap-2">
           {data.status === 'PENDING' && (
             <Button size="sm" onClick={() => validate.mutate()} disabled={validate.isPending}>
@@ -164,7 +193,7 @@ export function AssociationDetailPage() {
             </Button>
           )}
           {data.status === 'VALIDATED' && (
-            <Button variant="danger" size="sm" onClick={() => setSuspendOpen(true)}>
+            <Button variant="destructive" size="sm" onClick={() => setSuspendOpen(true)}>
               Suspendre
             </Button>
           )}
@@ -178,7 +207,7 @@ export function AssociationDetailPage() {
               <Button size="sm" onClick={() => validate.mutate()} disabled={validate.isPending}>
                 Re-valider
               </Button>
-              <Button variant="danger" size="sm" onClick={() => setPurgeOpen(true)}>
+              <Button variant="destructive" size="sm" onClick={() => setPurgeOpen(true)}>
                 Supprimer définitivement
               </Button>
             </>
@@ -187,115 +216,148 @@ export function AssociationDetailPage() {
       </div>
 
       <Card>
-        <CardHeader><h2 className="font-semibold">Carte d'identité</h2></CardHeader>
-        <CardBody className="grid grid-cols-2 gap-3 text-sm">
-          <div><span className="text-slate-500">SIRET :</span> {data.siret || '—'}</div>
-          <div><span className="text-slate-500">RNA :</span> {data.rna || '—'}</div>
-          <div><span className="text-slate-500">Catégorie :</span> {data.category?.name || '—'}</div>
-          <div><span className="text-slate-500">Statut juridique :</span> {data.legalStatus || '—'}</div>
-          <div className="col-span-2"><span className="text-slate-500">Adresse :</span> {data.address ? `${data.address.street}, ${data.address.postalCode} ${data.address.city}` : '—'}</div>
-          <div className="col-span-2"><span className="text-slate-500">Description :</span> {data.description || '—'}</div>
-          <div><span className="text-slate-500">Inscrite le :</span> {formatDate(data.createdAt)}</div>
+        <CardHeader>
+          <CardTitle className="text-base">Carte d&apos;identité</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 gap-3 text-sm">
+          <Field label="SIRET" value={data.siret || '-'} />
+          <Field label="RNA" value={data.rna || '-'} />
+          <Field label="Catégorie" value={data.category?.name || '-'} />
+          <Field label="Statut juridique" value={data.legalStatus || '-'} />
+          <div className="col-span-2">
+            <Field
+              label="Adresse"
+              value={
+                data.address
+                  ? `${data.address.street}, ${data.address.postalCode} ${data.address.city}`
+                  : '-'
+              }
+            />
+          </div>
+          <div className="col-span-2">
+            <Field label="Description" value={data.description || '-'} />
+          </div>
+          <Field label="Inscrite le" value={formatDate(data.createdAt)} />
           {data.rejectionReason && (
-            <div className="col-span-2 rounded bg-red-50 p-2 text-red-700">
+            <div className="col-span-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
               <b>Motif :</b> {data.rejectionReason}
             </div>
           )}
-        </CardBody>
+        </CardContent>
       </Card>
 
       <Card>
-        <CardHeader><h2 className="font-semibold">Membres ({data.members.length})</h2></CardHeader>
-        <CardBody className="p-0">
+        <CardHeader>
+          <CardTitle className="text-base">Membres ({data.members.length})</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
           {data.members.length === 0 ? (
-            <p className="p-4 text-sm text-slate-400">Aucun membre.</p>
+            <p className="p-4 text-sm text-muted-foreground">Aucun membre.</p>
           ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
-                <tr>
-                  <th className="px-4 py-2">Membre</th>
-                  <th className="px-4 py-2">Email</th>
-                  <th className="px-4 py-2">Rôle</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Membre</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Rôle</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {data.members.map((m, i) => (
-                  <tr key={i}>
-                    <td className="px-4 py-2 font-medium">
-                      <Link to={`/users/${m.user.id}`} className="text-brand-600 hover:underline">
+                  <TableRow key={i}>
+                    <TableCell className="font-medium">
+                      <Link
+                        to={`/users/${m.user.id}`}
+                        className="text-primary hover:underline"
+                      >
                         {m.user.firstName} {m.user.lastName}
                       </Link>
-                    </td>
-                    <td className="px-4 py-2 text-slate-600">{m.user.email}</td>
-                    <td className="px-4 py-2"><Badge>{m.role}</Badge></td>
-                  </tr>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{m.user.email}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{m.role}</Badge>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           )}
-        </CardBody>
+        </CardContent>
       </Card>
 
       <Card>
-        <CardHeader><h2 className="font-semibold">Missions ({data.missions.length})</h2></CardHeader>
-        <CardBody className="p-0">
+        <CardHeader>
+          <CardTitle className="text-base">Missions ({data.missions.length})</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
           {data.missions.length === 0 ? (
-            <p className="p-4 text-sm text-slate-400">Aucune mission.</p>
+            <p className="p-4 text-sm text-muted-foreground">Aucune mission.</p>
           ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
-                <tr>
-                  <th className="px-4 py-2">Titre</th>
-                  <th className="px-4 py-2">Type</th>
-                  <th className="px-4 py-2">Statut</th>
-                  <th className="px-4 py-2">Date début</th>
-                  <th className="px-4 py-2 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Titre</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead>Date début</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {data.missions.map((m) => (
-                  <tr key={m.id}>
-                    <td className="px-4 py-2 font-medium">{m.title}</td>
-                    <td className="px-4 py-2"><Badge>{fmtEnum(m.type, ACTIVITY_TYPE)}</Badge></td>
-                    <td className="px-4 py-2"><Badge color={statusColor(m.status)}>{m.status}</Badge></td>
-                    <td className="px-4 py-2 text-slate-600">{m.startDate ? formatDate(m.startDate) : '—'}</td>
-                    <td className="px-4 py-2 text-right">
+                  <TableRow key={m.id}>
+                    <TableCell className="font-medium">{m.title}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{fmtEnum(m.type, ACTIVITY_TYPE)}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={statusColor(m.status)}>{m.status}</Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {m.startDate ? formatDate(m.startDate) : '-'}
+                    </TableCell>
+                    <TableCell className="text-right">
                       <div className="flex justify-end gap-1.5">
-                        <Link to={`/missions/${m.id}`}>
-                          <Button size="sm" variant="outline">
-                            Détail
-                          </Button>
-                        </Link>
+                        <Button asChild size="sm" variant="outline">
+                          <Link to={`/missions/${m.id}`}>Détail</Link>
+                        </Button>
                         {m.status !== 'DELETED' && (
                           <Button
                             size="sm"
-                            variant="danger"
-                            onClick={() => setMissionToDelete({ id: m.id, title: m.title })}
+                            variant="destructive"
+                            onClick={() =>
+                              setMissionToDelete({ id: m.id, title: m.title })
+                            }
                           >
                             Supprimer
                           </Button>
                         )}
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           )}
-        </CardBody>
+        </CardContent>
       </Card>
 
       <Card>
-        <CardHeader><h2 className="font-semibold">Documents ({data.documents.length})</h2></CardHeader>
-        <CardBody className="space-y-4">
+        <CardHeader>
+          <CardTitle className="text-base">Documents ({data.documents.length})</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
           {data.documents.length === 0 ? (
-            <p className="text-sm text-slate-400">Aucun document fourni.</p>
+            <p className="text-sm text-muted-foreground">Aucun document fourni.</p>
           ) : (
             data.documents.map((d) => (
-              <div key={d.id} className="flex items-center justify-between border-b border-slate-100 py-2 last:border-0 text-sm">
+              <div
+                key={d.id}
+                className="flex items-center justify-between border-b py-2 text-sm last:border-0"
+              >
                 <div>
-                  <span className="font-medium text-slate-900">{fmtEnum(d.type, DOCUMENT_TYPE)}</span>{' '}
-                  <span className="text-slate-400">— {formatDate(d.createdAt)}</span>
+                  <span className="font-medium">{fmtEnum(d.type, DOCUMENT_TYPE)}</span>{' '}
+                  <span className="text-muted-foreground">- {formatDate(d.createdAt)}</span>
                 </div>
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline" onClick={() => openDocument(d.id)}>
@@ -303,7 +365,7 @@ export function AssociationDetailPage() {
                   </Button>
                   <Button
                     size="sm"
-                    variant="danger"
+                    variant="destructive"
                     disabled={deleteDoc.isPending}
                     onClick={() => {
                       if (window.confirm('Supprimer ce justificatif ?')) {
@@ -318,15 +380,15 @@ export function AssociationDetailPage() {
             ))
           )}
 
-          <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 p-3">
-            <p className="mb-2 text-sm font-medium text-slate-700">Déposer un justificatif reçu par email</p>
-            <p className="mb-3 text-xs text-slate-500">
-              L'association envoie ses pièces à <code>contact.giiveaway@gmail.com</code>. Téléversez-les ici pour qu'elles soient
-              archivées sur son profil.
+          <div className="rounded-md border border-dashed bg-muted/40 p-3">
+            <p className="mb-2 text-sm font-medium">Déposer un justificatif reçu par email</p>
+            <p className="mb-3 text-xs text-muted-foreground">
+              L&apos;association envoie ses pièces à <code>contact.giiveaway@gmail.com</code>.
+              Téléversez-les ici pour qu&apos;elles soient archivées sur son profil.
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <select
-                className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm"
+                className="flex h-9 items-center rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                 value={uploadType}
                 onChange={(e) => setUploadType(e.target.value as typeof uploadType)}
               >
@@ -339,24 +401,31 @@ export function AssociationDetailPage() {
                 type="file"
                 accept="application/pdf,image/jpeg,image/png,image/webp"
                 onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
-                className="text-sm"
+                className="text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-secondary-foreground"
               />
               <Button
                 size="sm"
                 disabled={!uploadFile || uploadDoc.isPending}
-                onClick={() => uploadFile && uploadDoc.mutate({ type: uploadType, file: uploadFile })}
+                onClick={() =>
+                  uploadFile && uploadDoc.mutate({ type: uploadType, file: uploadFile })
+                }
               >
                 Déposer
               </Button>
             </div>
           </div>
-        </CardBody>
+        </CardContent>
       </Card>
 
-      <Dialog open={suspendOpen} onClose={() => setSuspendOpen(false)} title="Suspendre l'association">
+      <Dialog
+        open={suspendOpen}
+        onClose={() => setSuspendOpen(false)}
+        title="Suspendre l'association"
+      >
         <div className="space-y-3">
-          <p className="text-sm text-slate-600">
-            La suspension archive automatiquement les missions actives. Un email sera envoyé au propriétaire.
+          <p className="text-sm text-muted-foreground">
+            La suspension archive automatiquement les missions actives. Un email sera envoyé au
+            propriétaire.
           </p>
           <Textarea
             placeholder="Motif de la suspension *"
@@ -364,9 +433,11 @@ export function AssociationDetailPage() {
             onChange={(e) => setSuspendReason(e.target.value)}
           />
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setSuspendOpen(false)}>Annuler</Button>
+            <Button variant="ghost" onClick={() => setSuspendOpen(false)}>
+              Annuler
+            </Button>
             <Button
-              variant="danger"
+              variant="destructive"
               disabled={!suspendReason.trim() || suspend.isPending}
               onClick={() => suspend.mutate(suspendReason.trim())}
             >
@@ -378,15 +449,19 @@ export function AssociationDetailPage() {
 
       <Dialog
         open={!!missionToDelete}
-        onClose={() => { setMissionToDelete(null); setMissionDeleteReason(''); }}
-        title={`Supprimer la mission`}
+        onClose={() => {
+          setMissionToDelete(null);
+          setMissionDeleteReason('');
+        }}
+        title="Supprimer la mission"
       >
         <div className="space-y-3">
-          <p className="text-sm text-slate-600">
-            Mission : <b>{missionToDelete?.title}</b>
+          <p className="text-sm text-muted-foreground">
+            Mission : <b className="text-foreground">{missionToDelete?.title}</b>
           </p>
-          <p className="text-sm text-red-600">
-            Les participants seront notifiés par email. Action réservée aux missions non conformes.
+          <p className="text-sm font-medium text-destructive">
+            Les participants seront notifiés par email. Action réservée aux missions non
+            conformes.
           </p>
           <Textarea
             placeholder="Motif (optionnel)"
@@ -394,9 +469,11 @@ export function AssociationDetailPage() {
             onChange={(e) => setMissionDeleteReason(e.target.value)}
           />
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setMissionToDelete(null)}>Annuler</Button>
+            <Button variant="ghost" onClick={() => setMissionToDelete(null)}>
+              Annuler
+            </Button>
             <Button
-              variant="danger"
+              variant="destructive"
               disabled={deleteMission.isPending}
               onClick={() =>
                 missionToDelete &&
@@ -414,32 +491,42 @@ export function AssociationDetailPage() {
 
       <Dialog
         open={purgeOpen}
-        onClose={() => { setPurgeOpen(false); setPurgeConfirm(''); }}
+        onClose={() => {
+          setPurgeOpen(false);
+          setPurgeConfirm('');
+        }}
         title={`Supprimer définitivement ${data.name}`}
       >
         <div className="space-y-3">
-          <p className="text-sm text-red-600">
+          <p className="text-sm font-medium text-destructive">
             ⚠️ Cette action est <b>irréversible</b>.
           </p>
-          <ul className="list-disc pl-5 text-sm text-slate-600 space-y-1">
-            <li>L'association, ses justificatifs, ses missions et ses membres sont supprimés.</li>
-            <li>Le compte du propriétaire <b>reste actif en tant que bénévole</b> classique.</li>
+          <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+            <li>
+              L&apos;association, ses justificatifs, ses missions et ses membres sont supprimés.
+            </li>
+            <li>
+              Le compte du propriétaire <b>reste actif en tant que bénévole</b> classique.
+            </li>
             <li>Un email de notification lui sera envoyé.</li>
           </ul>
-          <p className="text-sm text-slate-600">
-            Tapez <code className="bg-slate-100 px-2 py-0.5 rounded">SUPPRIMER</code> pour confirmer :
+          <p className="text-sm text-muted-foreground">
+            Tapez <code className="rounded bg-muted px-2 py-0.5 font-mono">SUPPRIMER</code> pour
+            confirmer :
           </p>
-          <input
-            className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-            value={purgeConfirm}
-            onChange={(e) => setPurgeConfirm(e.target.value)}
-          />
+          <Input value={purgeConfirm} onChange={(e) => setPurgeConfirm(e.target.value)} />
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => { setPurgeOpen(false); setPurgeConfirm(''); }}>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setPurgeOpen(false);
+                setPurgeConfirm('');
+              }}
+            >
               Annuler
             </Button>
             <Button
-              variant="danger"
+              variant="destructive"
               disabled={purgeConfirm !== 'SUPPRIMER' || purge.isPending}
               onClick={() => purge.mutate()}
             >

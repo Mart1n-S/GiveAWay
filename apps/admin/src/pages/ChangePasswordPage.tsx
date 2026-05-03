@@ -6,9 +6,12 @@ import { Check, Eye, EyeOff, X } from 'lucide-react';
 import { changePassword, me } from '@/services/auth.service';
 import { useAuthStore } from '@/stores/auth.store';
 import { Button } from '@/components/ui/button';
-import { Card, CardBody, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { FieldError } from '@/components/ui/field-error';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { cn } from '@/lib/utils';
 import { parseApiError, type FieldErrors } from '@/lib/errors';
 
 interface FormState {
@@ -31,6 +34,54 @@ const rules: Rule[] = [
   { label: 'Un caractère spécial', test: (v) => /[^A-Za-z0-9]/.test(v) },
 ];
 
+const errInput = (hasErr: boolean) =>
+  cn('pr-10', hasErr && 'border-destructive focus-visible:ring-destructive');
+
+interface PasswordFieldProps {
+  label: string;
+  value: string;
+  show: boolean;
+  onToggle: () => void;
+  onChange: (v: string) => void;
+  error?: string;
+  autoComplete?: string;
+}
+
+function PasswordField({
+  label,
+  value,
+  show,
+  onToggle,
+  onChange,
+  error,
+  autoComplete,
+}: PasswordFieldProps) {
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      <div className="relative">
+        <Input
+          type={show ? 'text' : 'password'}
+          value={value}
+          aria-invalid={!!error}
+          className={errInput(!!error)}
+          onChange={(e) => onChange(e.target.value)}
+          autoComplete={autoComplete}
+        />
+        <button
+          type="button"
+          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
+          onClick={onToggle}
+          title={show ? 'Masquer' : 'Afficher'}
+        >
+          {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </button>
+      </div>
+      <FieldError message={error} />
+    </div>
+  );
+}
+
 export function ChangePasswordPage() {
   const navigate = useNavigate();
   const setAdmin = useAuthStore((s) => s.set);
@@ -45,8 +96,13 @@ export function ChangePasswordPage() {
     const failed = rules.filter((r) => !r.test(form.newPassword));
     if (failed.length > 0) errs.newPassword = failed[0].label;
     if (!form.confirmPassword) errs.confirmPassword = 'Confirmation requise';
-    else if (form.newPassword !== form.confirmPassword) errs.confirmPassword = 'Les mots de passe ne correspondent pas';
-    if (form.currentPassword && form.newPassword && form.currentPassword === form.newPassword) {
+    else if (form.newPassword !== form.confirmPassword)
+      errs.confirmPassword = 'Les mots de passe ne correspondent pas';
+    if (
+      form.currentPassword &&
+      form.newPassword &&
+      form.currentPassword === form.newPassword
+    ) {
       errs.newPassword = "Le nouveau mot de passe doit être différent de l'actuel";
     }
     return errs;
@@ -63,7 +119,6 @@ export function ChangePasswordPage() {
   const mutation = useMutation({
     mutationFn: async () => {
       await changePassword(form.currentPassword, form.newPassword);
-      // Refresh /me pour synchroniser mustChangePassword côté store
       const fresh = await me();
       setAdmin(fresh);
     },
@@ -74,7 +129,10 @@ export function ChangePasswordPage() {
       navigate('/dashboard');
     },
     onError: (err) => {
-      const { fieldErrors, generalMessage } = parseApiError(err, 'Échec du changement de mot de passe');
+      const { fieldErrors, generalMessage } = parseApiError(
+        err,
+        'Échec du changement de mot de passe',
+      );
       setErrors(fieldErrors);
       toast.error(generalMessage);
     },
@@ -95,68 +153,54 @@ export function ChangePasswordPage() {
   return (
     <div className="mx-auto max-w-xl space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Changer mon mot de passe</h1>
-        <p className="text-sm text-slate-500">
-          Pour des raisons de sécurité, choisissez un mot de passe robuste et distinct de l'ancien.
+        <h1 className="text-2xl font-bold tracking-tight">Changer mon mot de passe</h1>
+        <p className="text-sm text-muted-foreground">
+          Pour des raisons de sécurité, choisissez un mot de passe robuste et distinct de
+          l&apos;ancien.
         </p>
       </div>
 
       {mustChange && (
-        <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-          <b>Action requise :</b> votre mot de passe a été (ré)initialisé par un administrateur.
-          Vous devez le changer avant de pouvoir accéder aux autres pages.
-        </div>
+        <Alert>
+          <AlertTitle>Action requise</AlertTitle>
+          <AlertDescription>
+            Votre mot de passe a été (ré)initialisé par un administrateur. Vous devez le changer
+            avant de pouvoir accéder aux autres pages.
+          </AlertDescription>
+        </Alert>
       )}
 
       <Card>
         <CardHeader>
-          <h2 className="font-semibold text-slate-900">Sécurité du compte</h2>
+          <CardTitle className="text-base">Sécurité du compte</CardTitle>
         </CardHeader>
-        <CardBody className="space-y-4">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700">Mot de passe actuel *</label>
-            <div className="relative">
-              <Input
-                type={show.current ? 'text' : 'password'}
-                value={form.currentPassword}
-                aria-invalid={!!errors.currentPassword}
-                className={errors.currentPassword ? 'border-red-500 focus:ring-red-500 pr-10' : 'pr-10'}
-                onChange={(e) => { setForm({ ...form, currentPassword: e.target.value }); clearErr('currentPassword'); }}
-                autoComplete="current-password"
-              />
-              <button
-                type="button"
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-slate-700"
-                onClick={() => setShow({ ...show, current: !show.current })}
-                title={show.current ? 'Masquer' : 'Afficher'}
-              >
-                {show.current ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-            <FieldError message={errors.currentPassword} />
-          </div>
+        <CardContent className="space-y-4">
+          <PasswordField
+            label="Mot de passe actuel *"
+            value={form.currentPassword}
+            show={show.current}
+            onToggle={() => setShow({ ...show, current: !show.current })}
+            onChange={(v) => {
+              setForm({ ...form, currentPassword: v });
+              clearErr('currentPassword');
+            }}
+            error={errors.currentPassword}
+            autoComplete="current-password"
+          />
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700">Nouveau mot de passe *</label>
-            <div className="relative">
-              <Input
-                type={show.next ? 'text' : 'password'}
-                value={form.newPassword}
-                aria-invalid={!!errors.newPassword}
-                className={errors.newPassword ? 'border-red-500 focus:ring-red-500 pr-10' : 'pr-10'}
-                onChange={(e) => { setForm({ ...form, newPassword: e.target.value }); clearErr('newPassword'); }}
-                autoComplete="new-password"
-              />
-              <button
-                type="button"
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-slate-700"
-                onClick={() => setShow({ ...show, next: !show.next })}
-                title={show.next ? 'Masquer' : 'Afficher'}
-              >
-                {show.next ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-            <FieldError message={errors.newPassword} />
+            <PasswordField
+              label="Nouveau mot de passe *"
+              value={form.newPassword}
+              show={show.next}
+              onToggle={() => setShow({ ...show, next: !show.next })}
+              onChange={(v) => {
+                setForm({ ...form, newPassword: v });
+                clearErr('newPassword');
+              }}
+              error={errors.newPassword}
+              autoComplete="new-password"
+            />
 
             {form.newPassword.length > 0 && (
               <div className="mt-2 space-y-2">
@@ -164,15 +208,16 @@ export function ChangePasswordPage() {
                   {[1, 2, 3, 4, 5].map((i) => (
                     <div
                       key={i}
-                      className={`h-1.5 flex-1 rounded-full ${
+                      className={cn(
+                        'h-1.5 flex-1 rounded-full',
                         passwordStrength >= i
                           ? passwordStrength <= 2
                             ? 'bg-red-400'
                             : passwordStrength <= 4
-                            ? 'bg-amber-400'
-                            : 'bg-green-500'
-                          : 'bg-slate-200'
-                      }`}
+                              ? 'bg-amber-400'
+                              : 'bg-emerald-500'
+                          : 'bg-muted',
+                      )}
                     />
                   ))}
                 </div>
@@ -182,9 +227,14 @@ export function ChangePasswordPage() {
                     return (
                       <li
                         key={r.label}
-                        className={`flex items-center gap-1.5 ${ok ? 'text-green-600' : 'text-slate-500'}`}
+                        className={cn(
+                          'flex items-center gap-1.5',
+                          ok
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : 'text-muted-foreground',
+                        )}
                       >
-                        {ok ? <Check size={12} /> : <X size={12} />}
+                        {ok ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
                         {r.label}
                       </li>
                     );
@@ -194,36 +244,28 @@ export function ChangePasswordPage() {
             )}
           </div>
 
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700">Confirmer le nouveau mot de passe *</label>
-            <div className="relative">
-              <Input
-                type={show.confirm ? 'text' : 'password'}
-                value={form.confirmPassword}
-                aria-invalid={!!errors.confirmPassword}
-                className={errors.confirmPassword ? 'border-red-500 focus:ring-red-500 pr-10' : 'pr-10'}
-                onChange={(e) => { setForm({ ...form, confirmPassword: e.target.value }); clearErr('confirmPassword'); }}
-                autoComplete="new-password"
-              />
-              <button
-                type="button"
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-slate-700"
-                onClick={() => setShow({ ...show, confirm: !show.confirm })}
-                title={show.confirm ? 'Masquer' : 'Afficher'}
-              >
-                {show.confirm ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-            <FieldError message={errors.confirmPassword} />
-          </div>
+          <PasswordField
+            label="Confirmer le nouveau mot de passe *"
+            value={form.confirmPassword}
+            show={show.confirm}
+            onToggle={() => setShow({ ...show, confirm: !show.confirm })}
+            onChange={(v) => {
+              setForm({ ...form, confirmPassword: v });
+              clearErr('confirmPassword');
+            }}
+            error={errors.confirmPassword}
+            autoComplete="new-password"
+          />
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="ghost" onClick={() => navigate(-1)}>Annuler</Button>
+            <Button variant="ghost" onClick={() => navigate(-1)}>
+              Annuler
+            </Button>
             <Button disabled={mutation.isPending} onClick={submit}>
               {mutation.isPending ? 'Enregistrement…' : 'Mettre à jour'}
             </Button>
           </div>
-        </CardBody>
+        </CardContent>
       </Card>
     </div>
   );

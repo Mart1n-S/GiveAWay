@@ -327,7 +327,7 @@ export default function RegisterAssociationScreen() {
           ? "Inscription enregistrée"
           : "Inscription réussie",
         text2: response.requiresManualReview
-          ? "Votre inscription est bien enregistrée. Un email de vérification vous a été envoyé. Votre association nécessite également une vérification manuelle par notre équipe — vous pourrez accéder aux services GiveAWay en attendant, mais la gestion de votre association sera disponible après validation."
+          ? "Votre inscription est bien enregistrée. Un email de vérification vous a été envoyé. Votre association nécessite également une vérification manuelle par notre équipe - vous pourrez accéder aux services GiveAWay en attendant, mais la gestion de votre association sera disponible après validation."
           : `Un code de vérification a été envoyé à ${data.email}`,
         visibilityTime: response.requiresManualReview ? 15000 : 10000,
         onPress: () => Toast.hide(),

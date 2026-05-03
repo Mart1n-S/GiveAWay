@@ -2,11 +2,19 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { AssociationsService } from '@/services/associations.service';
-import { Card, CardBody, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge, statusColor } from '@/components/ui/badge';
 import { Dialog } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { formatDate } from '@/lib/utils';
 import { DOCUMENT_TYPE } from '@/lib/labels';
 
@@ -40,11 +48,12 @@ export function AssociationsPendingPage() {
       toast.success('Association validée');
       qc.invalidateQueries({ queryKey: ['assos-pending'] });
     },
-    onError: () => toast.error("Échec de la validation"),
+    onError: () => toast.error('Échec de la validation'),
   });
 
   const reject = useMutation({
-    mutationFn: ({ id, reason }: { id: number; reason: string }) => AssociationsService.reject(id, reason),
+    mutationFn: ({ id, reason }: { id: number; reason: string }) =>
+      AssociationsService.reject(id, reason),
     onSuccess: () => {
       toast.success('Association refusée');
       setActionType(null);
@@ -72,47 +81,63 @@ export function AssociationsPendingPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-slate-900">Associations en attente</h1>
+      <h1 className="text-2xl font-bold tracking-tight">Associations en attente</h1>
 
       <Card>
-        <CardHeader>
-          <p className="text-sm text-slate-500">
+        <CardHeader className="py-4">
+          <p className="text-sm text-muted-foreground">
             {data?.total ?? 0} association(s) à examiner
           </p>
         </CardHeader>
-        <CardBody className="p-0">
+        <CardContent className="p-0">
           {isLoading ? (
-            <div className="p-6 text-slate-400">Chargement…</div>
+            <div className="p-6 text-muted-foreground">Chargement…</div>
           ) : items.length === 0 ? (
-            <div className="p-6 text-slate-400">Aucune association en attente.</div>
+            <div className="p-6 text-muted-foreground">Aucune association en attente.</div>
           ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
-                <tr>
-                  <th className="px-4 py-2">Nom</th>
-                  <th className="px-4 py-2">SIRET / RNA</th>
-                  <th className="px-4 py-2">Ville</th>
-                  <th className="px-4 py-2">Owner</th>
-                  <th className="px-4 py-2">Inscrite le</th>
-                  <th className="px-4 py-2">Statut</th>
-                  <th className="px-4 py-2 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nom</TableHead>
+                  <TableHead>SIRET / RNA</TableHead>
+                  <TableHead>Ville</TableHead>
+                  <TableHead>Owner</TableHead>
+                  <TableHead>Inscrite le</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {items.map((a) => (
-                  <tr key={a.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 font-medium text-slate-900">{a.name}</td>
-                    <td className="px-4 py-3 text-slate-600">{a.siret || a.rna || '—'}</td>
-                    <td className="px-4 py-3 text-slate-600">{a.address?.city || '—'}</td>
-                    <td className="px-4 py-3 text-slate-600">{a.members?.[0]?.user.email || '—'}</td>
-                    <td className="px-4 py-3 text-slate-600">{formatDate(a.createdAt)}</td>
-                    <td className="px-4 py-3">
-                      <Badge color={statusColor(a.status)}>{a.status}</Badge>
-                      {a.requiresManualReview && <Badge color="amber" className="ml-2">manuel</Badge>}
-                    </td>
-                    <td className="px-4 py-3 text-right">
+                  <TableRow key={a.id}>
+                    <TableCell className="font-medium">{a.name}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {a.siret || a.rna || '-'}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {a.address?.city || '-'}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {a.members?.[0]?.user.email || '-'}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatDate(a.createdAt)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={statusColor(a.status)}>{a.status}</Badge>
+                      {a.requiresManualReview && (
+                        <Badge variant="warning" className="ml-2">
+                          manuel
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button size="sm" onClick={() => validate.mutate(a.id)} disabled={validate.isPending}>
+                        <Button
+                          size="sm"
+                          onClick={() => validate.mutate(a.id)}
+                          disabled={validate.isPending}
+                        >
                           Valider
                         </Button>
                         <Button
@@ -127,7 +152,7 @@ export function AssociationsPendingPage() {
                         </Button>
                         <Button
                           size="sm"
-                          variant="danger"
+                          variant="destructive"
                           onClick={() => {
                             setSelected(a);
                             setActionType('reject');
@@ -136,13 +161,13 @@ export function AssociationsPendingPage() {
                           Refuser
                         </Button>
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           )}
-        </CardBody>
+        </CardContent>
       </Card>
 
       <Dialog
@@ -155,14 +180,26 @@ export function AssociationsPendingPage() {
         title={`Refuser ${selected?.name}`}
       >
         <div className="space-y-3">
-          <p className="text-sm text-slate-600">Précisez le motif du refus (envoyé par email à l'association).</p>
-          <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Motif (10 caractères min)" />
+          <p className="text-sm text-muted-foreground">
+            Précisez le motif du refus (envoyé par email à l&apos;association).
+          </p>
+          <Textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Motif (10 caractères min)"
+          />
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => { setActionType(null); setSelected(null); }}>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setActionType(null);
+                setSelected(null);
+              }}
+            >
               Annuler
             </Button>
             <Button
-              variant="danger"
+              variant="destructive"
               disabled={reason.trim().length < 10 || reject.isPending}
               onClick={() => selected && reject.mutate({ id: selected.id, reason })}
             >
@@ -180,32 +217,52 @@ export function AssociationsPendingPage() {
           setDocTypes([]);
           setReason('');
         }}
-        title={`Justificatifs — ${selected?.name}`}
+        title={`Justificatifs - ${selected?.name}`}
       >
         <div className="space-y-3">
-          <p className="text-sm text-slate-600">Sélectionnez les pièces demandées :</p>
+          <p className="text-sm text-muted-foreground">Sélectionnez les pièces demandées :</p>
           <div className="space-y-2">
             {(['STATUTS', 'RNA_ATTESTATION', 'OFFICE_PROOF'] as const).map((t) => (
               <label key={t} className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
+                  className="h-4 w-4 rounded border-input accent-primary"
                   checked={docTypes.includes(t)}
                   onChange={(e) =>
-                    setDocTypes((prev) => (e.target.checked ? [...prev, t] : prev.filter((x) => x !== t)))
+                    setDocTypes((prev) =>
+                      e.target.checked ? [...prev, t] : prev.filter((x) => x !== t),
+                    )
                   }
                 />
                 {DOCUMENT_TYPE[t]}
               </label>
             ))}
           </div>
-          <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Message optionnel à l'association" />
+          <Textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Message optionnel à l'association"
+          />
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => { setActionType(null); setSelected(null); }}>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setActionType(null);
+                setSelected(null);
+              }}
+            >
               Annuler
             </Button>
             <Button
               disabled={docTypes.length === 0 || requestDocs.isPending}
-              onClick={() => selected && requestDocs.mutate({ id: selected.id, types: docTypes, message: reason || undefined })}
+              onClick={() =>
+                selected &&
+                requestDocs.mutate({
+                  id: selected.id,
+                  types: docTypes,
+                  message: reason || undefined,
+                })
+              }
             >
               Envoyer
             </Button>

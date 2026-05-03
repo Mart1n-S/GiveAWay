@@ -41,12 +41,8 @@ test.describe('DashboardPage', () => {
   });
 
   test('déconnexion → redirige vers /login', async ({ page }) => {
-    const logout = page.getByRole('button', { name: /déconnexion|se déconnecter/i });
-    if ((await logout.count()) > 0) {
-      await logout.first().click();
-      await expect(page).toHaveURL(/\/login$/);
-    } else {
-      test.skip(true, 'Bouton de déconnexion non trouvé sur la sidebar');
-    }
+    await page.getByRole('button', { name: /menu utilisateur/i }).click();
+    await page.getByRole('menuitem', { name: /déconnexion/i }).click();
+    await expect(page).toHaveURL(/\/login$/);
   });
 });
