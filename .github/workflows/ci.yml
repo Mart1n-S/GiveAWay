@@ -210,7 +210,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       # Lance les serveurs et exécute les scénarios de tests E2E mobiles
-      - name: Run Playwright Tests
+      - name: Run Playwright Tests (mobile)
         run: npx playwright test --config=apps/mobile/playwright.config.ts --project=chromium
         env:
           EXPO_ROUTER_APP_ROOT: "app"
@@ -218,14 +218,27 @@ jobs:
           USE_DETERMINISTIC_OTP: "true"
           EXPO_PUBLIC_API_URL: "http://localhost:3000"
           EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: "fake-client-id-for-ci"
-          
+
       # Sauvegarde les captures d'écran et vidéos en cas d'échec des tests
-      - name: Upload Playwright Report
+      - name: Upload Playwright Report (mobile)
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-mobile
           path: apps/mobile/playwright-report/
+          retention-days: 7
+
+      # Reset + seed de la DB de test puis exécute les tests E2E admin.
+      # Le webServer du playwright.config admin démarre l'API + Vite.
+      - name: Run Playwright Tests (admin)
+        run: npm run test:e2e --workspace=apps/admin
+
+      - name: Upload Playwright Report (admin)
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-admin
+          path: apps/admin/playwright-report/
           retention-days: 7
 
   # Job 4 : Analyse globale de la qualité et de la sécurité (SonarCloud)

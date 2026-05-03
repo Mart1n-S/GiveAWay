@@ -189,6 +189,16 @@ async function main() {
       },
     });
 
+    await tx.admin.create({
+      data: {
+        email: 'admin@gmail.com',
+        password: passwordHash,
+        firstName: 'Martin',
+        lastName: 'Simon',
+        role: AdminRole.SUPER_ADMIN,
+      },
+    });
+
     // =========================================================================
     // 3. Utilisateurs
     // =========================================================================

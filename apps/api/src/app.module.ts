@@ -13,6 +13,7 @@ import { FilesModule } from './common/files/files.module';
 import { ReferenceModule } from './reference/reference.module';
 import { MissionModule } from './mission/mission.module';
 import { AssociationModule } from './association/association.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { AssociationModule } from './association/association.module';
     ReferenceModule, // Endpoints de référence (compétences, causes, etc.)
     AssociationModule, // Gestion des associations (profil, membres, transfert, recherche par géolocalisation)
     MissionModule, // Listing des missions (route publique)
+    AdminModule, // Back-office d'administration (auth, modération, CRUD, stats)
   ],
   controllers: [],
   providers: [

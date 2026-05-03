@@ -470,6 +470,229 @@ export class MailService {
     );
   }
 
+  // ============================================================
+  // ===== ADMIN — Validation associations / users / admins =====
+  // ============================================================
+
+  private getSimpleTemplate(title: string, body: string): string {
+    const content = `
+      <h1 style="margin: 0 0 16px 0; color: #1e293b; font-size: 22px; font-weight: 700; text-align: center;">${title}</h1>
+      <div style="text-align: center; margin-bottom: 24px;">${body}</div>
+    `;
+    return this.getEmailWrapper(content);
+  }
+
+  private isLogMode(): boolean {
+    return (
+      this.config.get('NODE_ENV') === 'test' ||
+      this.config.get('USE_DETERMINISTIC_OTP') === 'true'
+    );
+  }
+
+  async sendAssociationValidatedEmail(email: string, associationName: string) {
+    if (this.isLogMode()) {
+      console.log(
+        `\n📨 [MAIL] Association validée — ${associationName} → ${email}\n`,
+      );
+      return;
+    }
+    const html = this.getSimpleTemplate(
+      'Votre association a été validée ! 🎉',
+      `<p>Bonjour,</p><p>L'association <b>${associationName}</b> vient d'être validée par notre équipe. Vous pouvez désormais publier vos missions sur GiveAWay.</p>`,
+    );
+    return this.sendApiEmail(
+      email,
+      `Votre association ${associationName} est validée`,
+      html,
+    );
+  }
+
+  async sendAssociationRejectedEmail(
+    email: string,
+    associationName: string,
+    reason: string,
+  ) {
+    if (this.isLogMode()) {
+      console.log(
+        `\n📨 [MAIL] Association refusée — ${associationName} → ${email} | raison: ${reason}\n`,
+      );
+      return;
+    }
+    const html = this.getSimpleTemplate(
+      'Inscription refusée',
+      `<p>Bonjour,</p>
+       <p>Après examen, l'inscription de l'association <b>${associationName}</b> n'a pas pu être validée pour le moment.</p>
+       <p><b>Motif :</b> ${reason}</p>
+       <p>Notre équipe peut être amenée à reconsidérer votre demande. N'hésitez pas à nous contacter si vous souhaitez en discuter ou compléter votre dossier.</p>`,
+    );
+    return this.sendApiEmail(
+      email,
+      `Inscription refusée — ${associationName}`,
+      html,
+    );
+  }
+
+  async sendAssociationPurgedEmail(
+    email: string,
+    associationName: string,
+    reason: string,
+  ) {
+    if (this.isLogMode()) {
+      console.log(
+        `\n📨 [MAIL] Association supprimée définitivement — ${associationName} → ${email}\n`,
+      );
+      return;
+    }
+    const html = this.getSimpleTemplate(
+      'Compte association supprimé',
+      `<p>Bonjour,</p>
+       <p>La fiche de l'association <b>${associationName}</b> a été supprimée définitivement de notre plateforme, ainsi que les justificatifs transmis.</p>
+       ${reason ? `<p><b>Motif initial du refus :</b> ${reason}</p>` : ''}
+       <p>Votre compte personnel <b>reste actif en tant que bénévole</b> : vous pouvez continuer à parcourir les missions proposées par les associations partenaires et y participer.</p>
+       <p>Si vous pensez qu'il y a une erreur ou si vous souhaitez recréer une association, vous pouvez nous contacter ou soumettre une nouvelle demande d'inscription.</p>`,
+    );
+    return this.sendApiEmail(email, `Suppression de ${associationName}`, html);
+  }
+
+  async sendAssociationSuspendedEmail(
+    email: string,
+    associationName: string,
+    reason: string,
+  ) {
+    if (this.isLogMode()) {
+      console.log(
+        `\n📨 [MAIL] Association suspendue — ${associationName} → ${email} | raison: ${reason}\n`,
+      );
+      return;
+    }
+    const html = this.getSimpleTemplate(
+      'Compte association suspendu',
+      `<p>L'association <b>${associationName}</b> a été suspendue temporairement.</p><p><b>Motif :</b> ${reason}</p>`,
+    );
+    return this.sendApiEmail(email, `Suspension de ${associationName}`, html);
+  }
+
+  async sendAssociationDocumentsRequestEmail(
+    email: string,
+    associationName: string,
+    types: string[],
+    message: string | undefined,
+    contactEmail: string,
+  ) {
+    if (this.isLogMode()) {
+      console.log(
+        `\n📨 [MAIL] Demande justificatifs — ${associationName} → ${email} | types: ${types.join(',')} | contact: ${contactEmail}\n`,
+      );
+      return;
+    }
+    const labels: Record<string, string> = {
+      STATUTS: "Statuts de l'association",
+      RNA_ATTESTATION: 'Attestation RNA / récépissé préfecture',
+      OFFICE_PROOF: 'Justificatif de siège (bail, attestation, etc.)',
+    };
+    const list = types.map((t) => `<li>${labels[t] ?? t}</li>`).join('');
+    const subject = `justificatifs association - ${associationName}`;
+    const html = this.getSimpleTemplate(
+      'Justificatifs demandés',
+      `<p>Bonjour,</p>
+       <p>Pour valider l'association <b>${associationName}</b>, merci de nous faire parvenir les pièces justificatives suivantes :</p>
+       <ul>${list}</ul>
+       ${message ? `<p><b>Note de l'administrateur :</b> ${message}</p>` : ''}
+       <p>Merci d'envoyer ces documents en pièce jointe à l'adresse <b><a href="mailto:${contactEmail}">${contactEmail}</a></b> en utilisant <b>exactement</b> l'objet suivant&nbsp;:</p>
+       <p style="background:#fff7ed;border:1px dashed #fb923c;border-radius:8px;padding:12px;font-family:monospace;text-align:center;">${subject}</p>
+       <p>Pensez à lister dans le corps du message les fichiers fournis (un par ligne) afin de faciliter le traitement.</p>
+       <p>Une fois reçus et vérifiés, vos justificatifs seront déposés sur votre profil et notre équipe finalisera la validation de votre association.</p>`,
+    );
+    return this.sendApiEmail(
+      email,
+      `Justificatifs demandés — ${associationName}`,
+      html,
+    );
+  }
+
+  async sendMissionCancelledEmail(
+    email: string,
+    userName: string,
+    missionTitle: string,
+    associationName: string,
+    reason: string,
+  ) {
+    if (this.isLogMode()) {
+      console.log(
+        `\n📨 [MAIL] Mission annulée (suppression asso) — ${missionTitle} → ${email}\n`,
+      );
+      return;
+    }
+    const html = this.getSimpleTemplate(
+      'Mission annulée',
+      `<p>Bonjour ${userName},</p><p>La mission <b>${missionTitle}</b> à laquelle vous étiez inscrit n'aura pas lieu (${reason}).</p><p>L'association <b>${associationName}</b> n'est plus présente sur la plateforme.</p>`,
+    );
+    return this.sendApiEmail(email, `Mission "${missionTitle}" annulée`, html);
+  }
+
+  async sendAdminInvitationEmail(
+    email: string,
+    firstName: string,
+    tempPassword: string,
+    loginUrl: string,
+  ) {
+    if (this.isLogMode()) {
+      console.log(
+        `\n📨 [MAIL] Invitation admin — ${email} | password: ${tempPassword}\n`,
+      );
+      return;
+    }
+    const html = this.getSimpleTemplate(
+      'Bienvenue dans la team admin GiveAWay',
+      `<p>Bonjour ${firstName},</p><p>Un compte admin vient d'être créé pour vous.</p><p><b>Identifiant :</b> ${email}<br/><b>Mot de passe temporaire :</b> <code style="background:#fff7ed;padding:4px 8px;border-radius:6px;">${tempPassword}</code></p><p>Connectez-vous et changez ce mot de passe immédiatement.</p><p><a href="${loginUrl}" style="background:#cc460f;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;">Se connecter</a></p>`,
+    );
+    return this.sendApiEmail(email, 'Votre compte admin GiveAWay', html);
+  }
+
+  async sendAdminPasswordResetEmail(
+    email: string,
+    firstName: string,
+    tempPassword: string,
+  ) {
+    if (this.isLogMode()) {
+      console.log(
+        `\n📨 [MAIL] Reset password admin — ${email} | password: ${tempPassword}\n`,
+      );
+      return;
+    }
+    const html = this.getSimpleTemplate(
+      'Réinitialisation de votre mot de passe admin',
+      `<p>Bonjour ${firstName},</p><p>Votre mot de passe admin a été réinitialisé.</p><p><b>Nouveau mot de passe temporaire :</b> <code style="background:#fff7ed;padding:4px 8px;border-radius:6px;">${tempPassword}</code></p><p>Vous serez invité à le changer à votre prochaine connexion.</p>`,
+    );
+    return this.sendApiEmail(email, 'Mot de passe admin réinitialisé', html);
+  }
+
+  async sendUserCreatedByAdminEmail(
+    email: string,
+    firstName: string,
+    tempPassword: string,
+  ) {
+    if (this.isLogMode()) {
+      console.log(
+        `\n📨 [MAIL] User créé par admin — ${email} | password: ${tempPassword}\n`,
+      );
+      return;
+    }
+    const html = this.getSimpleTemplate(
+      'Votre compte GiveAWay',
+      `<p>Bonjour ${firstName},</p>
+       <p>Un compte vient d'être créé pour vous sur <b>GiveAWay</b> par un administrateur.</p>
+       <p><b>Votre mot de passe temporaire :</b> <code style="background:#fff7ed;padding:6px 10px;border-radius:6px;font-size:15px;">${tempPassword}</code></p>
+       <p>Pour des raisons de sécurité, ce mot de passe est <b>temporaire</b>. Dès votre première connexion, nous vous invitons à :</p>
+       <ol>
+         <li><b>Changer votre mot de passe</b> depuis la page « Mot de passe oublié » ou les paramètres de votre profil.</li>
+         <li><b>Compléter votre profil</b> (compétences, causes, disponibilités, photo) pour recevoir des recommandations de missions adaptées.</li>
+       </ol>
+       <p>À très vite sur GiveAWay 🧡</p>`,
+    );
+    return this.sendApiEmail(email, 'Bienvenue sur GiveAWay 🧡', html);
+  }
+
   async sendPasswordResetEmail(email: string, token: string) {
     if (
       this.config.get('NODE_ENV') === 'test' ||

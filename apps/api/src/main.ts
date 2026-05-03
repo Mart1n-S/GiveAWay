@@ -10,8 +10,15 @@ async function bootstrap() {
 
   app.use(cookieParser());
 
+  // En prod, restreindre aux domaines connus (mobile + admin).
+  // En dev, on autorise toutes les origines pour faciliter Expo Web/Native.
+  const isProd = process.env.NODE_ENV === 'production';
+  const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS.split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+
   app.enableCors({
-    origin: true, // Accepte toutes les origines en dev (TODO: à restreindre en prod)
+    origin: isProd ? allowedOrigins : true,
     credentials: true, // Autorise les cookies/headers sécurisés
   });
 
