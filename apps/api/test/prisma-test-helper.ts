@@ -28,11 +28,19 @@ export async function cleanDatabase() {
   // L'ordre suppression : Enfants (Tokens, AssociationUser via cascade) puis Parents (Users, Associations).
   // Les Associations ne sont pas FK'd vers User : il faut les supprimer explicitement
   // pour éviter les rangées orphelines entre tests (notamment d'inscription d'association).
+  const deleteMessages = prisma.message.deleteMany();
+  const deleteConversations = prisma.conversation.deleteMany();
   const deleteTokens = prisma.token.deleteMany();
   const deleteAssociations = prisma.association.deleteMany();
   const deleteUsers = prisma.user.deleteMany();
 
-  await prisma.$transaction([deleteTokens, deleteAssociations, deleteUsers]);
+  await prisma.$transaction([
+    deleteMessages,
+    deleteConversations,
+    deleteTokens,
+    deleteAssociations,
+    deleteUsers,
+  ]);
 }
 
 /**

@@ -10,6 +10,7 @@ import { WebNavBar, Logo } from "@/components/ui";
 import { PUBLIC_LINKS, USER_LINKS, AUTH_ROUTES } from "../../config/navigation";
 import { useAuthStore } from "../../stores/auth.store";
 import { useProfileStore } from "../../stores/profile.store";
+import { useMessageStore } from "../../stores/message.store";
 import { AuthService } from "../../services/auth.service";
 
 // --- ASSETS (Centralisés une seule fois ici) ---
@@ -24,6 +25,7 @@ import InfoIconSource from "../../../assets/icons/ic_info.svg";
 import HandHeartIconSource from "../../../assets/icons/ic_hand_heart.svg";
 import BuildingIconSource from "../../../assets/icons/ic_building.svg";
 import GestionIconSource from "../../../assets/icons/ic_gestion.svg";
+import MessageIconSource from "../../../assets/icons/ic_message.svg";
 
 // --- CONFIGURATION ICONES ---
 const iconConfig = {
@@ -45,6 +47,7 @@ export const InfoIcon = cssInterop(InfoIconSource, iconConfig);
 export const HandHeartIcon = cssInterop(HandHeartIconSource, iconConfig);
 export const BuildingIcon = cssInterop(BuildingIconSource, iconConfig);
 export const GestionIcon = cssInterop(GestionIconSource, iconConfig);
+export const MessageIcon = cssInterop(MessageIconSource, iconConfig);
 
 const getIcon = (name: string | undefined, className = "w-5 h-5") => {
   switch (name) {
@@ -63,7 +66,9 @@ const getIcon = (name: string | undefined, className = "w-5 h-5") => {
     case "building":
       return <BuildingIcon className={className} />;
     case "gestion":
-      return <GestionIcon className={className} />; 
+      return <GestionIcon className={className} />;
+    case "message":
+      return <MessageIcon className={className} />;
     default:
       return <InfoIcon className={className} />;
   }
@@ -86,6 +91,7 @@ export function AppShell({ children, layoutType = "main" }: AppShellProps) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const user = useAuthStore((state) => state.user);
   const profile = useProfileStore((state) => state.profile);
+  const unreadMessagesCount = useMessageStore((state) => state.unreadCount);
   const hasAssociation = (user?.associations?.length ?? 0) > 0;
 
   const handleLogout = async () => {
@@ -126,6 +132,9 @@ export function AppShell({ children, layoutType = "main" }: AppShellProps) {
         ...link,
         icon: getIcon(link.iconName),
         isActive: pathname === link.href || pathname === cleanHref,
+        ...(link.id === "messages"
+          ? { badgeCount: unreadMessagesCount }
+          : {}),
       };
     });
 

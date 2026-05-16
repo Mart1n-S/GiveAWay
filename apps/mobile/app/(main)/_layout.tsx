@@ -1,9 +1,18 @@
 import { Tabs, usePathname } from "expo-router";
-import { Platform } from "react-native";
+import { Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "@/components/ui";
-import { AppShell, HomeIcon, UserIcon, HandHeartIcon, BuildingIcon } from "@/components/layouts/AppShell";
+import {
+  AppShell,
+  HomeIcon,
+  UserIcon,
+  HandHeartIcon,
+  BuildingIcon,
+  MessageIcon,
+} from "@/components/layouts/AppShell";
 import { useAuthStore } from "@/stores/auth.store";
+import { useMessageStore } from "@/stores/message.store";
+import { useMessagingSocket } from "@/hooks/useMessagingSocket";
 
 function HomeTabIcon({ color }: { readonly color: string }) {
   return <HomeIcon className="w-7 h-7" color={color} />;
@@ -25,6 +34,32 @@ function AssociationsTabIcon({ color }: { readonly color: string }) {
   return <BuildingIcon className="w-7 h-7" color={color} />;
 }
 
+function MessagesTabIcon({ color }: { readonly color: string }) {
+  const hasUnread = useMessageStore((s) => s.unreadCount > 0);
+  return (
+    <View style={{ width: 28, height: 28 }}>
+      <MessageIcon className="w-7 h-7" color={color} />
+      {hasUnread && (
+        <View
+          testID="messages-tab-dot"
+          accessibilityLabel="Messages non lus"
+          style={{
+            position: "absolute",
+            top: -2,
+            right: -2,
+            width: 10,
+            height: 10,
+            borderRadius: 5,
+            backgroundColor: colors.primary.default,
+            borderWidth: 1.5,
+            borderColor: "white",
+          }}
+        />
+      )}
+    </View>
+  );
+}
+
 const MOBILE_SUBPAGE_ROUTES = new Set([
   "/association/modifier",
   "/association/membres",
@@ -41,6 +76,8 @@ function isMobileSubpageRoute(pathname: string): boolean {
   if (/^\/associations\/\d+/.test(pathname)) return true;
   // Toutes les sous-pages association/missions
   if (pathname.startsWith("/association/missions")) return true;
+  // Discussion individuelle : /messages/:id
+  if (/^\/messages\/\d+/.test(pathname)) return true;
   return false;
 }
 
@@ -49,6 +86,9 @@ export default function MainLayout() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const user = useAuthStore((state) => state.user);
   const pathname = usePathname();
+
+  // Branche la socket dès que l'utilisateur est connecté
+  useMessagingSocket();
 
   const isMobileSubpage =
     Platform.OS !== "web" && isMobileSubpageRoute(pathname);
@@ -112,6 +152,26 @@ export default function MainLayout() {
           }}
         />
 
+        {/* Onglet Messages (connecté uniquement)
+            La pastille de non-lus est rendue à l'intérieur de MessagesTabIcon
+            (overlay sur l'icône) pour ne montrer qu'un point, sans nombre.
+            popToTopOnBlur : quand on quitte l'onglet (ex : retour accueil),
+            le stack interne est ramené à la racine — on revient donc sur la
+            liste des conversations au prochain clic, plutôt que sur la
+            conversation précédemment ouverte. */}
+        {isAuthenticated ? (
+          <Tabs.Screen
+            name="messages"
+            options={{
+              title: "Messages",
+              tabBarIcon: MessagesTabIcon,
+              popToTopOnBlur: true,
+            }}
+          />
+        ) : (
+          <Tabs.Screen name="messages" options={{ href: null }} />
+        )}
+
         {/* Onglet Profil (connecté uniquement) */}
         {isAuthenticated ? (
           <Tabs.Screen
@@ -122,7 +182,7 @@ export default function MainLayout() {
             }}
           />
         ) : (
-          /* Optionnel : On peut cacher explicitement l'onglet s'il n'est pas connecté 
+          /* Optionnel : On peut cacher explicitement l'onglet s'il n'est pas connecté
              pour éviter qu'Expo Router ne garde un lien mort */
           <Tabs.Screen
             name="profil"

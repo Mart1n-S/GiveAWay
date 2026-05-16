@@ -24,6 +24,7 @@ import {
   unfollowAssociation,
 } from "@/services/association.service";
 import { MissionService } from "@/services/mission.service";
+import { MessagingService } from "@/services/messaging.service";
 import { useAuthStore } from "@/stores/auth.store";
 import { useProfileStore } from "@/stores/profile.store";
 import { Text, Button, TagBadge, colors } from "@/components/ui";
@@ -322,6 +323,8 @@ export default function AssociationPublicProfileScreen() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const [notified, setNotified] = useState(false);
   const [notifyModalVisible, setNotifyModalVisible] = useState(false);
+  const [contactLoading, setContactLoading] = useState(false);
+  const [contactError, setContactError] = useState<string | null>(null);
 
   usePageTitle("Association");
 
@@ -420,6 +423,29 @@ export default function AssociationPublicProfileScreen() {
       store.updateProfile({ followsCount: prev + 1 });
     } catch {
       // silently ignore
+    }
+  };
+
+  const handleContactAssociation = async () => {
+    if (!isAuthenticated) {
+      router.push("/connexion" as any);
+      return;
+    }
+    if (!id) return;
+    try {
+      setContactLoading(true);
+      const { conversation } = await MessagingService.createWithAssociation(
+        Number(id),
+      );
+      router.push(`/messages/${conversation.id}` as any);
+    } catch (err) {
+      const message =
+        isAxiosError(err) && err.response?.data?.message
+          ? (err.response.data.message as string)
+          : "Impossible de démarrer la conversation";
+      setContactError(message);
+    } finally {
+      setContactLoading(false);
     }
   };
 
@@ -649,6 +675,29 @@ export default function AssociationPublicProfileScreen() {
                   </Text>
                 </View>
               )}
+
+              {/* Contacter l'association (bénévoles uniquement) */}
+              <View className="gap-2">
+                <Button
+                  testID="contact-association-button"
+                  variant="primary"
+                  onPress={handleContactAssociation}
+                  loading={contactLoading}
+                  className="self-stretch sm:self-start"
+                >
+                  {isAuthenticated
+                    ? "Contacter l'association"
+                    : "Se connecter pour contacter"}
+                </Button>
+                {contactError && (
+                  <Text
+                    testID="contact-association-error"
+                    className="text-xs text-red-700"
+                  >
+                    {contactError}
+                  </Text>
+                )}
+              </View>
             </View>
           </View>
 

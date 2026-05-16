@@ -47,6 +47,7 @@ export * from "./association/association-public.dto";
 export * from "./association/follow-status.dto";
 export * from "./association/followed-association.dto";
 export * from "./notification/register-push-token.dto";
+export * from "./messaging";
 export * from "./public-type/public-type.dto";
 export * from "./volunteer-type/volunteer-type.dto";
 export * from "./admin";

@@ -94,20 +94,18 @@ export function WebNavBar({
       <View className="flex-row items-center gap-1" accessibilityRole="menubar">
         {allLinks.map((link) => {
           const isPageActive = link.isActive;
+          const hasUnread = (link.badgeCount ?? 0) > 0;
           const content = (
             <Pressable
               key={link.id}
               onPress={link.onPress}
               accessibilityRole="menuitem"
               accessibilityState={{ selected: isPageActive }}
+              testID={link.testID}
               className={clsx(
-                // --- BASE ---
-                "px-4 py-2 rounded-md transition-all duration-200",
-
-                // --- HOVER / ACTIVE (Géré par CSS NativeWind) ---
+                // `relative` pour positionner la pastille absolue en haut à droite
+                "relative px-4 py-2 rounded-md transition-all duration-200 flex-row items-center",
                 "hover:bg-primary-50 active:bg-primary-100",
-
-                // --- FOCUS (Clavier) ---
                 "web:outline-none focus:outline-none",
                 "web:focus-visible:ring-2 web:focus-visible:ring-focus web:focus-visible:ring-offset-2",
               )}
@@ -122,6 +120,13 @@ export function WebNavBar({
               >
                 {link.label}
               </Text>
+              {hasUnread && (
+                <View
+                  testID={`${link.testID ?? link.id}-dot`}
+                  accessibilityLabel="Messages non lus"
+                  className="absolute top-1 right-1 w-2 h-2 rounded-full bg-primary"
+                />
+              )}
             </Pressable>
           );
           return link.href ? (

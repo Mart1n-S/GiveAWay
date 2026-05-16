@@ -11,7 +11,8 @@ export interface NavLink {
     | "hand-heart"
     | "gestion"
     | "building"
-    | "associations";
+    | "associations"
+    | "message";
   isDestructive?: boolean;
   hideInMobileDrawer?: boolean;
   testID?: string;
@@ -67,6 +68,14 @@ export const USER_LINKS: NavLink[] = [
     iconName: "user",
     hideInMobileDrawer: true,
     testID: "link-profile",
+  },
+  {
+    id: "messages",
+    label: "Messages",
+    href: "/messages",
+    iconName: "message",
+    hideInMobileDrawer: true,
+    testID: "link-messages",
   },
   {
     id: "association",

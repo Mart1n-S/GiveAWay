@@ -14,6 +14,8 @@ import { ReferenceModule } from './reference/reference.module';
 import { MissionModule } from './mission/mission.module';
 import { AssociationModule } from './association/association.module';
 import { AdminModule } from './admin/admin.module';
+import { MessagingModule } from './messaging/messaging.module';
+import { NotificationModule } from './notification/notification.module';
 
 @Module({
   imports: [
@@ -69,6 +71,8 @@ import { AdminModule } from './admin/admin.module';
     AssociationModule, // Gestion des associations (profil, membres, transfert, recherche par géolocalisation)
     MissionModule, // Listing des missions (route publique)
     AdminModule, // Back-office d'administration (auth, modération, CRUD, stats)
+    NotificationModule, // Notifications push Expo
+    MessagingModule, // Messagerie temps réel (WebSocket)
   ],
   controllers: [],
   providers: [

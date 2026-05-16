@@ -79,11 +79,19 @@ export default function RootLayout() {
     }
   }, [isAuthenticated]);
 
-  // Deep link : navigation vers la mission au tap sur une notification
+  // Deep link : navigation vers la mission ou la conversation au tap sur une notification
   useEffect(() => {
     responseListener.current = Notifications.addNotificationResponseReceivedListener(
       (response) => {
-        const missionId = response.notification.request.content.data?.missionId;
+        const data = response.notification.request.content.data ?? {};
+        const missionId = (data as { missionId?: unknown }).missionId;
+        const type = (data as { type?: unknown }).type;
+        const conversationId = (data as { conversationId?: unknown }).conversationId;
+
+        if (type === "message" && typeof conversationId === "number") {
+          router.push(`/messages/${conversationId}`);
+          return;
+        }
         if (typeof missionId === "number") {
           router.push(`/missions/${missionId}`);
         }

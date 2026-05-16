@@ -476,7 +476,14 @@ export class AssociationService {
       );
     }
 
-    await this.prisma.associationUser.delete({ where: { id: memberId } });
+    // Transaction : retrait du membre + suppression des conversations
+    // dont il était représentant côté association.
+    await this.prisma.$transaction([
+      this.prisma.conversation.deleteMany({
+        where: { associationId, associationMemberId: member.userId },
+      }),
+      this.prisma.associationUser.delete({ where: { id: memberId } }),
+    ]);
   }
 
   // ----------------------------------------------------------------
@@ -500,7 +507,14 @@ export class AssociationService {
       );
     }
 
-    await this.prisma.associationUser.delete({ where: { id: member.id } });
+    // Transaction : départ du membre + suppression des conversations
+    // dont il était représentant côté association.
+    await this.prisma.$transaction([
+      this.prisma.conversation.deleteMany({
+        where: { associationId, associationMemberId: userId },
+      }),
+      this.prisma.associationUser.delete({ where: { id: member.id } }),
+    ]);
   }
 
   // ----------------------------------------------------------------

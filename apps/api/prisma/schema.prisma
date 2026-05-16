@@ -65,16 +65,16 @@ enum AvailabilityType {
 }
 
 enum MissionStatus {
-  ACTIVE   // Publiée, ouverte aux candidatures
+  ACTIVE // Publiée, ouverte aux candidatures
   ARCHIVED // Archivée — hors des recherches publiques
-  DELETED  // Supprimée logiquement (soft delete)
+  DELETED // Supprimée logiquement (soft delete)
 }
 
 enum ActivityType {
-  MISSION     // Besoin de bénévoles (Bouton "Je participe")
-  EVENT       // Événement (Sans bouton d'inscription par défaut)
-  COLLECT     // Collecte de dons matériels
-  INFO        // Simple information / News
+  MISSION // Besoin de bénévoles (Bouton "Je participe")
+  EVENT // Événement (Sans bouton d'inscription par défaut)
+  COLLECT // Collecte de dons matériels
+  INFO // Simple information / News
 }
 
 enum MissionFrequency {
@@ -87,12 +87,12 @@ enum MissionFrequency {
 // --- MODELS ---
 
 model Address {
-  id          Int     @id @default(autoincrement())
-  street      String
-  postalCode  String @map("postal_code") // @map permet de garder le nom SQL "postal_code" mais d'utiliser "postalCode" en JS
-  city        String
-  latitude    Decimal? @db.Decimal(10, 7)
-  longitude   Decimal? @db.Decimal(10, 7)
+  id         Int      @id @default(autoincrement())
+  street     String
+  postalCode String   @map("postal_code") // @map permet de garder le nom SQL "postal_code" mais d'utiliser "postalCode" en JS
+  city       String
+  latitude   Decimal? @db.Decimal(10, 7)
+  longitude  Decimal? @db.Decimal(10, 7)
 
   // Relations inverses (Prisma en a besoin pour naviguer)
   users        User[]
@@ -103,29 +103,29 @@ model Address {
 }
 
 model User {
-  id            Int         @id @default(autoincrement())
-  email         String      @unique
-  password      String?      @map("password_hash")
-  googleId     String?    @map("google_id")
-  
-  firstName     String      @map("firstname")
-  lastName      String      @map("lastname")
-  age           Int?
-  biography     String?     @db.Text
-  profilePicture String?    @map("profile_picture_url")
-  
-  emailVerifiedAt    DateTime? @map("email_verified_at")
-  status             UserStatus @default(PENDING)
+  id       Int     @id @default(autoincrement())
+  email    String  @unique
+  password String? @map("password_hash")
+  googleId String? @map("google_id")
 
-  emailNotifications  Boolean   @default(false) @map("email_notifications")
-  matchNotifications  Boolean   @default(false) @map("match_notifications")
-  pushToken           String?   @map("push_token")
+  firstName      String  @map("firstname")
+  lastName       String  @map("lastname")
+  age            Int?
+  biography      String? @db.Text
+  profilePicture String? @map("profile_picture_url")
 
-  termsAcceptedAt DateTime  @default(now()) @map("terms_accepted_at")
+  emailVerifiedAt DateTime?  @map("email_verified_at")
+  status          UserStatus @default(PENDING)
 
-  createdAt     DateTime    @default(now()) @map("created_at")
-  updatedAt     DateTime    @updatedAt @map("updated_at")
-  deletedAt       DateTime?  @map("deleted_at")
+  emailNotifications Boolean @default(false) @map("email_notifications")
+  matchNotifications Boolean @default(false) @map("match_notifications")
+  pushToken          String? @map("push_token")
+
+  termsAcceptedAt DateTime @default(now()) @map("terms_accepted_at")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
 
   // Relations
   addressId     Int?              @map("address_id")
@@ -135,11 +135,16 @@ model User {
   tokens        Token[]
 
   // Matching & Participation
-  skills        UserSkill[]
-  causes        UserCause[]
-  availability  UserAvailability?
+  skills         UserSkill[]
+  causes         UserCause[]
+  availability   UserAvailability?
   participations MissionParticipant[]
   follows        UserAssociationFollow[]
+
+  // Messagerie
+  volunteerConversations   Conversation[] @relation("ConversationVolunteer")
+  associationConversations Conversation[] @relation("ConversationAssoMember")
+  sentMessages             Message[]      @relation("MessageSender")
 
   @@map("users")
 }
@@ -147,16 +152,16 @@ model User {
 // --- MODULE MISSIONS & ÉVÉNEMENTS ---
 
 model Mission {
-  id               Int           @id @default(autoincrement())
-  type             ActivityType  @default(MISSION)
+  id               Int               @id @default(autoincrement())
+  type             ActivityType      @default(MISSION)
   title            String
-  description      String        @db.Text
-  hasRegistration  Boolean       @default(true) @map("has_registration")
-  status           MissionStatus @default(ACTIVE)
-  volunteersNeeded Int?          @map("volunteers_needed")
+  description      String            @db.Text
+  hasRegistration  Boolean           @default(true) @map("has_registration")
+  status           MissionStatus     @default(ACTIVE)
+  volunteersNeeded Int?              @map("volunteers_needed")
   durationInt      Int?              @map("duration_minutes") // ex: 60, 120...
   frequency        MissionFrequency? @default(ONCE)
-  availabilityType AvailabilityType @default(ON_SITE) @map("availability_type")
+  availabilityType AvailabilityType  @default(ON_SITE) @map("availability_type")
 
   startDate DateTime? @map("start_date")
   endDate   DateTime? @map("end_date")
@@ -176,9 +181,9 @@ model Mission {
   skills         MissionSkill[]
   causes         MissionCause[]
   volunteerTypes MissionVolunteerType[]
-  
+
   // Participants (Uniquement si hasRegistration est true)
-  participants   MissionParticipant[]
+  participants MissionParticipant[]
 
   @@map("missions")
 }
@@ -225,6 +230,7 @@ model MissionParticipant {
   createdAt DateTime @default(now()) @map("created_at")
   mission   Mission  @relation(fields: [missionId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@id([missionId, userId])
   @@map("mission_participants")
 }
@@ -290,14 +296,14 @@ model MissionCause {
 }
 
 model UserAvailability {
-  id        Int                    @id @default(autoincrement())
-  userId    Int                    @unique @map("user_id")
-  user      User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        Int                     @id @default(autoincrement())
+  userId    Int                     @unique @map("user_id")
+  user      User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   frequency AvailabilityFrequency[] @default([HOURS_WEEK])
-  timeSlot  AvailabilityTime[]     @default([ALL_TIME])
-  type      AvailabilityType       @default(HYBRID)
-  createdAt DateTime               @default(now()) @map("created_at")
-  updatedAt DateTime               @updatedAt @map("updated_at")
+  timeSlot  AvailabilityTime[]      @default([ALL_TIME])
+  type      AvailabilityType        @default(HYBRID)
+  createdAt DateTime                @default(now()) @map("created_at")
+  updatedAt DateTime                @updatedAt @map("updated_at")
 
   @@map("user_availabilities")
 }
@@ -309,30 +315,30 @@ model Token {
   token     String    @unique // Le hash du token
   type      TokenType // EMAIL_VERIFICATION ou PASSWORD_RESET
   expiresAt DateTime
-  
-  createdAt DateTime  @default(now())
+
+  createdAt DateTime @default(now())
 
   // Relation avec User
-  userId    Int
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   // Index pour rendre les recherches plus rapides
   @@index([userId])
   @@map("token")
 }
 
 model RefreshToken {
-  id          String   @id @default(uuid()) // L'ID du token reste un UUID pour la sécurité
-  hashedToken String   @map("hashed_token")
-  
-  userId      Int      @map("user_id") // Doit être Int pour matcher User.id
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  expiresAt   DateTime @map("expires_at")
-  createdAt   DateTime @default(now()) @map("created_at")
-  
-  userAgent   String?  @map("user_agent")
-  ip          String?
+  id          String @id @default(uuid()) // L'ID du token reste un UUID pour la sécurité
+  hashedToken String @map("hashed_token")
+
+  userId Int  @map("user_id") // Doit être Int pour matcher User.id
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  userAgent String? @map("user_agent")
+  ip        String?
 
   @@map("refresh_tokens")
 }
@@ -346,41 +352,42 @@ model AssociationCategory {
 }
 
 model Association {
-  id                   Int               @id @default(autoincrement())
+  id                   Int                     @id @default(autoincrement())
   name                 String
   siret                String?
   rna                  String?
   phone                String?
   website              String?
-  description          String?           @db.Text
-  object               String?           @db.Text  // Objet statutaire déclaré dans les statuts
-  legalStatus          String?           @map("legal_status") // Ex: "Association loi 1901", "Loi 1908"
-  logoUrl              String?           @map("logo_url")
-  requiresManualReview Boolean           @default(false) @map("requires_manual_review")
-  rejectionReason      String?           @map("rejection_reason") @db.Text
-  status               AssociationStatus @default(PENDING)
-  createdAt            DateTime          @default(now()) @map("created_at")
-  updatedAt            DateTime          @updatedAt @map("updated_at")
-  addressId            Int?              @map("address_id")
-  address              Address?          @relation(fields: [addressId], references: [id])
-  categoryId           Int?              @map("category_id")
-  category             AssociationCategory? @relation(fields: [categoryId], references: [id])
+  description          String?                 @db.Text
+  object               String?                 @db.Text // Objet statutaire déclaré dans les statuts
+  legalStatus          String?                 @map("legal_status") // Ex: "Association loi 1901", "Loi 1908"
+  logoUrl              String?                 @map("logo_url")
+  requiresManualReview Boolean                 @default(false) @map("requires_manual_review")
+  rejectionReason      String?                 @map("rejection_reason") @db.Text
+  status               AssociationStatus       @default(PENDING)
+  createdAt            DateTime                @default(now()) @map("created_at")
+  updatedAt            DateTime                @updatedAt @map("updated_at")
+  addressId            Int?                    @map("address_id")
+  address              Address?                @relation(fields: [addressId], references: [id])
+  categoryId           Int?                    @map("category_id")
+  category             AssociationCategory?    @relation(fields: [categoryId], references: [id])
   members              AssociationUser[]
   missions             Mission[]
   documents            AssociationDocument[]
   followers            UserAssociationFollow[]
+  conversations        Conversation[]
 
   @@map("associations")
 }
 
 // Table de liaison (Pivot) entre User et Association
 model AssociationDocument {
-  id            Int      @id @default(autoincrement())
-  fileUrl       String   @map("file_url")
-  type          String   // ex: "STATUTS", "JOAFE"
-  createdAt     DateTime @default(now()) @map("created_at")
+  id        Int      @id @default(autoincrement())
+  fileUrl   String   @map("file_url")
+  type      String // ex: "STATUTS", "JOAFE"
+  createdAt DateTime @default(now()) @map("created_at")
 
-  associationId Int      @map("association_id")
+  associationId Int         @map("association_id")
   association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
 
   @@map("association_documents")
@@ -394,6 +401,7 @@ model AssociationUser {
   user          User            @relation(fields: [userId], references: [id], onDelete: Cascade) // Ajout cascade
   associationId Int             @map("association_id")
   association   Association     @relation(fields: [associationId], references: [id], onDelete: Cascade) // Ajout cascade
+
   @@map("association_users")
 }
 
@@ -411,49 +419,99 @@ model UserAssociationFollow {
 // --- ADMINISTRATION ---
 
 model Admin {
-  id        Int       @id @default(autoincrement())
-  email     String    @unique
-  password  String    @map("password_hash")
-  firstName String    @map("firstname")
-  lastName  String    @map("lastname")
-  role      AdminRole @default(ADMIN)
-  mustChangePassword Boolean @default(false) @map("must_change_password")
-  lastLoginAt DateTime? @map("last_login_at")
+  id                 Int       @id @default(autoincrement())
+  email              String    @unique
+  password           String    @map("password_hash")
+  firstName          String    @map("firstname")
+  lastName           String    @map("lastname")
+  role               AdminRole @default(ADMIN)
+  mustChangePassword Boolean   @default(false) @map("must_change_password")
+  lastLoginAt        DateTime? @map("last_login_at")
 
-  logs      AdminLog[]
+  logs          AdminLog[]
   refreshTokens AdminRefreshToken[]
-  createdAt DateTime  @default(now()) @map("created_at")
+  createdAt     DateTime            @default(now()) @map("created_at")
 
   @@map("admins")
 }
 
 model AdminRefreshToken {
-  id          String   @id @default(uuid())
-  hashedToken String   @map("hashed_token")
+  id          String @id @default(uuid())
+  hashedToken String @map("hashed_token")
 
-  adminId     Int      @map("admin_id")
-  admin       Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  adminId Int   @map("admin_id")
+  admin   Admin @relation(fields: [adminId], references: [id], onDelete: Cascade)
 
-  expiresAt   DateTime @map("expires_at")
-  createdAt   DateTime @default(now()) @map("created_at")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
-  userAgent   String?  @map("user_agent")
-  ip          String?
+  userAgent String? @map("user_agent")
+  ip        String?
 
   @@map("admin_refresh_tokens")
 }
 
+// --- MESSAGERIE TEMPS REEL ---
+
+model Conversation {
+  id Int @id @default(autoincrement())
+
+  // Bénévole côté "extérieur" — non-membre de l'association
+  volunteerId Int  @map("volunteer_id")
+  volunteer   User @relation("ConversationVolunteer", fields: [volunteerId], references: [id], onDelete: Cascade)
+
+  // Membre représentant l'association (au moment de l'initialisation)
+  associationMemberId Int  @map("association_member_id")
+  associationMember   User @relation("ConversationAssoMember", fields: [associationMemberId], references: [id], onDelete: Cascade)
+
+  // Contexte associatif — sert au tri/affichage et déclenche la suppression
+  // si le membre quitte l'association (logique applicative)
+  associationId Int         @map("association_id")
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime  @default(now()) @map("created_at")
+  lastMessageAt DateTime? @map("last_message_at")
+
+  messages Message[]
+
+  @@unique([volunteerId, associationMemberId, associationId], name: "unique_conversation_per_triple")
+  @@index([volunteerId, lastMessageAt(sort: Desc)])
+  @@index([associationMemberId, lastMessageAt(sort: Desc)])
+  @@index([associationId])
+  @@map("conversations")
+}
+
+model Message {
+  id Int @id @default(autoincrement())
+
+  conversationId Int          @map("conversation_id")
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  senderId Int  @map("sender_id")
+  sender   User @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Indicateur "lu" : null = non lu, sinon date d'accusé lecture
+  readAt DateTime? @map("read_at")
+
+  @@index([conversationId, id(sort: Desc)])
+  @@index([conversationId, readAt])
+  @@map("messages")
+}
+
 model AdminLog {
-  id         Int      @id @default(autoincrement())
-  action     String   // ex: "VALIDATE_ASSOCIATION", "DELETE_USER"
-  entityType String   // ex: "USER", "ASSOCIATION", "MISSION"
-  entityId   Int      
-  details    Json?    // Stockage des changements (old/new values)
+  id         Int    @id @default(autoincrement())
+  action     String // ex: "VALIDATE_ASSOCIATION", "DELETE_USER"
+  entityType String // ex: "USER", "ASSOCIATION", "MISSION"
+  entityId   Int
+  details    Json? // Stockage des changements (old/new values)
 
-  adminId    Int      @map("admin_id")
-  admin      Admin    @relation(fields: [adminId], references: [id])
+  adminId Int   @map("admin_id")
+  admin   Admin @relation(fields: [adminId], references: [id])
 
-  createdAt  DateTime @default(now()) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@map("admin_logs")
 }
