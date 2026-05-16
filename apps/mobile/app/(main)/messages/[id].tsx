@@ -30,12 +30,28 @@ const ArrowLeftIcon = cssInterop(ArrowLeftIconSource, {
 const isWeb = Platform.OS === "web";
 
 export default function ConversationScreen() {
-  const params = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{
+    id: string;
+    otherName?: string | string[];
+    assocName?: string | string[];
+  }>();
   const router = useRouter();
   const conversationId = useMemo(() => {
-    const n = Number.parseInt(params.id ?? "", 10);
+    const n = Number.parseInt(
+      Array.isArray(params.id) ? params.id[0] : (params.id ?? ""),
+      10,
+    );
     return Number.isFinite(n) && n > 0 ? n : null;
   }, [params.id]);
+
+  // Fallback param URL (utile quand on arrive depuis "Contacter" : la conv
+  // n'est pas encore dans /conversations donc le store ne la connaît pas)
+  const otherNameParam = useMemo(() => {
+    const raw = Array.isArray(params.otherName)
+      ? params.otherName[0]
+      : params.otherName;
+    return typeof raw === "string" && raw.length > 0 ? raw : null;
+  }, [params.otherName]);
 
   const currentUserId = useAuthStore((s) => s.user?.id);
   const otherUserName = useMessageStore((s) => {
@@ -45,7 +61,7 @@ export default function ConversationScreen() {
       ? `${conv.otherUser.firstName} ${conv.otherUser.lastName}`
       : null;
   });
-  const headerTitle = otherUserName ?? "Discussion";
+  const headerTitle = otherUserName ?? otherNameParam ?? "Discussion";
   usePageTitle(headerTitle);
 
   const {
@@ -66,31 +82,11 @@ export default function ConversationScreen() {
     [router],
   );
 
-  // Sur mobile, certains chemins (ex : depuis la fiche association)
-  // poussent /messages/:id en sautant /messages : le stack natif n'a alors
-  // aucun écran "précédent" et n'affiche pas de flèche retour. On force un
-  // headerLeft custom qui retombe toujours vers /messages.
-  const screenOptions = useMemo(
-    () => ({
-      headerTitle,
-      headerLeft: (props: { tintColor?: string }) =>
-        Platform.OS === "web" ? null : (
-          <Pressable
-            onPress={handleBack}
-            accessibilityRole="button"
-            accessibilityLabel="Retour aux messages"
-            hitSlop={8}
-            style={{ paddingHorizontal: 4 }}
-          >
-            <ArrowLeftIcon
-              className="w-6 h-6"
-              color={props.tintColor ?? colors.primary.default}
-            />
-          </Pressable>
-        ),
-    }),
-    [headerTitle, handleBack],
-  );
+  // Le headerLeft (bouton retour mobile) est défini AU NIVEAU DU LAYOUT
+  // messages/_layout.tsx — plus fiable car le Stack parent garantit
+  // l'application des options quelle que soit l'origine du push.
+  // Ici on ne customise que le titre (dynamique selon la conv).
+  const screenOptions = useMemo(() => ({ headerTitle }), [headerTitle]);
 
   if (conversationId === null) {
     return (

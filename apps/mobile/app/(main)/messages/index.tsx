@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -18,6 +19,14 @@ export default function MessagesIndexScreen() {
   usePageTitle("Messages");
   const { conversations, isLoading, error, refresh } = useConversationsList();
 
+  // N'affiche pas les conversations sans aucun message échangé : si on a
+  // cliqué "Contacter" sans envoyer, la conv existe en BDD mais on ne la
+  // veut pas dans la liste tant qu'elle est vide.
+  const visibleConversations = useMemo(
+    () => conversations.filter((c) => c.lastMessage !== null),
+    [conversations],
+  );
+
   return (
     <>
       <Stack.Screen options={{ headerTitle: "Messages" }} />
@@ -32,14 +41,14 @@ export default function MessagesIndexScreen() {
           </View>
         )}
 
-        {isLoading && conversations.length === 0 ? (
+        {isLoading && visibleConversations.length === 0 ? (
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator size="large" color={colors.primary.default} />
           </View>
         ) : (
           <FlatList
             testID="conversations-list"
-            data={conversations}
+            data={visibleConversations}
             keyExtractor={(item) => String(item.id)}
             renderItem={({ item }) => (
               <ConversationListItem

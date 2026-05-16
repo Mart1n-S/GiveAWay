@@ -1,4 +1,4 @@
-import { Tabs, usePathname } from "expo-router";
+import { Tabs, usePathname, router } from "expo-router";
 import { Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "@/components/ui";
@@ -155,10 +155,10 @@ export default function MainLayout() {
         {/* Onglet Messages (connecté uniquement)
             La pastille de non-lus est rendue à l'intérieur de MessagesTabIcon
             (overlay sur l'icône) pour ne montrer qu'un point, sans nombre.
-            popToTopOnBlur : quand on quitte l'onglet (ex : retour accueil),
-            le stack interne est ramené à la racine — on revient donc sur la
-            liste des conversations au prochain clic, plutôt que sur la
-            conversation précédemment ouverte. */}
+
+            tabPress listener : à chaque clic sur l'onglet (même si déjà
+            focus), on force la navigation vers /messages (la liste). Évite
+            que le tab garde l'écran de conversation précédent au retour. */}
         {isAuthenticated ? (
           <Tabs.Screen
             name="messages"
@@ -167,6 +167,14 @@ export default function MainLayout() {
               tabBarIcon: MessagesTabIcon,
               popToTopOnBlur: true,
             }}
+            listeners={() => ({
+              tabPress: () => {
+                // On laisse le tab changer (pas de preventDefault), mais on
+                // force ensuite la nav vers la racine du stack messages.
+                // setTimeout pour que ça s'exécute APRÈS le focus du tab.
+                setTimeout(() => router.replace("/messages"), 0);
+              },
+            })}
           />
         ) : (
           <Tabs.Screen name="messages" options={{ href: null }} />

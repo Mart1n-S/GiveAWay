@@ -25,6 +25,7 @@ import {
 } from "@/services/association.service";
 import { MissionService } from "@/services/mission.service";
 import { MessagingService } from "@/services/messaging.service";
+import { useMessageStore } from "@/stores/message.store";
 import { useAuthStore } from "@/stores/auth.store";
 import { useProfileStore } from "@/stores/profile.store";
 import { Text, Button, TagBadge, colors } from "@/components/ui";
@@ -437,7 +438,24 @@ export default function AssociationPublicProfileScreen() {
       const { conversation } = await MessagingService.createWithAssociation(
         Number(id),
       );
-      router.push(`/messages/${conversation.id}` as any);
+
+      // Pré-remplit le store local : utile si l'utilisateur revient ensuite
+      // à la liste — la conv est déjà là (avec son lastMessage si un message
+      // initial a été envoyé).
+      useMessageStore.getState().upsertConversation(conversation);
+
+      // On passe le nom de l'autre + nom de l'asso en params URL : ainsi la
+      // page conversation peut afficher le bon header dès le premier rendu,
+      // sans dépendre du fetch /conversations (qui peut être asynchrone).
+      const otherName = `${conversation.otherUser.firstName} ${conversation.otherUser.lastName}`.trim();
+      router.push({
+        pathname: "/messages/[id]",
+        params: {
+          id: String(conversation.id),
+          otherName,
+          assocName: conversation.association.name,
+        },
+      } as any);
     } catch (err) {
       const message =
         isAxiosError(err) && err.response?.data?.message

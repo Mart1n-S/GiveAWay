@@ -271,6 +271,9 @@ export class ConversationService {
     const conversations = await this.prisma.conversation.findMany({
       where: {
         OR: [{ volunteerId: userId }, { associationMemberId: userId }],
+        // N'inclut pas les conv sans message : un clic "Contacter" qui ne
+        // donne pas lieu à un envoi ne doit pas polluer la liste.
+        messages: { some: {} },
       },
       orderBy: [{ lastMessageAt: 'desc' }, { createdAt: 'desc' }],
       include: {
