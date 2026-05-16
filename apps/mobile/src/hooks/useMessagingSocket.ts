@@ -1,7 +1,9 @@
 import { useEffect, useRef } from "react";
+import { router } from "expo-router";
 import type { Socket } from "socket.io-client";
 import {
   WsEvents,
+  type ConversationDeletedPayload,
   type MessageNewPayload,
   type MessageReadPayload,
   type UnreadCountPayload,
@@ -95,6 +97,23 @@ export function useMessagingSocket(): void {
         );
     };
 
+    // ── conversation:deleted ────────────────────────────────
+    // L'autre participant a supprimé son compte / quitté l'asso / l'asso
+    // a été supprimée. On retire la conv du store. Si l'utilisateur est
+    // en train de la lire, on le rapatrie sur la liste des messages.
+    const onConversationDeleted = (payload: ConversationDeletedPayload) => {
+      const store = useMessageStore.getState();
+      const wasActive = store.activeConversationId === payload.conversationId;
+      store.removeConversation(payload.conversationId);
+      if (wasActive) {
+        // Redirige vers la liste avec un flag pour afficher un toast/banner
+        router.replace({
+          pathname: "/messages",
+          params: { closed: String(payload.conversationId) },
+        });
+      }
+    };
+
     // ── error ───────────────────────────────────────────────
     const onError = (payload: { code: string; message: string }) => {
       // Erreur d'auth → laisser axios refresh le token, puis reconnecter
@@ -106,12 +125,17 @@ export function useMessagingSocket(): void {
     socket.on(WsEvents.SERVER_UNREAD_COUNT, onUnread);
     socket.on(WsEvents.SERVER_MESSAGE_NEW, onNewMessage);
     socket.on(WsEvents.SERVER_MESSAGE_READ, onMessageRead);
+    socket.on(WsEvents.SERVER_CONVERSATION_DELETED, onConversationDeleted);
     socket.on(WsEvents.SERVER_ERROR, onError);
 
     return () => {
       socket.off(WsEvents.SERVER_UNREAD_COUNT, onUnread);
       socket.off(WsEvents.SERVER_MESSAGE_NEW, onNewMessage);
       socket.off(WsEvents.SERVER_MESSAGE_READ, onMessageRead);
+      socket.off(
+        WsEvents.SERVER_CONVERSATION_DELETED,
+        onConversationDeleted,
+      );
       socket.off(WsEvents.SERVER_ERROR, onError);
     };
   }, [isAuthenticated, accessToken, currentUserId]);

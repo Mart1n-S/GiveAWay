@@ -3,10 +3,12 @@ import { ProfileService } from './profile.service';
 import { AuthService } from '../auth/auth.service';
 import { FILE_SERVICE } from '../common/files/interfaces/file-service.interface';
 import { CookieService } from '../auth/shared/cookie.service';
+import { ConversationService } from '../messaging/conversation.service';
 import {
   createMockAuthService,
   createMockFileService,
   createMockCookieService,
+  createMockConversationService,
 } from './profile-test.helpers';
 
 describe('ProfileService — getFollowedAssociations', () => {
@@ -22,6 +24,7 @@ describe('ProfileService — getFollowedAssociations', () => {
         { provide: AuthService, useValue: mockAuthService },
         { provide: FILE_SERVICE, useValue: createMockFileService() },
         { provide: CookieService, useValue: createMockCookieService() },
+        { provide: ConversationService, useValue: createMockConversationService() },
       ],
     }).compile();
 

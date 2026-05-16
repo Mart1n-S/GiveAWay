@@ -28,6 +28,8 @@ interface MessageState {
   incrementUnreadForConv: (conversationId: number) => void;
   clearUnreadForConv: (conversationId: number) => void;
   setActiveConversation: (id: number | null) => void;
+  /** Retire complètement une conv du store (suppression par cascade serveur). */
+  removeConversation: (conversationId: number) => void;
 
   // Messages
   setMessagesPage: (
@@ -113,6 +115,25 @@ export const useMessageStore = create<MessageState>()((set) => ({
         c.id === conversationId ? { ...c, unreadCount: 0 } : c,
       ),
     })),
+
+  removeConversation: (conversationId) =>
+    set((state) => {
+      const { [conversationId]: _omitMsgs, ...messagesByConv } =
+        state.messagesByConv;
+      const { [conversationId]: _omitPage, ...pageStateByConv } =
+        state.pageStateByConv;
+      return {
+        conversations: state.conversations.filter(
+          (c) => c.id !== conversationId,
+        ),
+        messagesByConv,
+        pageStateByConv,
+        activeConversationId:
+          state.activeConversationId === conversationId
+            ? null
+            : state.activeConversationId,
+      };
+    }),
 
   setMessagesPage: (conversationId, messages, page) =>
     set((state) => ({

@@ -67,6 +67,23 @@ export class MessagingEvents {
   }
 
   // ----------------------------------------------------------------
+  // Notifie un user qu'une conversation a été supprimée
+  // ----------------------------------------------------------------
+  broadcastConversationDeleted(
+    userId: number,
+    conversationId: number,
+    reason?: 'user_deleted' | 'member_left' | 'association_deleted',
+  ): void {
+    if (!this.server) return;
+    this.server
+      .to(this.userRoom(userId))
+      .emit(WsEvents.SERVER_CONVERSATION_DELETED, {
+        conversationId,
+        ...(reason ? { reason } : {}),
+      });
+  }
+
+  // ----------------------------------------------------------------
   // Envoi unitaire du compteur non-lus à un user
   // ----------------------------------------------------------------
   sendUnreadCount(userId: number, count: number): void {

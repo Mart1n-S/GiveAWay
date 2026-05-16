@@ -8,6 +8,7 @@ import {
 import { AssociationService } from './association.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { FILE_SERVICE } from '../common/files/interfaces/file-service.interface';
+import { ConversationService } from '../messaging/conversation.service';
 import { AssociationRole, AssociationStatus } from '../generated/prisma/client';
 
 // ----------------------------------------------------------------
@@ -158,6 +159,12 @@ const mockFileService = {
 // Suite de tests
 // ----------------------------------------------------------------
 
+const mockConversationService = {
+  deleteConversationsAndNotify: jest
+    .fn()
+    .mockResolvedValue({ deletedCount: 0, notifiedUserIds: [] }),
+};
+
 describe('AssociationService', () => {
   let service: AssociationService;
 
@@ -167,6 +174,7 @@ describe('AssociationService', () => {
         AssociationService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: FILE_SERVICE, useValue: mockFileService },
+        { provide: ConversationService, useValue: mockConversationService },
       ],
     }).compile();
 
@@ -662,20 +670,20 @@ describe('AssociationService', () => {
   // removeMember
   // ===========================================================================
   describe('removeMember', () => {
-    it('✅ Retire un membre EDITOR avec succès (par un OWNER) + supprime les conversations liées', async () => {
+    it('✅ Retire un membre EDITOR avec succès (par un OWNER) + notifie+supprime les conversations liées', async () => {
       mockPrisma.associationUser.findFirst
         .mockResolvedValueOnce(mockEditorMember)
         .mockResolvedValueOnce(mockOwnerMember);
-      mockPrisma.$transaction.mockImplementation(
-        (queries: Promise<unknown>[]) => Promise.all(queries),
-      );
-      mockPrisma.conversation.deleteMany.mockResolvedValue({ count: 0 });
       mockPrisma.associationUser.delete.mockResolvedValue(mockEditorMember);
 
       await service.removeMember(42, 12, mockUser1.id);
 
-      expect(mockPrisma.conversation.deleteMany).toHaveBeenCalledWith({
+      expect(
+        mockConversationService.deleteConversationsAndNotify,
+      ).toHaveBeenCalledWith({
         where: { associationId: 42, associationMemberId: mockEditorUser.id },
+        reason: 'member_left',
+        excludedUserId: mockEditorUser.id,
       });
       expect(mockPrisma.associationUser.delete).toHaveBeenCalledWith({
         where: { id: 12 },
@@ -686,10 +694,6 @@ describe('AssociationService', () => {
       mockPrisma.associationUser.findFirst
         .mockResolvedValueOnce(mockEditorMember)
         .mockResolvedValueOnce(mockAdminMember);
-      mockPrisma.$transaction.mockImplementation(
-        (queries: Promise<unknown>[]) => Promise.all(queries),
-      );
-      mockPrisma.conversation.deleteMany.mockResolvedValue({ count: 0 });
       mockPrisma.associationUser.delete.mockResolvedValue(mockEditorMember);
 
       await service.removeMember(42, 12, mockUser2.id);
@@ -744,18 +748,18 @@ describe('AssociationService', () => {
   // leaveAssociation
   // ===========================================================================
   describe('leaveAssociation', () => {
-    it("✅ Permet à un EDITOR de quitter l'association + supprime les conversations liées", async () => {
+    it("✅ Permet à un EDITOR de quitter l'association + notifie+supprime les conversations liées", async () => {
       mockPrisma.associationUser.findFirst.mockResolvedValue(mockEditorMember);
-      mockPrisma.$transaction.mockImplementation(
-        (queries: Promise<unknown>[]) => Promise.all(queries),
-      );
-      mockPrisma.conversation.deleteMany.mockResolvedValue({ count: 0 });
       mockPrisma.associationUser.delete.mockResolvedValue(mockEditorMember);
 
       await service.leaveAssociation(42, mockEditorUser.id);
 
-      expect(mockPrisma.conversation.deleteMany).toHaveBeenCalledWith({
+      expect(
+        mockConversationService.deleteConversationsAndNotify,
+      ).toHaveBeenCalledWith({
         where: { associationId: 42, associationMemberId: mockEditorUser.id },
+        reason: 'member_left',
+        excludedUserId: mockEditorUser.id,
       });
       expect(mockPrisma.associationUser.delete).toHaveBeenCalledWith({
         where: { id: mockEditorMember.id },
@@ -764,10 +768,6 @@ describe('AssociationService', () => {
 
     it("✅ Permet à un ADMIN de quitter l'association", async () => {
       mockPrisma.associationUser.findFirst.mockResolvedValue(mockAdminMember);
-      mockPrisma.$transaction.mockImplementation(
-        (queries: Promise<unknown>[]) => Promise.all(queries),
-      );
-      mockPrisma.conversation.deleteMany.mockResolvedValue({ count: 0 });
       mockPrisma.associationUser.delete.mockResolvedValue(mockAdminMember);
 
       await service.leaveAssociation(42, mockUser2.id);

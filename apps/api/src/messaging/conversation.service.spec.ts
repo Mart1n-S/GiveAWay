@@ -5,8 +5,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConversationService } from './conversation.service';
+import { MessagingEvents } from './messaging.events';
 import { PrismaService } from '../prisma/prisma.service';
 import { AssociationStatus, UserStatus } from '../generated/prisma/client';
+
+const mockEvents = {
+  broadcastConversationDeleted: jest.fn(),
+  sendUnreadCount: jest.fn(),
+};
 
 // ----------------------------------------------------------------
 // Mocks Prisma
@@ -74,6 +80,7 @@ describe('ConversationService', () => {
       providers: [
         ConversationService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: MessagingEvents, useValue: mockEvents },
       ],
     }).compile();
     service = module.get(ConversationService);
@@ -365,6 +372,115 @@ describe('ConversationService', () => {
       mockPrisma.conversation.count.mockResolvedValue(0);
       const res = await service.getUnreadCount(100);
       expect(res.count).toBe(0);
+    });
+  });
+
+  // ==============================================================
+  // deleteConversationsAndNotify
+  // ==============================================================
+  describe('deleteConversationsAndNotify', () => {
+    it('✅ ne fait rien si aucune conv ne matche', async () => {
+      mockPrisma.conversation.findMany.mockResolvedValue([]);
+      const res = await service.deleteConversationsAndNotify({
+        where: { associationId: 42 },
+        reason: 'association_deleted',
+      });
+      expect(res).toEqual({ deletedCount: 0, notifiedUserIds: [] });
+      expect(mockEvents.broadcastConversationDeleted).not.toHaveBeenCalled();
+      expect(mockPrisma.conversation.deleteMany).not.toHaveBeenCalled();
+    });
+
+    it('✅ notifie les deux participants + supprime + resync compteurs', async () => {
+      mockPrisma.conversation.findMany.mockResolvedValue([
+        { id: 1, volunteerId: 100, associationMemberId: 200 },
+        { id: 2, volunteerId: 100, associationMemberId: 300 },
+      ]);
+      mockPrisma.conversation.deleteMany.mockResolvedValue({ count: 2 });
+      mockPrisma.conversation.count.mockResolvedValue(0);
+
+      const res = await service.deleteConversationsAndNotify({
+        where: { associationId: 42 },
+        reason: 'association_deleted',
+      });
+
+      expect(res.deletedCount).toBe(2);
+      expect(res.notifiedUserIds.toSorted((a, b) => a - b)).toEqual([
+        100, 200, 300,
+      ]);
+      // 4 notifications individuelles (2 convs × 2 users)
+      expect(mockEvents.broadcastConversationDeleted).toHaveBeenCalledTimes(4);
+      // 3 unread:count (un par user distinct)
+      expect(mockEvents.sendUnreadCount).toHaveBeenCalledTimes(3);
+      expect(mockPrisma.conversation.deleteMany).toHaveBeenCalledWith({
+        where: { associationId: 42 },
+      });
+    });
+
+    it("✅ excludedUserId : ne notifie pas l'user supprimé", async () => {
+      mockPrisma.conversation.findMany.mockResolvedValue([
+        { id: 1, volunteerId: 100, associationMemberId: 200 },
+      ]);
+      mockPrisma.conversation.deleteMany.mockResolvedValue({ count: 1 });
+      mockPrisma.conversation.count.mockResolvedValue(0);
+
+      await service.deleteConversationsAndNotify({
+        where: { volunteerId: 100 },
+        reason: 'user_deleted',
+        excludedUserId: 100,
+      });
+
+      // Seul l'autre (200) doit être notifié
+      expect(mockEvents.broadcastConversationDeleted).toHaveBeenCalledTimes(1);
+      expect(mockEvents.broadcastConversationDeleted).toHaveBeenCalledWith(
+        200,
+        1,
+        'user_deleted',
+      );
+    });
+
+    it("✅ skipDelete=true : notifie sans supprimer (laisse la cascade Prisma faire)", async () => {
+      mockPrisma.conversation.findMany.mockResolvedValue([
+        { id: 5, volunteerId: 100, associationMemberId: 200 },
+      ]);
+      mockPrisma.conversation.count.mockResolvedValue(0);
+
+      const res = await service.deleteConversationsAndNotify({
+        where: { volunteerId: 100 },
+        reason: 'user_deleted',
+        skipDelete: true,
+      });
+
+      expect(res.deletedCount).toBe(0);
+      expect(mockEvents.broadcastConversationDeleted).toHaveBeenCalled();
+      expect(mockPrisma.conversation.deleteMany).not.toHaveBeenCalled();
+    });
+
+    it("✅ recalcule unread:count en EXCLUANT les conv en cours de suppression", async () => {
+      // Scénario : A supprime son compte. Avant la cascade Prisma, on calcule
+      // le unread:count pour B. Sans exclusion, les messages non-lus de la
+      // conv condamnée seraient encore comptés → la pastille resterait
+      // affichée même après que la conv ait disparu côté front.
+      mockPrisma.conversation.findMany.mockResolvedValue([
+        { id: 42, volunteerId: 100, associationMemberId: 200 },
+        { id: 43, volunteerId: 100, associationMemberId: 300 },
+      ]);
+      mockPrisma.conversation.count.mockResolvedValue(0);
+
+      await service.deleteConversationsAndNotify({
+        where: { volunteerId: 100 },
+        reason: 'user_deleted',
+        excludedUserId: 100,
+        skipDelete: true,
+      });
+
+      // Tous les appels à count() doivent exclure les conv 42 et 43
+      const calls = mockPrisma.conversation.count.mock.calls as Array<
+        [{ where: { id: { notIn: number[] } } }]
+      >;
+      expect(calls.length).toBeGreaterThan(0);
+      for (const [arg] of calls) {
+        expect(arg.where.id).toEqual({ notIn: [42, 43] });
+      }
     });
   });
 

@@ -13,6 +13,7 @@ import {
   FILE_SERVICE,
   IFileService,
 } from '../../common/files/interfaces/file-service.interface';
+import { ConversationService } from '../../messaging/conversation.service';
 import {
   AssociationStatus,
   AssociationRole,
@@ -28,6 +29,7 @@ export class AdminAssociationService {
     private readonly mail: MailService,
     private readonly config: ConfigService,
     @Inject(FILE_SERVICE) private readonly fileService: IFileService,
+    private readonly conversationService: ConversationService,
   ) {}
 
   async listPending(page = 1, limit = 20) {
@@ -212,6 +214,14 @@ export class AdminAssociationService {
     const owner = asso.members[0]?.user;
     const documents = asso.documents;
     const reason = asso.rejectionReason ?? '';
+
+    // Notifier WS les participants des conversations qui vont être supprimées
+    // en cascade par Prisma quand l'association sera deleted.
+    await this.conversationService.deleteConversationsAndNotify({
+      where: { associationId: id },
+      reason: 'association_deleted',
+      skipDelete: true,
+    });
 
     await this.prisma.association.delete({ where: { id } });
 

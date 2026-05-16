@@ -9,11 +9,18 @@ import { AdminAssociationService } from './association.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MailService } from '../../mail/mail.service';
 import { FILE_SERVICE } from '../../common/files/interfaces/file-service.interface';
+import { ConversationService } from '../../messaging/conversation.service';
 import {
   AssociationStatus,
   AssociationRole,
   MissionStatus,
 } from '../../generated/prisma/client';
+
+const mockConversationService = {
+  deleteConversationsAndNotify: jest
+    .fn()
+    .mockResolvedValue({ deletedCount: 0, notifiedUserIds: [] }),
+};
 
 type AnyFn = jest.Mock;
 
@@ -117,6 +124,7 @@ describe('AdminAssociationService', () => {
         { provide: MailService, useValue: mockMail },
         { provide: ConfigService, useValue: mockConfig },
         { provide: FILE_SERVICE, useValue: mockFileService },
+        { provide: ConversationService, useValue: mockConversationService },
       ],
     }).compile();
 

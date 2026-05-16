@@ -5,10 +5,12 @@ import { AuthService } from '../auth/auth.service';
 import { UserStatus } from '../generated/prisma/client';
 import { FILE_SERVICE } from '../common/files/interfaces/file-service.interface';
 import { CookieService } from '../auth/shared/cookie.service';
+import { ConversationService } from '../messaging/conversation.service';
 import {
   createMockAuthService,
   createMockFileService,
   createMockCookieService,
+  createMockConversationService,
 } from './profile-test.helpers';
 
 // Utilisateur complet tel que renvoyé par Prisma avec les includes de l'export
@@ -76,6 +78,7 @@ describe('ProfileService — exportData', () => {
         { provide: AuthService, useValue: mockAuthService },
         { provide: FILE_SERVICE, useValue: createMockFileService() },
         { provide: CookieService, useValue: createMockCookieService() },
+        { provide: ConversationService, useValue: createMockConversationService() },
       ],
     }).compile();
 

@@ -103,3 +103,13 @@ export const createMockCookieService = (): Partial<CookieService> => ({
   clearAuthCookies: jest.fn(),
   setAuthCookies: jest.fn(),
 });
+
+/**
+ * Mock du ConversationService utilisé par ProfileService pour notifier
+ * la suppression de conversations lors de la suppression de compte.
+ */
+export const createMockConversationService = () => ({
+  deleteConversationsAndNotify: jest
+    .fn()
+    .mockResolvedValue({ deletedCount: 0, notifiedUserIds: [] }),
+});

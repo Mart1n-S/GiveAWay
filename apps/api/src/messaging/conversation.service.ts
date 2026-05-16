@@ -11,6 +11,7 @@ import type {
   UnreadCountDto,
 } from '@repo/shared';
 import { PrismaService } from '../prisma/prisma.service';
+import { MessagingEvents } from './messaging.events';
 import {
   AssociationRole,
   AssociationStatus,
@@ -42,7 +43,83 @@ type ConversationWithRelations = Prisma.ConversationGetPayload<{
 
 @Injectable()
 export class ConversationService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly events: MessagingEvents,
+  ) {}
+
+  /**
+   * Identifie les conversations correspondant au filtre, notifie les
+   * participants (sauf `excludedUserId`) via WS qu'elles sont supprimées,
+   * puis effectue la suppression en BDD dans la même transaction.
+   *
+   * À utiliser avant toute opération qui ferait disparaître des conv
+   * par cascade Prisma (suppression de user, d'asso, départ d'un membre).
+   *
+   * Si Prisma fait déjà la cascade en aval, on peut omettre la suppression
+   * Prisma ici (passer `skipDelete: true`) et n'effectuer que la notif.
+   */
+  async deleteConversationsAndNotify(args: {
+    where: Prisma.ConversationWhereInput;
+    reason: 'user_deleted' | 'member_left' | 'association_deleted';
+    excludedUserId?: number;
+    /** Si true, on ne supprime pas en BDD (Prisma fera la cascade). */
+    skipDelete?: boolean;
+    /** Optionnel : transaction client pour participer à une tx existante. */
+    tx?: Prisma.TransactionClient;
+  }): Promise<{ deletedCount: number; notifiedUserIds: number[] }> {
+    const client = args.tx ?? this.prisma;
+    const convs = await client.conversation.findMany({
+      where: args.where,
+      select: { id: true, volunteerId: true, associationMemberId: true },
+    });
+    if (convs.length === 0) {
+      return { deletedCount: 0, notifiedUserIds: [] };
+    }
+
+    // 1. Notifier WS (avant suppression — les rooms WS sont basées sur l'userId,
+    //    pas sur la conv, donc on peut le faire avant ou après la BDD)
+    const notifiedUserIds = new Set<number>();
+    for (const conv of convs) {
+      for (const userId of [conv.volunteerId, conv.associationMemberId]) {
+        if (userId === args.excludedUserId) continue;
+        this.events.broadcastConversationDeleted(userId, conv.id, args.reason);
+        notifiedUserIds.add(userId);
+      }
+    }
+
+    // 2. Suppression BDD (sauf si la cascade Prisma s'en occupera)
+    let deletedCount = 0;
+    if (!args.skipDelete) {
+      const res = await client.conversation.deleteMany({ where: args.where });
+      deletedCount = res.count;
+    }
+
+    // 3. Resynchroniser le compteur non-lus côté chaque user notifié.
+    //    On exclut explicitement les conv qu'on vient d'annoncer comme
+    //    supprimées : utile en mode skipDelete=true où la cascade Prisma
+    //    n'a pas encore eu lieu au moment où on calcule le count (sinon
+    //    le compteur restitué inclurait encore les conv condamnées).
+    const convIdsBeingDeleted = convs.map((c) => c.id);
+    for (const userId of notifiedUserIds) {
+      try {
+        const count = await client.conversation.count({
+          where: {
+            id: { notIn: convIdsBeingDeleted },
+            OR: [{ volunteerId: userId }, { associationMemberId: userId }],
+            messages: {
+              some: { readAt: null, NOT: { senderId: userId } },
+            },
+          },
+        });
+        this.events.sendUnreadCount(userId, count);
+      } catch {
+        /* non bloquant */
+      }
+    }
+
+    return { deletedCount, notifiedUserIds: Array.from(notifiedUserIds) };
+  }
 
   // -----------------------------------------------------------------
   // Vérifie que l'utilisateur a accès à cette conversation

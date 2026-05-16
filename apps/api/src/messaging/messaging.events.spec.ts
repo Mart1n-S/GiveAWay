@@ -76,6 +76,41 @@ describe('MessagingEvents', () => {
     });
   });
 
+  it('broadcastConversationDeleted cible la room du user et inclut reason', () => {
+    const fakeServer = {
+      to: chain.to,
+      sockets: { adapter: { rooms: new Map() }, sockets: new Map() },
+    } as unknown as import('socket.io').Server;
+    events.setServer(fakeServer);
+
+    events.broadcastConversationDeleted(42, 7, 'user_deleted');
+    expect(chain.to).toHaveBeenCalledWith('user:42');
+    expect(chain.emit).toHaveBeenCalledWith(
+      WsEvents.SERVER_CONVERSATION_DELETED,
+      { conversationId: 7, reason: 'user_deleted' },
+    );
+  });
+
+  it('broadcastConversationDeleted sans reason omet la clé', () => {
+    const fakeServer = {
+      to: chain.to,
+      sockets: { adapter: { rooms: new Map() }, sockets: new Map() },
+    } as unknown as import('socket.io').Server;
+    events.setServer(fakeServer);
+
+    events.broadcastConversationDeleted(42, 7);
+    expect(chain.emit).toHaveBeenCalledWith(
+      WsEvents.SERVER_CONVERSATION_DELETED,
+      { conversationId: 7 },
+    );
+  });
+
+  it('broadcastConversationDeleted est no-op sans serveur', () => {
+    expect(() =>
+      events.broadcastConversationDeleted(42, 7, 'member_left'),
+    ).not.toThrow();
+  });
+
   it('sendUnreadCount cible la room du user', () => {
     const fakeServer = {
       to: chain.to,

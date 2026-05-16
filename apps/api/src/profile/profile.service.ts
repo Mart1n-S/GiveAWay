@@ -29,6 +29,7 @@ import {
   IFileService,
   FILE_SERVICE,
 } from '../common/files/interfaces/file-service.interface';
+import { ConversationService } from '../messaging/conversation.service';
 import * as ExcelJS from 'exceljs';
 
 @Injectable()
@@ -37,6 +38,7 @@ export class ProfileService {
     private readonly authService: AuthService,
     private readonly cookieService: CookieService,
     @Inject(FILE_SERVICE) private readonly fileService: IFileService,
+    private readonly conversationService: ConversationService,
   ) {}
 
   /**
@@ -594,10 +596,22 @@ export class ProfileService {
         .catch((e) => logger.error('Erreur suppression photo profil', e));
     }
 
-    // 4. Invalider les cookies de session
+    // 4. Notifier WS les autres participants des conversations qui vont
+    //    être supprimées en cascade par Prisma (et resync leur compteur).
+    //    skipDelete=true : on laisse la cascade Prisma faire la suppression.
+    await this.conversationService.deleteConversationsAndNotify({
+      where: {
+        OR: [{ volunteerId: userId }, { associationMemberId: userId }],
+      },
+      reason: 'user_deleted',
+      excludedUserId: userId,
+      skipDelete: true,
+    });
+
+    // 5. Invalider les cookies de session
     this.cookieService.clearAuthCookies(res);
 
-    // 5. Hard delete — les relations en cascade sont gérées par Prisma
+    // 6. Hard delete — les relations en cascade sont gérées par Prisma
     await prisma.user.delete({ where: { id: userId } });
   }
 

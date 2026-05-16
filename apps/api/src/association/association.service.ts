@@ -32,6 +32,7 @@ import {
   FILE_SERVICE,
   IFileService,
 } from '../common/files/interfaces/file-service.interface';
+import { ConversationService } from '../messaging/conversation.service';
 
 // Type Prisma avec relations pour le mapping
 type AssociationWithRelations = Awaited<
@@ -72,6 +73,7 @@ export class AssociationService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(FILE_SERVICE) private readonly fileService: IFileService,
+    private readonly conversationService: ConversationService,
   ) {}
 
   // ----------------------------------------------------------------
@@ -476,14 +478,16 @@ export class AssociationService {
       );
     }
 
-    // Transaction : retrait du membre + suppression des conversations
-    // dont il était représentant côté association.
-    await this.prisma.$transaction([
-      this.prisma.conversation.deleteMany({
-        where: { associationId, associationMemberId: member.userId },
-      }),
-      this.prisma.associationUser.delete({ where: { id: memberId } }),
-    ]);
+    // 1. Notifier les bénévoles concernés via WS + supprimer les conv
+    //    où ce membre représentait l'association.
+    await this.conversationService.deleteConversationsAndNotify({
+      where: { associationId, associationMemberId: member.userId },
+      reason: 'member_left',
+      excludedUserId: member.userId,
+    });
+
+    // 2. Retirer le membre
+    await this.prisma.associationUser.delete({ where: { id: memberId } });
   }
 
   // ----------------------------------------------------------------
@@ -507,14 +511,16 @@ export class AssociationService {
       );
     }
 
-    // Transaction : départ du membre + suppression des conversations
-    // dont il était représentant côté association.
-    await this.prisma.$transaction([
-      this.prisma.conversation.deleteMany({
-        where: { associationId, associationMemberId: userId },
-      }),
-      this.prisma.associationUser.delete({ where: { id: member.id } }),
-    ]);
+    // 1. Notifier les bénévoles concernés via WS + supprimer les conv
+    //    où ce membre représentait l'association.
+    await this.conversationService.deleteConversationsAndNotify({
+      where: { associationId, associationMemberId: userId },
+      reason: 'member_left',
+      excludedUserId: userId,
+    });
+
+    // 2. Départ du membre
+    await this.prisma.associationUser.delete({ where: { id: member.id } });
   }
 
   // ----------------------------------------------------------------

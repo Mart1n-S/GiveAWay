@@ -12,6 +12,7 @@ describe("WsEvents", () => {
     expect(WsEvents.SERVER_MESSAGE_NEW).toBe("message:new");
     expect(WsEvents.SERVER_MESSAGE_READ).toBe("message:read");
     expect(WsEvents.SERVER_CONVERSATION_UPDATED).toBe("conversation:updated");
+    expect(WsEvents.SERVER_CONVERSATION_DELETED).toBe("conversation:deleted");
     expect(WsEvents.SERVER_UNREAD_COUNT).toBe("unread:count");
     expect(WsEvents.SERVER_ERROR).toBe("error");
   });
