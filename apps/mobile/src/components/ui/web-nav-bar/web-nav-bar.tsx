@@ -89,7 +89,12 @@ export function WebNavBar({
   }, [isMenuOpen, drawerWidth]);
 
   const renderDesktopLinks = () => {
-    const allLinks = [...mainLinks, ...bottomLinks];
+    // Filtre `hideInWebNav` côté desktop uniquement : ces liens (ex: Mon
+    // Profil) restent disponibles dans le burger drawer pour les écrans
+    // étroits / mobile web, mais ne polluent pas la nav inline.
+    const allLinks = [...mainLinks, ...bottomLinks].filter(
+      (l) => !l.hideInWebNav,
+    );
     return (
       <View className="flex-row items-center gap-1" accessibilityRole="menubar">
         {allLinks.map((link) => {

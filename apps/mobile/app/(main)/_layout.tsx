@@ -15,30 +15,30 @@ import { useMessageStore } from "@/stores/message.store";
 import { useMessagingSocket } from "@/hooks/useMessagingSocket";
 
 function HomeTabIcon({ color }: { readonly color: string }) {
-  return <HomeIcon className="w-7 h-7" color={color} />;
+  return <HomeIcon className="w-6 h-6" color={color} />;
 }
 
 function MissionsTabIcon({ color }: { readonly color: string }) {
-  return <HandHeartIcon className="w-7 h-7" color={color} />;
+  return <HandHeartIcon className="w-6 h-6" color={color} />;
 }
 
 function ProfilTabIcon({ color }: { readonly color: string }) {
-  return <UserIcon className="w-7 h-7" color={color} />;
+  return <UserIcon className="w-6 h-6" color={color} />;
 }
 
 function AssociationTabIcon({ color }: { readonly color: string }) {
-  return <BuildingIcon className="w-7 h-7" color={color} />;
+  return <BuildingIcon className="w-6 h-6" color={color} />;
 }
 
 function AssociationsTabIcon({ color }: { readonly color: string }) {
-  return <BuildingIcon className="w-7 h-7" color={color} />;
+  return <BuildingIcon className="w-6 h-6" color={color} />;
 }
 
 function MessagesTabIcon({ color }: { readonly color: string }) {
   const hasUnread = useMessageStore((s) => s.unreadCount > 0);
   return (
-    <View style={{ width: 28, height: 28 }}>
-      <MessageIcon className="w-7 h-7" color={color} />
+    <View style={{ width: 24, height: 24 }}>
+      <MessageIcon className="w-6 h-6" color={color} />
       {hasUnread && (
         <View
           testID="messages-tab-dot"
@@ -47,8 +47,8 @@ function MessagesTabIcon({ color }: { readonly color: string }) {
             position: "absolute",
             top: -2,
             right: -2,
-            width: 10,
-            height: 10,
+            width: 9,
+            height: 9,
             borderRadius: 5,
             backgroundColor: colors.primary.default,
             borderWidth: 1.5,
@@ -118,13 +118,25 @@ export default function MainLayout() {
             Platform.OS === "web"
               ? { display: "none" }
               : {
-                  height: 60 + insets.bottom,
+                  // BottomBar plus compacte : on réduit la hauteur et le
+                  // padding interne pour gagner en respiration. Combiné aux
+                  // icônes 24px et au label compact, jusqu'à 5 tabs tiennent
+                  // confortablement sur un écran 320px.
+                  height: 56 + insets.bottom,
                   paddingBottom: insets.bottom,
-                  paddingTop: 10,
+                  paddingTop: 6,
                   backgroundColor: "white",
                   borderTopWidth: 1,
                   borderTopColor: colors.grey[200],
                 },
+          tabBarLabelStyle: {
+            fontSize: 11,
+            marginTop: 2,
+            fontWeight: "500",
+          },
+          tabBarItemStyle: {
+            paddingVertical: 0,
+          },
         }}
       >
         <Tabs.Screen
@@ -180,7 +192,29 @@ export default function MainLayout() {
           <Tabs.Screen name="messages" options={{ href: null }} />
         )}
 
-        {/* Onglet Profil (connecté uniquement) */}
+        {/* Onglet Association (connecté + membre d'une association).
+            Placé AVANT Profil pour avoir un ordre cohérent en BottomBar :
+            Accueil · Missions · Messages · Association · Profil. */}
+        {hasAssociation ? (
+          <Tabs.Screen
+            name="association"
+            options={{
+              title: "Mon Association",
+              // Label court côté BottomBar pour rentrer sans truncate.
+              tabBarLabel: "Association",
+              tabBarIcon: AssociationTabIcon,
+            }}
+          />
+        ) : (
+          <Tabs.Screen
+            name="association"
+            options={{
+              href: null, // Cache l'onglet si pas d'association
+            }}
+          />
+        )}
+
+        {/* Onglet Profil (connecté uniquement) — toujours en dernier */}
         {isAuthenticated ? (
           <Tabs.Screen
             name="profil"
@@ -190,30 +224,10 @@ export default function MainLayout() {
             }}
           />
         ) : (
-          /* Optionnel : On peut cacher explicitement l'onglet s'il n'est pas connecté
-             pour éviter qu'Expo Router ne garde un lien mort */
           <Tabs.Screen
             name="profil"
             options={{
               href: null, // Cache l'onglet si non connecté
-            }}
-          />
-        )}
-
-        {/* Onglet Association (connecté + membre d'une association) */}
-        {hasAssociation ? (
-          <Tabs.Screen
-            name="association"
-            options={{
-              title: "Mon Association",
-              tabBarIcon: AssociationTabIcon,
-            }}
-          />
-        ) : (
-          <Tabs.Screen
-            name="association"
-            options={{
-              href: null, // Cache l'onglet si pas d'association
             }}
           />
         )}

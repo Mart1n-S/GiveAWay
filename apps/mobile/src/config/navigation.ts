@@ -14,7 +14,12 @@ export interface NavLink {
     | "associations"
     | "message";
   isDestructive?: boolean;
+  /** Masque l'item dans le drawer mobile natif (BottomBar s'en charge déjà). */
   hideInMobileDrawer?: boolean;
+  /** Masque l'item dans la barre de navigation web desktop (accessible
+   *  ailleurs, ex: avatar en haut à droite). Présent quand même dans le
+   *  burger mobile/tablette pour ne pas perdre le lien. */
+  hideInWebNav?: boolean;
   testID?: string;
 }
 
@@ -32,10 +37,15 @@ export const PUBLIC_LINKS: NavLink[] = [
     label: "Missions",
     href: "/missions",
     iconName: "hand-heart",
+    // Présent dans la BottomBar mobile → on le cache du burger pour éviter
+    // le doublon. Sur web, ce flag est ignoré (cf. AppShell.tsx).
+    hideInMobileDrawer: true,
   },
   {
     id: "associations",
-    label: "Associations",
+    // Libellé explicite pour ne pas être confondu avec "Mon Association"
+    // (gestion) dans la BottomBar mobile et la nav web.
+    label: "Trouver une association",
     href: "/associations",
     iconName: "building",
   },
@@ -67,6 +77,10 @@ export const USER_LINKS: NavLink[] = [
     href: "/profil",
     iconName: "user",
     hideInMobileDrawer: true,
+    // Sur web desktop, l'avatar dans le coin haut-droit redirige déjà vers
+    // le profil → on retire le doublon de la nav principale pour gagner
+    // de la place. Reste accessible via le burger sur tablette/mobile web.
+    hideInWebNav: true,
     testID: "link-profile",
   },
   {
