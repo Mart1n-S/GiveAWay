@@ -11,5 +11,11 @@ export interface TextAreaProps extends TextInputProps {
   /** Affiche un compteur de caractères (ex: 0/200) si maxLength est défini */
   showCharacterCount?: boolean;
 
+  /**
+   * Hauteur minimale (px) du TextArea. Défaut 120. Réduire pour usage
+   * "compact" type composer de chat (ex: 40).
+   */
+  minHeight?: number;
+
   containerClassName?: string;
 }

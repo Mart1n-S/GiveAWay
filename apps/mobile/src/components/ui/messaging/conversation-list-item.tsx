@@ -6,6 +6,8 @@ import { Text } from "../text/text";
 interface ConversationListItemProps {
   readonly conversation: ConversationListItemDto;
   readonly onPress: () => void;
+  /** Highlight visuel — utilisé en split-pane web pour marquer la conv ouverte. */
+  readonly isActive?: boolean;
   readonly testID?: string;
 }
 
@@ -31,6 +33,7 @@ function formatRelative(iso: string): string {
 export function ConversationListItem({
   conversation,
   onPress,
+  isActive = false,
   testID,
 }: ConversationListItemProps) {
   const initial =
@@ -41,8 +44,15 @@ export function ConversationListItem({
       testID={testID}
       onPress={onPress}
       accessibilityRole="button"
+      accessibilityState={{ selected: isActive }}
       accessibilityLabel={`Ouvrir la conversation avec ${conversation.otherUser.firstName} ${conversation.otherUser.lastName}`}
-      className="flex-row items-center px-4 py-3 bg-white active:bg-grey-50 border-b border-grey-100"
+      className={clsx(
+        "flex-row items-center px-4 py-3 border-b border-grey-100",
+        "web:cursor-pointer web:transition-colors",
+        isActive
+          ? "bg-primary-50 border-l-4 border-l-primary"
+          : "bg-white hover:bg-grey-50 active:bg-grey-100",
+      )}
     >
       {/* Avatar */}
       <View className="w-12 h-12 rounded-full bg-grey-200 items-center justify-center mr-3 overflow-hidden">

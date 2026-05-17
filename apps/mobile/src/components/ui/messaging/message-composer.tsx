@@ -1,9 +1,19 @@
 import { useState } from "react";
-import { Platform, Pressable, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, View } from "react-native";
 import clsx from "clsx";
-import { colors } from "../theme/tokens";
-import { Text } from "../text/text";
+import { cssInterop } from "nativewind";
 import { MESSAGE_MAX_LENGTH, SendMessageSchema } from "@repo/shared";
+import { Text } from "../text/text";
+import { TextArea } from "../textarea/textarea";
+import { colors } from "../theme/tokens";
+import SendIconSource from "@assets/icons/ic_send.svg";
+
+const SendIcon = cssInterop(SendIconSource, {
+  className: {
+    target: "style",
+    nativeStyleToProp: { width: true, height: true, color: true },
+  },
+} as const);
 
 interface MessageComposerProps {
   readonly onSend: (content: string) => Promise<void>;
@@ -27,15 +37,12 @@ export function MessageComposer({
     const trimmed = value.trim();
     if (!trimmed) return;
 
-    // Validation Zod côté front (cohérente avec le backend)
     const parsed = SendMessageSchema.safeParse({
       conversationId,
       content: trimmed,
     });
     if (!parsed.success) {
-      const flat = parsed.error.issues
-        .map((i) => i.message)
-        .join(". ");
+      const flat = parsed.error.issues.map((i) => i.message).join(". ");
       setError(flat || "Message invalide");
       return;
     }
@@ -51,58 +58,73 @@ export function MessageComposer({
     }
   };
 
-  const isDisabled = disabled || sending || value.trim().length === 0;
+  const isSendDisabled = disabled || sending || value.trim().length === 0;
 
   return (
-    <View testID={testID} className="border-t border-grey-200 bg-white px-3 py-2">
+    <View
+      testID={testID}
+      className="border-t border-grey-200 bg-white px-3 py-2"
+    >
       {error && (
         <Text
           testID="composer-error"
-          className="text-xs text-error-strong mb-1"
+          className="text-xs text-error-strong mb-1.5"
         >
           {error}
         </Text>
       )}
-      <View className="flex-row items-end gap-2">
-        <View className="flex-1 rounded-2xl border border-grey-300 bg-grey-50 px-3 py-1.5">
-          <TextInput
+      <View className="flex-row items-center gap-2">
+        {/* TextArea du design system, configuré en mode "compact" */}
+        <View className="flex-1">
+          <TextArea
             testID="composer-input"
             value={value}
             onChangeText={(t) => {
-              setValue(t.slice(0, MESSAGE_MAX_LENGTH));
+              setValue(t);
               if (error) setError(null);
             }}
             placeholder="Écrire un message…"
-            placeholderTextColor={colors.grey[600]}
-            multiline
             maxLength={MESSAGE_MAX_LENGTH}
-            editable={!disabled}
-            className="text-base text-grey-900 max-h-32"
-            style={Platform.select({
-              web: { outlineStyle: "none" } as Record<string, unknown>,
-              default: {},
-            })}
+            showCharacterCount={false}
+            disabled={disabled}
+            minHeight={44}
+            containerClassName="gap-0"
+            className="max-h-32 leading-5"
           />
         </View>
+
+        {/* Bouton envoyer — Pressable custom (44×44, charte cohérente avec Button) */}
         <Pressable
           testID="composer-send"
           accessibilityRole="button"
-          accessibilityLabel="Envoyer"
-          disabled={isDisabled}
+          accessibilityLabel="Envoyer le message"
+          accessibilityState={{ disabled: isSendDisabled, busy: sending }}
+          disabled={isSendDisabled}
           onPress={handleSend}
           className={clsx(
-            "h-11 w-11 rounded-full items-center justify-center",
-            isDisabled ? "bg-grey-200" : "bg-primary active:bg-primary-active",
+            "h-control w-[44px] rounded-md items-center justify-center transition-all",
+            "web:cursor-pointer",
+            isSendDisabled
+              ? "bg-grey-100 border border-grey-100"
+              : [
+                  "bg-primary border border-primary",
+                  "hover:bg-primary-hover hover:border-primary-hover",
+                  "active:bg-primary-active active:border-primary-active",
+                ],
           )}
         >
-          <Text
-            className={clsx(
-              "text-base font-bold",
-              isDisabled ? "text-grey-disabledText" : "text-white",
-            )}
-          >
-            ➤
-          </Text>
+          {sending ? (
+            <ActivityIndicator
+              color={isSendDisabled ? colors.grey[600] : colors.white.default}
+            />
+          ) : (
+            <SendIcon
+              className={clsx(
+                "w-5 h-5",
+                isSendDisabled ? "text-grey-disabledText" : "text-white",
+              )}
+            />
+          )}
         </Pressable>
       </View>
     </View>

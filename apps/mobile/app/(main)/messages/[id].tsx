@@ -1,31 +1,15 @@
 import { useMemo } from "react";
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  View,
-} from "react-native";
+import { Platform, View } from "react-native";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
-import { cssInterop } from "nativewind";
 import {
   Text,
-  MessageList,
-  MessageComposer,
-  colors,
+  ConversationPanel,
+  ConversationsListPanel,
+  useMediaQuery,
 } from "@/components/ui";
-import { useConversation } from "@/hooks/useConversation";
+import { useConversationsList } from "@/hooks/useConversationsList";
 import { useMessageStore } from "@/stores/message.store";
-import { useAuthStore } from "@/stores/auth.store";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import ArrowLeftIconSource from "@assets/icons/ic_arrow_left.svg";
-
-const ArrowLeftIcon = cssInterop(ArrowLeftIconSource, {
-  className: {
-    target: "style",
-    nativeStyleToProp: { width: true, height: true, color: true },
-  },
-} as const);
 
 const isWeb = Platform.OS === "web";
 
@@ -33,9 +17,11 @@ export default function ConversationScreen() {
   const params = useLocalSearchParams<{
     id: string;
     otherName?: string | string[];
-    assocName?: string | string[];
   }>();
   const router = useRouter();
+  const { isDesktop } = useMediaQuery();
+  const useSplitPane = isWeb && isDesktop;
+
   const conversationId = useMemo(() => {
     const n = Number.parseInt(
       Array.isArray(params.id) ? params.id[0] : (params.id ?? ""),
@@ -53,7 +39,6 @@ export default function ConversationScreen() {
     return typeof raw === "string" && raw.length > 0 ? raw : null;
   }, [params.otherName]);
 
-  const currentUserId = useAuthStore((s) => s.user?.id);
   const otherUserName = useMessageStore((s) => {
     if (conversationId === null) return null;
     const conv = s.conversations.find((c) => c.id === conversationId);
@@ -64,15 +49,10 @@ export default function ConversationScreen() {
   const headerTitle = otherUserName ?? otherNameParam ?? "Discussion";
   usePageTitle(headerTitle);
 
-  const {
-    messages,
-    hasMore,
-    isLoading,
-    isLoadingMore,
-    error,
-    loadMore,
-    sendMessage,
-  } = useConversation(conversationId);
+  // Liste utilisée par le split-pane web (mode desktop uniquement)
+  const { conversations, isLoading, error, refresh } = useConversationsList();
+
+  const screenOptions = useMemo(() => ({ headerTitle }), [headerTitle]);
 
   const handleBack = useMemo(
     () => () => {
@@ -82,12 +62,6 @@ export default function ConversationScreen() {
     [router],
   );
 
-  // Le headerLeft (bouton retour mobile) est défini AU NIVEAU DU LAYOUT
-  // messages/_layout.tsx — plus fiable car le Stack parent garantit
-  // l'application des options quelle que soit l'origine du push.
-  // Ici on ne customise que le titre (dynamique selon la conv).
-  const screenOptions = useMemo(() => ({ headerTitle }), [headerTitle]);
-
   if (conversationId === null) {
     return (
       <View className="flex-1 items-center justify-center bg-grey-50">
@@ -96,72 +70,53 @@ export default function ConversationScreen() {
     );
   }
 
+  // ── Mode split-pane (web, grand écran) ───────────────────────────
+  if (useSplitPane) {
+    return (
+      <>
+        <Stack.Screen options={screenOptions} />
+        <View className="flex-1 flex-row bg-grey-50">
+          {/* Colonne gauche : liste avec highlight de la conv active */}
+          <View className="w-[360px] border-r border-grey-200 bg-white flex-col">
+            <View className="px-4 py-3 border-b border-grey-100">
+              <Text className="text-xl font-bold text-grey-900">Messages</Text>
+            </View>
+            <ConversationsListPanel
+              conversations={conversations}
+              isLoading={isLoading}
+              error={error}
+              onRefresh={refresh}
+              onSelect={(id) => router.replace(`/messages/${id}`)}
+              activeConversationId={conversationId}
+            />
+          </View>
+          {/* Colonne droite : la conversation ouverte */}
+          <View className="flex-1 max-w-[900px]">
+            <ConversationPanel
+              conversationId={conversationId}
+              headerMode="embedded"
+            />
+          </View>
+        </View>
+      </>
+    );
+  }
+
+  // ── Mode "page" (mobile + petit web) ────────────────────────────
   return (
     <>
       <Stack.Screen options={screenOptions} />
       <View className="flex-1 bg-grey-50">
-        <KeyboardAvoidingView
-          testID="conversation-screen"
-          style={{
-            flex: 1,
-            backgroundColor: "white",
-            alignSelf: "center",
-            width: "100%",
-            maxWidth: isWeb ? 800 : undefined,
-          }}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
+        <View
+          className="flex-1 bg-white self-center w-full"
+          style={isWeb ? { maxWidth: 800 } : undefined}
         >
-          {/* Header web : bouton retour + nom — mobile a son header natif */}
-          {isWeb && (
-            <View className="flex-row items-center gap-3 px-4 py-3 border-b border-grey-200 bg-white">
-              <Pressable
-                testID="conv-back-button"
-                onPress={handleBack}
-                accessibilityRole="button"
-                accessibilityLabel="Retour aux messages"
-                className="w-10 h-10 rounded-full items-center justify-center hover:bg-grey-100 active:bg-grey-200 web:cursor-pointer"
-              >
-                <ArrowLeftIcon className="w-5 h-5 text-primary" />
-              </Pressable>
-              <Text className="text-lg font-bold text-grey-900 flex-1" numberOfLines={1}>
-                {headerTitle}
-              </Text>
-            </View>
-          )}
-
-          {error && (
-            <View
-              testID="conversation-error"
-              className="m-3 p-3 border border-red-200 rounded-md bg-red-50"
-            >
-              <Text className="text-sm text-red-700">{error}</Text>
-            </View>
-          )}
-
-          <View className="flex-1">
-            {isLoading && messages.length === 0 ? (
-              <View className="flex-1 items-center justify-center">
-                <ActivityIndicator color={colors.primary.default} size="large" />
-              </View>
-            ) : (
-              <MessageList
-                testID="messages-list"
-                messages={messages}
-                currentUserId={currentUserId}
-                hasMore={hasMore}
-                isLoadingMore={isLoadingMore}
-                onEndReached={loadMore}
-              />
-            )}
-          </View>
-
-          <MessageComposer
-            testID="message-composer"
+          <ConversationPanel
             conversationId={conversationId}
-            onSend={sendMessage}
+            headerMode={isWeb ? "web" : "none"}
+            onBack={isWeb ? handleBack : undefined}
           />
-        </KeyboardAvoidingView>
+        </View>
       </View>
     </>
   );
