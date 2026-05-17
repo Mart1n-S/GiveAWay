@@ -1,10 +1,10 @@
 import {
   ActivityIndicator,
-  FlatList,
   Image,
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   View,
 } from "react-native";
 import clsx from "clsx";
@@ -150,19 +150,25 @@ export function ContactMemberPickerModal({
       </View>
     );
   } else {
+    // ScrollView (et non FlatList) car la liste est courte et — surtout —
+    // FlatList rend en hauteur 0 quand son parent n'a pas de hauteur
+    // concrète (cas de la Modal avec `max-h` sans `min-h`).
     body = (
-      <FlatList
+      <ScrollView
         testID="contact-member-list"
-        data={members}
-        keyExtractor={(item) => String(item.userId)}
-        renderItem={({ item }) => (
+        className="flex-1"
+        bounces
+        showsVerticalScrollIndicator
+      >
+        {members.map((m) => (
           <MemberRow
-            member={item}
-            isPending={pendingUserId === item.userId}
-            onPress={() => onSelect(item.userId)}
+            key={m.userId}
+            member={m}
+            isPending={pendingUserId === m.userId}
+            onPress={() => onSelect(m.userId)}
           />
-        )}
-      />
+        ))}
+      </ScrollView>
     );
   }
 
@@ -181,7 +187,10 @@ export function ContactMemberPickerModal({
       >
         <View
           testID="contact-member-picker-modal"
-          className="bg-white w-full max-w-md rounded-xl overflow-hidden shadow-xl max-h-[80%]"
+          // h-[80%] (et non max-h-[80%]) : sans hauteur concrète, les enfants
+          // `flex-1` (notamment le ScrollView) ne se redimensionnent pas et
+          // la liste rend en hauteur 0 sur mobile.
+          className="bg-white w-full max-w-md rounded-xl overflow-hidden shadow-xl h-[80%]"
           // @ts-ignore — `accessibilityRole="dialog"` est web-only
           accessibilityRole={Platform.OS === "web" ? "dialog" : "alert"}
           aria-modal

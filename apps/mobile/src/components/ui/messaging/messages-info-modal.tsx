@@ -66,10 +66,10 @@ export function MessagesInfoModal({ visible, onClose }: MessagesInfoModalProps) 
             accessibilityRole="header"
           >
             <View className="flex-row items-center gap-2">
-              <View className="w-8 h-8 rounded-full bg-amber-100 items-center justify-center">
+              <View className="w-8 h-8 shrink-0 rounded-full bg-amber-100 items-center justify-center">
                 <Text className="text-amber-600 font-bold">?</Text>
               </View>
-              <Text className="text-lg font-bold text-grey-900">
+              <Text className="flex-1 text-lg font-bold text-grey-900">
                 Pourquoi une conversation peut disparaître ?
               </Text>
             </View>
