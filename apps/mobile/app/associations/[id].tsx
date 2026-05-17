@@ -602,35 +602,38 @@ export default function AssociationPublicProfileScreen() {
                     Retour
                   </Button>
 
-                  {/* Bouton notification — version texte pour le web */}
-                  <Pressable
-                    onPress={handleNotifyPress}
-                    className={clsx(
-                      "flex-row items-center gap-2 px-4 py-2 rounded-xl border web:cursor-pointer web:transition-colors",
-                      notified
-                        ? "bg-primary border-primary hover:bg-primary-hover"
-                        : "bg-white border-grey-200 hover:border-primary",
-                    )}
-                    accessibilityLabel={
-                      notified
-                        ? "Se désabonner des notifications"
-                        : "Être notifié des nouvelles missions"
-                    }
-                  >
-                    {notified ? (
-                      <NotificationSolidIcon className="w-5 h-5 text-white" />
-                    ) : (
-                      <NotificationLineIcon className="w-5 h-5 text-grey-700" />
-                    )}
-                    <Text
+                  {/* Bouton notification — version texte pour le web
+                      (caché pour les visiteurs non connectés) */}
+                  {isAuthenticated && (
+                    <Pressable
+                      onPress={handleNotifyPress}
                       className={clsx(
-                        "text-sm font-medium",
-                        notified ? "text-white" : "text-grey-700",
+                        "flex-row items-center gap-2 px-4 py-2 rounded-xl border web:cursor-pointer web:transition-colors",
+                        notified
+                          ? "bg-primary border-primary hover:bg-primary-hover"
+                          : "bg-white border-grey-200 hover:border-primary",
                       )}
+                      accessibilityLabel={
+                        notified
+                          ? "Se désabonner des notifications"
+                          : "Être notifié des nouvelles missions"
+                      }
                     >
-                      {notified ? "Notifications activées" : "Me notifier"}
-                    </Text>
-                  </Pressable>
+                      {notified ? (
+                        <NotificationSolidIcon className="w-5 h-5 text-white" />
+                      ) : (
+                        <NotificationLineIcon className="w-5 h-5 text-grey-700" />
+                      )}
+                      <Text
+                        className={clsx(
+                          "text-sm font-medium",
+                          notified ? "text-white" : "text-grey-700",
+                        )}
+                      >
+                        {notified ? "Notifications activées" : "Me notifier"}
+                      </Text>
+                    </Pressable>
+                  )}
                 </View>
               )}
 
@@ -660,8 +663,9 @@ export default function AssociationPublicProfileScreen() {
                   )}
                 </View>
 
-                {/* Cloche mobile — icône seule, alignée à droite */}
-                {Platform.OS !== "web" && (
+                {/* Cloche mobile — icône seule, alignée à droite
+                    (cachée pour les visiteurs non connectés) */}
+                {Platform.OS !== "web" && isAuthenticated && (
                   <NotifyIconButton notified={notified} onPress={handleNotifyPress} />
                 )}
               </View>
