@@ -31,8 +31,10 @@ const mockPrisma = {
   },
   message: {
     create: jest.fn(),
+    findFirst: jest.fn(),
     findMany: jest.fn(),
     updateMany: jest.fn(),
+    count: jest.fn(),
   },
   association: {
     findUnique: jest.fn(),
@@ -53,6 +55,8 @@ const baseConvInclude = (overrides: Partial<Record<string, unknown>> = {}) => ({
   associationId: 42,
   createdAt: new Date('2026-01-01T10:00:00Z'),
   lastMessageAt: null,
+  volunteerDeletedAt: null,
+  associationMemberDeletedAt: null,
   association: { id: 42, name: 'Asso E2E', logoUrl: null },
   volunteer: {
     id: 100,
@@ -91,24 +95,23 @@ describe('ConversationService', () => {
   // assertOwnership
   // ==============================================================
   describe('assertOwnership', () => {
+    const fullConv = {
+      id: 1,
+      volunteerId: 100,
+      associationMemberId: 200,
+      associationId: 42,
+      volunteerDeletedAt: null,
+      associationMemberDeletedAt: null,
+    };
+
     it('✅ Retourne la conv quand le user est volunteer', async () => {
-      mockPrisma.conversation.findFirst.mockResolvedValue({
-        id: 1,
-        volunteerId: 100,
-        associationMemberId: 200,
-        associationId: 42,
-      });
+      mockPrisma.conversation.findFirst.mockResolvedValue(fullConv);
       const res = await service.assertOwnership(1, 100);
       expect(res.id).toBe(1);
     });
 
     it('✅ Retourne la conv quand le user est associationMember', async () => {
-      mockPrisma.conversation.findFirst.mockResolvedValue({
-        id: 1,
-        volunteerId: 100,
-        associationMemberId: 200,
-        associationId: 42,
-      });
+      mockPrisma.conversation.findFirst.mockResolvedValue(fullConv);
       const res = await service.assertOwnership(1, 200);
       expect(res.id).toBe(1);
     });
@@ -331,10 +334,12 @@ describe('ConversationService', () => {
         {
           ...baseConvInclude(),
           lastMessageAt: new Date('2026-01-02T10:00:00Z'),
-          messages: [lastMessage],
-          _count: { messages: 3 },
         },
       ]);
+      // Le service interroge ensuite findFirst + count par conv visible pour
+      // appliquer le filtre soft-delete (impossible à exprimer en pur Prisma).
+      mockPrisma.message.findFirst.mockResolvedValue(lastMessage);
+      mockPrisma.message.count.mockResolvedValue(3);
 
       const res = await service.listConversations(100);
       expect(res).toHaveLength(1);
@@ -345,16 +350,57 @@ describe('ConversationService', () => {
     });
 
     it('✅ currentUserSide = associationMember si user est côté asso', async () => {
-      mockPrisma.conversation.findMany.mockResolvedValue([
-        {
-          ...baseConvInclude(),
-          messages: [],
-          _count: { messages: 0 },
-        },
-      ]);
+      mockPrisma.conversation.findMany.mockResolvedValue([baseConvInclude()]);
+      mockPrisma.message.findFirst.mockResolvedValue(null);
+      mockPrisma.message.count.mockResolvedValue(0);
       const res = await service.listConversations(200);
       expect(res[0].currentUserSide).toBe('associationMember');
       expect(res[0].otherUser.id).toBe(100);
+    });
+
+    it("✅ Masque la conv soft-deletée sans activité postérieure", async () => {
+      const deletedAt = new Date('2026-01-05T10:00:00Z');
+      mockPrisma.conversation.findMany.mockResolvedValue([
+        {
+          ...baseConvInclude(),
+          volunteerDeletedAt: deletedAt,
+          lastMessageAt: new Date('2026-01-04T10:00:00Z'),
+        },
+      ]);
+      const res = await service.listConversations(100);
+      expect(res).toHaveLength(0);
+      // Pas d'enrichissement déclenché si pas de conv visible
+      expect(mockPrisma.message.findFirst).not.toHaveBeenCalled();
+      expect(mockPrisma.message.count).not.toHaveBeenCalled();
+    });
+
+    it("✅ Garde la conv soft-deletée si lastMessageAt > deletedAt", async () => {
+      const deletedAt = new Date('2026-01-05T10:00:00Z');
+      mockPrisma.conversation.findMany.mockResolvedValue([
+        {
+          ...baseConvInclude(),
+          volunteerDeletedAt: deletedAt,
+          lastMessageAt: new Date('2026-01-06T10:00:00Z'),
+        },
+      ]);
+      mockPrisma.message.findFirst.mockResolvedValue({
+        id: 99,
+        content: 'nouveau',
+        senderId: 200,
+        createdAt: new Date('2026-01-06T10:00:00Z'),
+      });
+      mockPrisma.message.count.mockResolvedValue(1);
+      const res = await service.listConversations(100);
+      expect(res).toHaveLength(1);
+      expect(res[0].lastMessage?.content).toBe('nouveau');
+      // Le filtre `createdAt > deletedAt` est bien transmis à Prisma
+      expect(mockPrisma.message.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            createdAt: { gt: deletedAt },
+          }),
+        }),
+      );
     });
   });
 
@@ -363,15 +409,102 @@ describe('ConversationService', () => {
   // ==============================================================
   describe('getUnreadCount', () => {
     it('✅ Retourne le compteur', async () => {
-      mockPrisma.conversation.count.mockResolvedValue(5);
+      mockPrisma.conversation.findMany.mockResolvedValue([
+        {
+          id: 1,
+          volunteerId: 100,
+          volunteerDeletedAt: null,
+          associationMemberDeletedAt: null,
+          lastMessageAt: new Date('2026-01-02T10:00:00Z'),
+        },
+        {
+          id: 2,
+          volunteerId: 100,
+          volunteerDeletedAt: null,
+          associationMemberDeletedAt: null,
+          lastMessageAt: new Date('2026-01-03T10:00:00Z'),
+        },
+      ]);
+      mockPrisma.message.count.mockResolvedValue(1);
       const res = await service.getUnreadCount(100);
-      expect(res.count).toBe(5);
+      expect(res.count).toBe(2);
     });
 
     it('✅ Retourne 0 si aucune conv non-lue', async () => {
-      mockPrisma.conversation.count.mockResolvedValue(0);
+      mockPrisma.conversation.findMany.mockResolvedValue([]);
       const res = await service.getUnreadCount(100);
       expect(res.count).toBe(0);
+    });
+
+    it("✅ Exclut les conv soft-deletées sans activité postérieure", async () => {
+      const deletedAt = new Date('2026-01-05T10:00:00Z');
+      mockPrisma.conversation.findMany.mockResolvedValue([
+        {
+          id: 1,
+          volunteerId: 100,
+          volunteerDeletedAt: deletedAt,
+          associationMemberDeletedAt: null,
+          lastMessageAt: new Date('2026-01-04T10:00:00Z'),
+        },
+      ]);
+      const res = await service.getUnreadCount(100);
+      expect(res.count).toBe(0);
+      expect(mockPrisma.message.count).not.toHaveBeenCalled();
+    });
+  });
+
+  // ==============================================================
+  // softDeleteForUser
+  // ==============================================================
+  describe('softDeleteForUser', () => {
+    it('✅ Stocke volunteerDeletedAt si user est volunteer', async () => {
+      mockPrisma.conversation.findFirst.mockResolvedValue({
+        id: 1,
+        volunteerId: 100,
+        associationMemberId: 200,
+        associationId: 42,
+        volunteerDeletedAt: null,
+        associationMemberDeletedAt: null,
+      });
+      mockPrisma.conversation.update.mockResolvedValue(undefined);
+      mockPrisma.conversation.findMany.mockResolvedValue([]);
+
+      await service.softDeleteForUser(100, 1);
+
+      expect(mockPrisma.conversation.update).toHaveBeenCalledWith({
+        where: { id: 1 },
+        data: { volunteerDeletedAt: expect.any(Date) },
+      });
+      // resync unread count poussé par WS
+      expect(mockEvents.sendUnreadCount).toHaveBeenCalledWith(100, 0);
+    });
+
+    it("✅ Stocke associationMemberDeletedAt si user est membre asso", async () => {
+      mockPrisma.conversation.findFirst.mockResolvedValue({
+        id: 1,
+        volunteerId: 100,
+        associationMemberId: 200,
+        associationId: 42,
+        volunteerDeletedAt: null,
+        associationMemberDeletedAt: null,
+      });
+      mockPrisma.conversation.update.mockResolvedValue(undefined);
+      mockPrisma.conversation.findMany.mockResolvedValue([]);
+
+      await service.softDeleteForUser(200, 1);
+
+      expect(mockPrisma.conversation.update).toHaveBeenCalledWith({
+        where: { id: 1 },
+        data: { associationMemberDeletedAt: expect.any(Date) },
+      });
+    });
+
+    it("❌ Refuse si l'user n'a pas accès à la conv", async () => {
+      mockPrisma.conversation.findFirst.mockResolvedValue(null);
+      await expect(service.softDeleteForUser(999, 1)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(mockPrisma.conversation.update).not.toHaveBeenCalled();
     });
   });
 

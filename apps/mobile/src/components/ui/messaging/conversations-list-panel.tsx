@@ -1,7 +1,9 @@
+import { useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, RefreshControl, View } from "react-native";
 import type { ConversationListItemDto } from "@repo/shared";
 import { colors } from "../theme/tokens";
 import { Text } from "../text/text";
+import { ConfirmModal } from "../confirm-modal/ConfirmModal";
 import { ConversationListItem } from "./conversation-list-item";
 
 interface ConversationsListPanelProps {
@@ -10,6 +12,14 @@ interface ConversationsListPanelProps {
   readonly error: string | null;
   readonly onRefresh: () => void | Promise<void>;
   readonly onSelect: (conversationId: number) => void;
+  /**
+   * Optionnel : si fourni, active le bouton "supprimer" sur chaque item.
+   * Le composant gère la modale de confirmation ; le parent reçoit l'id
+   * une fois l'utilisateur confirmé et est responsable de l'appel API +
+   * de la mise à jour du store. Si la promesse échoue, la modale reste
+   * ouverte pour permettre un retry.
+   */
+  readonly onDeleteConfirm?: (conversationId: number) => Promise<void>;
   readonly activeConversationId?: number | null;
   readonly testID?: string;
 }
@@ -25,12 +35,34 @@ export function ConversationsListPanel({
   error,
   onRefresh,
   onSelect,
+  onDeleteConfirm,
   activeConversationId,
   testID,
 }: ConversationsListPanelProps) {
   // Filtre les conversations vides : si on a juste cliqué "Contacter" sans
   // envoyer, la conv existe en BDD mais ne doit pas polluer la liste.
   const visible = conversations.filter((c) => c.lastMessage !== null);
+
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+
+  const pendingConv = useMemo(
+    () =>
+      pendingDeleteId === null
+        ? null
+        : (conversations.find((c) => c.id === pendingDeleteId) ?? null),
+    [pendingDeleteId, conversations],
+  );
+
+  const handleConfirmDelete = async () => {
+    if (pendingDeleteId === null || !onDeleteConfirm) return;
+    try {
+      await onDeleteConfirm(pendingDeleteId);
+      setPendingDeleteId(null);
+    } catch {
+      // L'erreur est gérée par le parent (toast/affichage).
+      // On ne ferme pas la modale pour permettre un retry.
+    }
+  };
 
   if (isLoading && visible.length === 0) {
     return (
@@ -59,6 +91,9 @@ export function ConversationsListPanel({
             testID={`conv-${item.id}`}
             conversation={item}
             onPress={() => onSelect(item.id)}
+            onDelete={
+              onDeleteConfirm ? () => setPendingDeleteId(item.id) : undefined
+            }
             isActive={activeConversationId === item.id}
           />
         )}
@@ -83,6 +118,20 @@ export function ConversationsListPanel({
             </Text>
           </View>
         }
+      />
+
+      <ConfirmModal
+        visible={pendingConv !== null}
+        title="Supprimer cette conversation ?"
+        message={
+          pendingConv
+            ? `La conversation avec ${pendingConv.otherUser.firstName} ${pendingConv.otherUser.lastName} sera retirée de votre liste. ${pendingConv.otherUser.firstName} continuera de voir l'historique. Si un nouveau message arrive, la conversation réapparaîtra (sans les anciens messages).`
+            : ""
+        }
+        confirmLabel="Supprimer"
+        destructive
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setPendingDeleteId(null)}
       />
     </View>
   );

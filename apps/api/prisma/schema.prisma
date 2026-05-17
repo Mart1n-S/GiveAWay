@@ -472,6 +472,13 @@ model Conversation {
   createdAt     DateTime  @default(now()) @map("created_at")
   lastMessageAt DateTime? @map("last_message_at")
 
+  // Suppression "douce" par utilisateur : si non-null, la conv est masquée
+  // pour cet utilisateur ; elle réapparaît automatiquement si un nouveau
+  // message arrive (lastMessageAt > <user>DeletedAt), mais seuls les
+  // messages postérieurs à cette date sont visibles côté listing/messages.
+  volunteerDeletedAt         DateTime? @map("volunteer_deleted_at")
+  associationMemberDeletedAt DateTime? @map("association_member_deleted_at")
+
   messages Message[]
 
   @@unique([volunteerId, associationMemberId, associationId], name: "unique_conversation_per_triple")

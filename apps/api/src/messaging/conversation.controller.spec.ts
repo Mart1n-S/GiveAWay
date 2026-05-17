@@ -14,6 +14,7 @@ describe('ConversationController', () => {
     listConversations: jest.Mock;
     getUnreadCount: jest.Mock;
     createConversation: jest.Mock;
+    softDeleteForUser: jest.Mock;
   };
   let msgSvc: { getMessages: jest.Mock; markConversationRead: jest.Mock };
   let events: {
@@ -27,6 +28,7 @@ describe('ConversationController', () => {
       listConversations: jest.fn(),
       getUnreadCount: jest.fn().mockResolvedValue({ count: 0 }),
       createConversation: jest.fn(),
+      softDeleteForUser: jest.fn(),
     };
     msgSvc = {
       getMessages: jest.fn(),
@@ -190,6 +192,15 @@ describe('ConversationController', () => {
       // Synchronise toujours le compteur côté lecteur — utile si le client
       // a une pastille obsolète alors que la BDD est déjà à 0.
       expect(events.sendUnreadCount).toHaveBeenCalledWith(42, 0);
+    });
+  });
+
+  describe('softDelete', () => {
+    it('✅ délègue au service avec user.id et conversationId', async () => {
+      convSvc.softDeleteForUser.mockResolvedValue(undefined);
+      const res = await controller.softDelete(fakeReq(42), 7);
+      expect(convSvc.softDeleteForUser).toHaveBeenCalledWith(42, 7);
+      expect(res).toBeUndefined();
     });
   });
 });

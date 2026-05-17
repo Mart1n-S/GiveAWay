@@ -11,6 +11,7 @@ import {
   useMediaQuery,
 } from "@/components/ui";
 import { useConversationsList } from "@/hooks/useConversationsList";
+import { useDeleteConversation } from "@/hooks/useDeleteConversation";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 const isWeb = Platform.OS === "web";
@@ -31,6 +32,7 @@ export default function MessagesIndexScreen() {
   const useSplitPane = isWeb && isDesktop;
   usePageTitle("Messages");
   const { conversations, isLoading, error, refresh } = useConversationsList();
+  const deleteConversation = useDeleteConversation();
   const [isInfoOpen, setIsInfoOpen] = useState(false);
 
   // Toast affiché si on arrive ici suite à une conversation supprimée
@@ -88,6 +90,7 @@ export default function MessagesIndexScreen() {
               error={error}
               onRefresh={refresh}
               onSelect={(id) => router.push(`/messages/${id}`)}
+              onDeleteConfirm={deleteConversation}
               activeConversationId={null}
             />
           </View>
@@ -123,6 +126,7 @@ export default function MessagesIndexScreen() {
             error={error}
             onRefresh={refresh}
             onSelect={(id) => router.push(`/messages/${id}`)}
+            onDeleteConfirm={deleteConversation}
           />
         </View>
       </View>

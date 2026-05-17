@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -198,5 +199,24 @@ export class ConversationController {
       messageIds: result.messageIds,
       readAt: result.readAt.toISOString(),
     };
+  }
+
+  /**
+   * DELETE /conversations/:id
+   * Suppression "douce" pour l'utilisateur appelant : la conversation
+   * disparaît de sa liste, mais reste visible pour l'autre participant.
+   * Elle réapparaîtra automatiquement si un nouveau message arrive
+   * (seuls les messages postérieurs à la suppression seront visibles).
+   */
+  @Delete(':conversationId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async softDelete(
+    @Req() req: AuthenticatedRequest,
+    @Param('conversationId', ParseIntPipe) conversationId: number,
+  ): Promise<void> {
+    await this.conversationService.softDeleteForUser(
+      req.user.id,
+      conversationId,
+    );
   }
 }

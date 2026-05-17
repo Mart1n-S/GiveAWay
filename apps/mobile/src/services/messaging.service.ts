@@ -93,4 +93,14 @@ export const MessagingService = {
     );
     return res.data;
   },
+
+  /**
+   * DELETE /conversations/:id
+   * Soft-delete pour le user appelant : la conv disparaît de sa liste
+   * sans affecter l'autre participant. Elle peut réapparaître si un
+   * nouveau message arrive ensuite.
+   */
+  remove: async (conversationId: number): Promise<void> => {
+    await api.delete(`/conversations/${conversationId}`);
+  },
 };

@@ -1,13 +1,16 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Platform, View } from "react-native";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import {
   Text,
   ConversationPanel,
   ConversationsListPanel,
+  InfoButton,
+  MessagesInfoModal,
   useMediaQuery,
 } from "@/components/ui";
 import { useConversationsList } from "@/hooks/useConversationsList";
+import { useDeleteConversation } from "@/hooks/useDeleteConversation";
 import { useMessageStore } from "@/stores/message.store";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
@@ -51,6 +54,19 @@ export default function ConversationScreen() {
 
   // Liste utilisée par le split-pane web (mode desktop uniquement)
   const { conversations, isLoading, error, refresh } = useConversationsList();
+  const deleteConversation = useDeleteConversation();
+  const [isInfoOpen, setIsInfoOpen] = useState(false);
+
+  // En split-pane web, si l'utilisateur supprime la conv actuellement ouverte
+  // dans le panneau de droite, on le ramène à /messages pour que le placeholder
+  // prenne sa place. Pour les autres conv supprimées depuis la liste, rien à
+  // faire de plus que le hook (toast + store).
+  const handleDeleteConfirm = async (id: number) => {
+    await deleteConversation(id);
+    if (id === conversationId) {
+      router.replace("/messages");
+    }
+  };
 
   const screenOptions = useMemo(() => ({ headerTitle }), [headerTitle]);
 
@@ -75,11 +91,19 @@ export default function ConversationScreen() {
     return (
       <>
         <Stack.Screen options={screenOptions} />
+        <MessagesInfoModal
+          visible={isInfoOpen}
+          onClose={() => setIsInfoOpen(false)}
+        />
         <View className="flex-1 flex-row bg-grey-50">
           {/* Colonne gauche : liste avec highlight de la conv active */}
           <View className="w-[360px] border-r border-grey-200 bg-white flex-col">
-            <View className="px-4 py-3 border-b border-grey-100">
+            <View className="flex-row items-center justify-between px-4 py-3 border-b border-grey-100">
               <Text className="text-xl font-bold text-grey-900">Messages</Text>
+              <InfoButton
+                onPress={() => setIsInfoOpen(true)}
+                variant="inline"
+              />
             </View>
             <ConversationsListPanel
               conversations={conversations}
@@ -87,6 +111,7 @@ export default function ConversationScreen() {
               error={error}
               onRefresh={refresh}
               onSelect={(id) => router.replace(`/messages/${id}`)}
+              onDeleteConfirm={handleDeleteConfirm}
               activeConversationId={conversationId}
             />
           </View>

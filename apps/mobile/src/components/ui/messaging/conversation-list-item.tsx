@@ -1,11 +1,22 @@
 import { Image, Pressable, View } from "react-native";
 import clsx from "clsx";
+import { cssInterop } from "nativewind";
 import type { ConversationListItemDto } from "@repo/shared";
 import { Text } from "../text/text";
+import MoreVerticalIconSource from "@assets/icons/ic_more_vertical.svg";
+
+const MoreVerticalIcon = cssInterop(MoreVerticalIconSource, {
+  className: {
+    target: "style",
+    nativeStyleToProp: { width: true, height: true, color: true },
+  },
+} as const);
 
 interface ConversationListItemProps {
   readonly conversation: ConversationListItemDto;
   readonly onPress: () => void;
+  /** Optionnel : si fourni, affiche le bouton 3-points qui déclenche la suppression. */
+  readonly onDelete?: () => void;
   /** Highlight visuel — utilisé en split-pane web pour marquer la conv ouverte. */
   readonly isActive?: boolean;
   readonly testID?: string;
@@ -33,6 +44,7 @@ function formatRelative(iso: string): string {
 export function ConversationListItem({
   conversation,
   onPress,
+  onDelete,
   isActive = false,
   testID,
 }: ConversationListItemProps) {
@@ -109,6 +121,23 @@ export function ConversationListItem({
           )}
         </View>
       </View>
+
+      {onDelete && (
+        <Pressable
+          testID={`conv-${conversation.id}-more`}
+          onPress={onDelete}
+          accessibilityRole="button"
+          accessibilityLabel={`Plus d'options pour la conversation avec ${conversation.otherUser.firstName} ${conversation.otherUser.lastName}`}
+          hitSlop={8}
+          className={clsx(
+            "ml-2 w-8 h-8 items-center justify-center rounded-full",
+            "hover:bg-grey-100 active:bg-grey-200",
+            "web:cursor-pointer web:transition-colors",
+          )}
+        >
+          <MoreVerticalIcon className="w-5 h-5 text-grey-600" />
+        </Pressable>
+      )}
     </Pressable>
   );
 }

@@ -132,6 +132,8 @@ export class ConversationService {
     volunteerId: number;
     associationMemberId: number;
     associationId: number;
+    volunteerDeletedAt: Date | null;
+    associationMemberDeletedAt: Date | null;
   }> {
     const conv = await this.prisma.conversation.findFirst({
       where: {
@@ -143,12 +145,56 @@ export class ConversationService {
         volunteerId: true,
         associationMemberId: true,
         associationId: true,
+        volunteerDeletedAt: true,
+        associationMemberDeletedAt: true,
       },
     });
     if (!conv) {
       throw new ForbiddenException('Conversation introuvable ou accès refusé');
     }
     return conv;
+  }
+
+  // -----------------------------------------------------------------
+  // Renvoie la date de soft-delete pour le user courant, ou null
+  // -----------------------------------------------------------------
+  getDeletedAtForUser(
+    conv: {
+      volunteerId: number;
+      volunteerDeletedAt: Date | null;
+      associationMemberDeletedAt: Date | null;
+    },
+    userId: number,
+  ): Date | null {
+    return conv.volunteerId === userId
+      ? conv.volunteerDeletedAt
+      : conv.associationMemberDeletedAt;
+  }
+
+  // -----------------------------------------------------------------
+  // DELETE /conversations/:id — soft-delete pour le user appelant.
+  // L'autre participant n'est pas notifié et continue de voir la conv.
+  // Si un nouveau message arrive ultérieurement, la conv réapparaîtra
+  // automatiquement côté user (filtre lastMessageAt > deletedAt), mais
+  // les messages antérieurs resteront masqués.
+  // -----------------------------------------------------------------
+  async softDeleteForUser(
+    userId: number,
+    conversationId: number,
+  ): Promise<void> {
+    const conv = await this.assertOwnership(conversationId, userId);
+    const isVolunteer = conv.volunteerId === userId;
+    await this.prisma.conversation.update({
+      where: { id: conv.id },
+      data: isVolunteer
+        ? { volunteerDeletedAt: new Date() }
+        : { associationMemberDeletedAt: new Date() },
+    });
+
+    // Le compteur global non-lus côté user peut avoir changé : on le
+    // resynchronise et on pousse via WS pour rafraîchir la pastille tab.
+    const { count } = await this.getUnreadCount(userId);
+    this.events.sendUnreadCount(userId, count);
   }
 
   // -----------------------------------------------------------------
@@ -371,39 +417,60 @@ export class ConversationService {
             profilePicture: true,
           },
         },
-        messages: {
-          orderBy: { id: 'desc' },
-          take: 1,
-          select: {
-            id: true,
-            content: true,
-            senderId: true,
-            createdAt: true,
-          },
-        },
-        _count: {
-          select: {
-            messages: {
-              where: {
-                readAt: null,
-                NOT: { senderId: userId },
-              },
-            },
-          },
-        },
       },
     });
 
-    return conversations.map((conv) => {
-      const unreadCount = conv._count.messages;
+    // Soft-delete : filtre les conv masquées pour le user (deletedAt défini
+    // sans activité postérieure). Prisma ne supportant pas les comparaisons
+    // croisées de colonnes, on filtre en JS après fetch.
+    const visible = conversations.filter((conv) => {
+      const deletedAt = this.getDeletedAtForUser(conv, userId);
+      if (!deletedAt) return true;
+      return conv.lastMessageAt !== null && conv.lastMessageAt > deletedAt;
+    });
+
+    // Pour chaque conv visible : récupère le dernier message + le compteur
+    // non-lus, en respectant le filtre `createdAt > deletedAt` côté user.
+    // Le nombre de conv par utilisateur est borné, donc le N+1 est
+    // acceptable ici (et reste cache-friendly côté Postgres).
+    const enriched = await Promise.all(
+      visible.map(async (conv) => {
+        const deletedAt = this.getDeletedAtForUser(conv, userId);
+        const dateFilter = deletedAt ? { createdAt: { gt: deletedAt } } : {};
+
+        const [lastMessage, unreadCount] = await Promise.all([
+          this.prisma.message.findFirst({
+            where: { conversationId: conv.id, ...dateFilter },
+            orderBy: { id: 'desc' },
+            select: {
+              id: true,
+              content: true,
+              senderId: true,
+              createdAt: true,
+            },
+          }),
+          this.prisma.message.count({
+            where: {
+              conversationId: conv.id,
+              readAt: null,
+              NOT: { senderId: userId },
+              ...dateFilter,
+            },
+          }),
+        ]);
+
+        return { conv, lastMessage, unreadCount };
+      }),
+    );
+
+    return enriched.map(({ conv, lastMessage, unreadCount }) => {
       const item = this.toListItem(conv, userId, unreadCount);
-      const last = conv.messages[0];
-      if (last) {
+      if (lastMessage) {
         item.lastMessage = {
-          id: last.id,
-          content: last.content,
-          senderId: last.senderId,
-          createdAt: last.createdAt.toISOString(),
+          id: lastMessage.id,
+          content: lastMessage.content,
+          senderId: lastMessage.senderId,
+          createdAt: lastMessage.createdAt.toISOString(),
         };
       }
       return item;
@@ -414,18 +481,42 @@ export class ConversationService {
   // GET /conversations/unread-count
   // -----------------------------------------------------------------
   async getUnreadCount(userId: number): Promise<UnreadCountDto> {
-    const count = await this.prisma.conversation.count({
-      where: {
-        OR: [{ volunteerId: userId }, { associationMemberId: userId }],
-        messages: {
-          some: {
-            readAt: null,
-            NOT: { senderId: userId },
-          },
-        },
+    // On ne peut pas se contenter d'un count Prisma : il faut filtrer
+    // les messages selon `createdAt > <user>DeletedAt`. On récupère les
+    // metadonnées minimales puis on agrège côté JS.
+    const convs = await this.prisma.conversation.findMany({
+      where: { OR: [{ volunteerId: userId }, { associationMemberId: userId }] },
+      select: {
+        id: true,
+        volunteerId: true,
+        volunteerDeletedAt: true,
+        associationMemberDeletedAt: true,
+        lastMessageAt: true,
       },
     });
-    return { count };
+
+    const visible = convs.filter((conv) => {
+      const deletedAt = this.getDeletedAtForUser(conv, userId);
+      if (!deletedAt) return true;
+      return conv.lastMessageAt !== null && conv.lastMessageAt > deletedAt;
+    });
+
+    const flags = await Promise.all(
+      visible.map(async (conv) => {
+        const deletedAt = this.getDeletedAtForUser(conv, userId);
+        const count = await this.prisma.message.count({
+          where: {
+            conversationId: conv.id,
+            readAt: null,
+            NOT: { senderId: userId },
+            ...(deletedAt ? { createdAt: { gt: deletedAt } } : {}),
+          },
+        });
+        return count > 0;
+      }),
+    );
+
+    return { count: flags.filter(Boolean).length };
   }
 
   // -----------------------------------------------------------------

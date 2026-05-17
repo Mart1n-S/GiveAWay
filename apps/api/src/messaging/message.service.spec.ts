@@ -32,6 +32,7 @@ describe('MessageService', () => {
     assertOwnership: jest.Mock;
     toMessageDto: jest.Mock;
     getRecipientId: jest.Mock;
+    getDeletedAtForUser: jest.Mock;
   };
 
   beforeEach(async () => {
@@ -41,6 +42,8 @@ describe('MessageService', () => {
         volunteerId: 10,
         associationMemberId: 20,
         associationId: 1,
+        volunteerDeletedAt: null,
+        associationMemberDeletedAt: null,
       }),
       toMessageDto: jest.fn((m) => ({
         id: m.id,
@@ -51,6 +54,9 @@ describe('MessageService', () => {
         readAt: m.readAt ? m.readAt.toISOString() : null,
       })),
       getRecipientId: jest.fn().mockReturnValue(20),
+      // Par défaut : pas de soft-delete (les tests qui veulent l'inverse
+      // surchargent ce mock via mockReturnValueOnce).
+      getDeletedAtForUser: jest.fn().mockReturnValue(null),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -124,6 +130,21 @@ describe('MessageService', () => {
       await service.getMessages(10, 100, undefined, 0);
       const args = mockPrisma.message.findMany.mock.calls[0][0];
       expect(args.take).toBe(2); // 1 + 1
+    });
+
+    it("✅ Filtre les messages antérieurs à la soft-delete de l'user", async () => {
+      const deletedAt = new Date('2026-02-01T00:00:00Z');
+      conversationService.getDeletedAtForUser.mockReturnValueOnce(deletedAt);
+      mockPrisma.message.findMany.mockResolvedValue([]);
+      await service.getMessages(10, 100, undefined, 30);
+      expect(mockPrisma.message.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            conversationId: 100,
+            createdAt: { gt: deletedAt },
+          }),
+        }),
+      );
     });
   });
 
@@ -213,6 +234,20 @@ describe('MessageService', () => {
       );
       await expect(service.markConversationRead(99, 100)).rejects.toThrow(
         ForbiddenException,
+      );
+    });
+
+    it("✅ N'inclut pas les messages antérieurs à la soft-delete", async () => {
+      const deletedAt = new Date('2026-02-01T00:00:00Z');
+      conversationService.getDeletedAtForUser.mockReturnValueOnce(deletedAt);
+      mockPrisma.message.findMany.mockResolvedValue([]);
+      await service.markConversationRead(10, 100);
+      expect(mockPrisma.message.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            createdAt: { gt: deletedAt },
+          }),
+        }),
       );
     });
   });

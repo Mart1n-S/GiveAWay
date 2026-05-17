@@ -19,7 +19,14 @@ export class MessageService {
     before: number | undefined,
     limit: number,
   ): Promise<MessagesPageDto> {
-    await this.conversationService.assertOwnership(conversationId, userId);
+    const conv = await this.conversationService.assertOwnership(
+      conversationId,
+      userId,
+    );
+    const deletedAt = this.conversationService.getDeletedAtForUser(
+      conv,
+      userId,
+    );
 
     const safeLimit = Math.min(Math.max(limit, 1), 100);
 
@@ -27,6 +34,10 @@ export class MessageService {
       where: {
         conversationId,
         ...(before ? { id: { lt: before } } : {}),
+        // Soft-delete : ne renvoie que les messages postérieurs à la
+        // suppression utilisateur. Les anciens restent en BDD pour l'autre
+        // participant qui n'a, lui, rien supprimé.
+        ...(deletedAt ? { createdAt: { gt: deletedAt } } : {}),
       },
       orderBy: { id: 'desc' },
       take: safeLimit + 1,
@@ -86,13 +97,24 @@ export class MessageService {
     userId: number,
     conversationId: number,
   ): Promise<{ messageIds: number[]; senderIds: number[]; readAt: Date }> {
-    await this.conversationService.assertOwnership(conversationId, userId);
+    const conv = await this.conversationService.assertOwnership(
+      conversationId,
+      userId,
+    );
+    const deletedAt = this.conversationService.getDeletedAtForUser(
+      conv,
+      userId,
+    );
 
     const unread = await this.prisma.message.findMany({
       where: {
         conversationId,
         readAt: null,
         NOT: { senderId: userId },
+        // Ne marque pas comme lus les messages masqués par la soft-delete :
+        // l'utilisateur ne les voit pas, ils ne doivent pas générer un
+        // accusé de lecture vers l'expéditeur.
+        ...(deletedAt ? { createdAt: { gt: deletedAt } } : {}),
       },
       select: { id: true, senderId: true },
     });
