@@ -6,3 +6,4 @@ export * from "./conversations-list-panel";
 export * from "./conversation-panel";
 export * from "./info-button";
 export * from "./messages-info-modal";
+export * from "./contact-member-picker-modal";

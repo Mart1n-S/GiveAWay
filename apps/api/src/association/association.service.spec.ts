@@ -555,6 +555,69 @@ describe('AssociationService', () => {
   });
 
   // ===========================================================================
+  // getContactableMembers
+  // ===========================================================================
+  describe('getContactableMembers', () => {
+    it("✅ Retourne les membres mappés sans l'email", async () => {
+      mockPrisma.association.findUnique.mockResolvedValue({
+        status: AssociationStatus.VALIDATED,
+      });
+      mockPrisma.associationUser.findMany.mockResolvedValue([
+        mockOwnerMember,
+        mockAdminMember,
+      ]);
+
+      const result = await service.getContactableMembers(42, 999);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toEqual({
+        userId: mockUser1.id,
+        firstName: mockUser1.firstName,
+        lastName: mockUser1.lastName,
+        profilePicture: mockUser1.profilePicture,
+        role: AssociationRole.OWNER,
+      });
+      // L'email ne doit pas se retrouver dans le payload public
+      expect(result[0]).not.toHaveProperty('email');
+    });
+
+    it('✅ Filtre le user courant et les inactifs côté SQL', async () => {
+      mockPrisma.association.findUnique.mockResolvedValue({
+        status: AssociationStatus.VALIDATED,
+      });
+      mockPrisma.associationUser.findMany.mockResolvedValue([]);
+
+      await service.getContactableMembers(42, mockUser1.id);
+
+      expect(mockPrisma.associationUser.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            associationId: 42,
+            userId: { not: mockUser1.id },
+            user: { status: 'ACTIVE' },
+          }),
+        }),
+      );
+    });
+
+    it("❌ NotFoundException si l'asso n'existe pas", async () => {
+      mockPrisma.association.findUnique.mockResolvedValue(null);
+      await expect(service.getContactableMembers(42, 1)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it("❌ ForbiddenException si l'asso n'est pas VALIDATED", async () => {
+      mockPrisma.association.findUnique.mockResolvedValue({
+        status: AssociationStatus.PENDING,
+      });
+      await expect(service.getContactableMembers(42, 1)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+  });
+
+  // ===========================================================================
   // addMember
   // ===========================================================================
   describe('addMember', () => {

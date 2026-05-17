@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   ScrollView,
@@ -16,19 +16,30 @@ import { isAxiosError } from "axios";
 import { cssInterop } from "nativewind";
 import clsx from "clsx";
 
-import type { AssociationPublicProfile, MissionListItem } from "@repo/shared";
+import type {
+  AssociationPublicProfile,
+  ContactableMemberDto,
+  MissionListItem,
+} from "@repo/shared";
 import {
   getPublicAssociation,
   getFollowStatus,
   followAssociation,
   unfollowAssociation,
+  getContactableMembers,
 } from "@/services/association.service";
 import { MissionService } from "@/services/mission.service";
 import { MessagingService } from "@/services/messaging.service";
 import { useMessageStore } from "@/stores/message.store";
 import { useAuthStore } from "@/stores/auth.store";
 import { useProfileStore } from "@/stores/profile.store";
-import { Text, Button, TagBadge, colors } from "@/components/ui";
+import {
+  Text,
+  Button,
+  TagBadge,
+  colors,
+  ContactMemberPickerModal,
+} from "@/components/ui";
 import { MissionCard } from "@/components/ui/mission-card/mission-card";
 import { MissionMap } from "@/components/ui/mission-map";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -322,10 +333,29 @@ export default function AssociationPublicProfileScreen() {
   const [missionsLoadingMore, setMissionsLoadingMore] = useState(false);
 
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const userAssociations = useAuthStore((state) => state.user?.associations);
+
+  // L'utilisateur est-il déjà membre de l'association affichée ? Dans ce cas,
+  // on masque entièrement le bouton "Contacter" (deux membres d'une même
+  // asso n'ont pas le droit de discuter via la messagerie bénévole — cf.
+  // ConversationService.createConversation côté API).
+  const isMemberOfThisAsso = useMemo(() => {
+    if (!id || !userAssociations) return false;
+    const numericId = Number(id);
+    return userAssociations.some((a) => a.associationId === numericId);
+  }, [id, userAssociations]);
+
   const [notified, setNotified] = useState(false);
   const [notifyModalVisible, setNotifyModalVisible] = useState(false);
-  const [contactLoading, setContactLoading] = useState(false);
   const [contactError, setContactError] = useState<string | null>(null);
+
+  // Modale "choisir un destinataire"
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [members, setMembers] = useState<ContactableMemberDto[]>([]);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [membersError, setMembersError] = useState<string | null>(null);
+  // ID du membre en cours de création de conv (loader inline + désactivation)
+  const [pendingMemberId, setPendingMemberId] = useState<number | null>(null);
 
   usePageTitle("Association");
 
@@ -427,27 +457,54 @@ export default function AssociationPublicProfileScreen() {
     }
   };
 
-  const handleContactAssociation = async () => {
+  /**
+   * Clic sur "Contacter l'association" — ouvre la modale de sélection
+   * du destinataire (préférable à la sélection auto OWNER : l'utilisateur
+   * peut viser un ADMIN ou EDITOR spécifique).
+   */
+  const handleContactAssociation = () => {
     if (!isAuthenticated) {
       router.push("/connexion" as any);
       return;
     }
     if (!id) return;
-    try {
-      setContactLoading(true);
-      const { conversation } = await MessagingService.createWithAssociation(
-        Number(id),
-      );
+    setContactError(null);
+    setMembersError(null);
+    setPickerOpen(true);
+    setMembersLoading(true);
+    getContactableMembers(Number(id))
+      .then(setMembers)
+      .catch((err: unknown) => {
+        const message =
+          isAxiosError(err) && err.response?.data?.message
+            ? (err.response.data.message as string)
+            : "Impossible de charger les membres de l'association";
+        setMembersError(message);
+      })
+      .finally(() => setMembersLoading(false));
+  };
 
-      // Pré-remplit le store local : utile si l'utilisateur revient ensuite
-      // à la liste — la conv est déjà là (avec son lastMessage si un message
-      // initial a été envoyé).
+  /**
+   * Sélection d'un destinataire dans la modale : crée la conversation et
+   * navigue vers `/messages/:id`. La conv créée est upsertée dans le store
+   * pour que la sidebar/liste soit cohérente même sans refetch.
+   */
+  const handleSelectMember = async (recipientId: number) => {
+    if (!id) return;
+    setPendingMemberId(recipientId);
+    try {
+      const { conversation } = await MessagingService.create({
+        associationId: Number(id),
+        recipientId,
+      });
       useMessageStore.getState().upsertConversation(conversation);
 
       // On passe le nom de l'autre + nom de l'asso en params URL : ainsi la
       // page conversation peut afficher le bon header dès le premier rendu,
       // sans dépendre du fetch /conversations (qui peut être asynchrone).
-      const otherName = `${conversation.otherUser.firstName} ${conversation.otherUser.lastName}`.trim();
+      const otherName =
+        `${conversation.otherUser.firstName} ${conversation.otherUser.lastName}`.trim();
+      setPickerOpen(false);
       router.push({
         pathname: "/messages/[id]",
         params: {
@@ -461,9 +518,10 @@ export default function AssociationPublicProfileScreen() {
         isAxiosError(err) && err.response?.data?.message
           ? (err.response.data.message as string)
           : "Impossible de démarrer la conversation";
-      setContactError(message);
+      // L'erreur s'affiche à l'intérieur de la modale.
+      setMembersError(message);
     } finally {
-      setContactLoading(false);
+      setPendingMemberId(null);
     }
   };
 
@@ -577,6 +635,17 @@ export default function AssociationPublicProfileScreen() {
         associationName={association.name}
         onConfirm={() => void handleNotifyConfirm()}
         onCancel={() => setNotifyModalVisible(false)}
+      />
+
+      <ContactMemberPickerModal
+        visible={pickerOpen}
+        associationName={association.name}
+        members={members}
+        isLoading={membersLoading}
+        error={membersError}
+        pendingUserId={pendingMemberId}
+        onSelect={(userId) => void handleSelectMember(userId)}
+        onClose={() => setPickerOpen(false)}
       />
 
       <View className="flex-1 bg-grey-50">
@@ -698,13 +767,15 @@ export default function AssociationPublicProfileScreen() {
                 </View>
               )}
 
-              {/* Contacter l'association (bénévoles uniquement) */}
+              {/* Contacter l'association — masqué pour les membres de
+                  l'asso elle-même (ils ne peuvent pas se messager entre eux
+                  via la messagerie bénévole). */}
+              {!isMemberOfThisAsso && (
               <View className="gap-2">
                 <Button
                   testID="contact-association-button"
                   variant="primary"
                   onPress={handleContactAssociation}
-                  loading={contactLoading}
                   className="self-stretch sm:self-start"
                 >
                   {isAuthenticated
@@ -720,6 +791,7 @@ export default function AssociationPublicProfileScreen() {
                   </Text>
                 )}
               </View>
+              )}
             </View>
           </View>
 
