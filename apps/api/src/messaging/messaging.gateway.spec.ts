@@ -17,6 +17,7 @@ function makeGateway() {
       associationId: 1,
     }),
     getUnreadCount: jest.fn().mockResolvedValue({ count: 2 }),
+    getConversationUnreadCount: jest.fn().mockResolvedValue(3),
   } as unknown as import('./conversation.service').ConversationService;
 
   const messageService = {
@@ -43,6 +44,7 @@ function makeGateway() {
     broadcastNewMessage: jest.fn(),
     broadcastMessageRead: jest.fn(),
     sendUnreadCount: jest.fn(),
+    sendConversationUnread: jest.fn(),
     userRoom: (id: number) => `user:${id}`,
     conversationRoom: (id: number) => `conv:${id}`,
   } as unknown as import('./messaging.events').MessagingEvents;

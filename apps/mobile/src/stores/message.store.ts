@@ -25,7 +25,12 @@ interface MessageState {
   setConversations: (conversations: ConversationListItemDto[]) => void;
   upsertConversation: (conv: ConversationListItemDto) => void;
   bumpConversation: (conversationId: number, lastMessage: MessageDto) => void;
-  incrementUnreadForConv: (conversationId: number) => void;
+  /**
+   * Pose la valeur AUTHENTIQUE du compteur non-lus pour une conv (poussée
+   * par le serveur via `SERVER_CONVERSATION_UNREAD`). Remplace l'increment
+   * local qui pouvait diverger (réémission, reconnexions, écoute multiple).
+   */
+  setConvUnreadCount: (conversationId: number, unreadCount: number) => void;
   clearUnreadForConv: (conversationId: number) => void;
   setActiveConversation: (id: number | null) => void;
   /** Retire complètement une conv du store (suppression par cascade serveur). */
@@ -102,10 +107,10 @@ export const useMessageStore = create<MessageState>()((set) => ({
       return { conversations: [updated, ...others] };
     }),
 
-  incrementUnreadForConv: (conversationId) =>
+  setConvUnreadCount: (conversationId, unreadCount) =>
     set((state) => ({
       conversations: state.conversations.map((c) =>
-        c.id === conversationId ? { ...c, unreadCount: c.unreadCount + 1 } : c,
+        c.id === conversationId ? { ...c, unreadCount } : c,
       ),
     })),
 

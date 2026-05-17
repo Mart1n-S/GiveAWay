@@ -4,6 +4,7 @@ import type { Socket } from "socket.io-client";
 import {
   WsEvents,
   type ConversationDeletedPayload,
+  type ConversationUnreadPayload,
   type MessageNewPayload,
   type MessageReadPayload,
   type UnreadCountPayload,
@@ -70,8 +71,8 @@ export function useMessagingSocket(): void {
       // Si c'est mon propre message : rien d'autre à faire
       if (payload.message.senderId === currentUserId) return;
 
-      // Si je suis actuellement dans la conv concernée : auto-mark-read
-      // (le serveur recalculera le compteur et l'émettra via unread:count).
+      // Si je suis actuellement dans la conv concernée : auto-mark-read.
+      // Le serveur émettra ensuite conversation:unread=0 et unread:count.
       if (store.activeConversationId === payload.conversationId) {
         socket.emit(WsEvents.CLIENT_MARK_READ, {
           conversationId: payload.conversationId,
@@ -79,11 +80,16 @@ export function useMessagingSocket(): void {
         return;
       }
 
-      // Si la conv était connue : +1 sur sa pastille locale.
-      // Si elle ne l'était pas, le refetch ci-dessus ramènera l'unreadCount serveur.
-      if (knownConv) {
-        store.incrementUnreadForConv(payload.conversationId);
-      }
+      // Plus d'increment local : le serveur émet conversation:unread juste
+      // après message:new avec la valeur authoritative, ce qui évite tout
+      // risque de divergence (ré-émission, listener double, etc.).
+    };
+
+    // ── conversation:unread ─────────────────────────────────
+    const onConversationUnread = (payload: ConversationUnreadPayload) => {
+      useMessageStore
+        .getState()
+        .setConvUnreadCount(payload.conversationId, payload.unreadCount);
     };
 
     // ── message:read ────────────────────────────────────────
@@ -126,6 +132,7 @@ export function useMessagingSocket(): void {
     socket.on(WsEvents.SERVER_MESSAGE_NEW, onNewMessage);
     socket.on(WsEvents.SERVER_MESSAGE_READ, onMessageRead);
     socket.on(WsEvents.SERVER_CONVERSATION_DELETED, onConversationDeleted);
+    socket.on(WsEvents.SERVER_CONVERSATION_UNREAD, onConversationUnread);
     socket.on(WsEvents.SERVER_ERROR, onError);
 
     return () => {
@@ -135,6 +142,10 @@ export function useMessagingSocket(): void {
       socket.off(
         WsEvents.SERVER_CONVERSATION_DELETED,
         onConversationDeleted,
+      );
+      socket.off(
+        WsEvents.SERVER_CONVERSATION_UNREAD,
+        onConversationUnread,
       );
       socket.off(WsEvents.SERVER_ERROR, onError);
     };

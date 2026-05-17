@@ -16,6 +16,7 @@ export const WsEvents = {
   SERVER_MESSAGE_READ: "message:read",
   SERVER_CONVERSATION_UPDATED: "conversation:updated",
   SERVER_CONVERSATION_DELETED: "conversation:deleted",
+  SERVER_CONVERSATION_UNREAD: "conversation:unread",
   SERVER_UNREAD_COUNT: "unread:count",
   SERVER_ERROR: "error",
 } as const;
@@ -58,6 +59,16 @@ export interface ConversationDeletedPayload {
 
 export interface UnreadCountPayload {
   count: number;
+}
+
+/**
+ * Émis au destinataire d'un nouveau message pour lui pousser la valeur
+ * AUTHENTIQUE du compteur de non-lus pour cette conversation. Remplace
+ * l'increment local qui peut diverger (réémission, reconnexions, etc.).
+ */
+export interface ConversationUnreadPayload {
+  conversationId: number;
+  unreadCount: number;
 }
 
 export interface WsErrorPayload {

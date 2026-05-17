@@ -21,6 +21,7 @@ describe('ConversationController', () => {
     broadcastNewMessage: jest.Mock;
     broadcastMessageRead: jest.Mock;
     sendUnreadCount: jest.Mock;
+    sendConversationUnread: jest.Mock;
   };
 
   beforeEach(async () => {
@@ -38,6 +39,7 @@ describe('ConversationController', () => {
       broadcastNewMessage: jest.fn(),
       broadcastMessageRead: jest.fn(),
       sendUnreadCount: jest.fn(),
+      sendConversationUnread: jest.fn(),
     };
     const mod: TestingModule = await Test.createTestingModule({
       controllers: [ConversationController],

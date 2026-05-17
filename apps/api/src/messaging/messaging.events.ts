@@ -94,6 +94,25 @@ export class MessagingEvents {
   }
 
   // ----------------------------------------------------------------
+  // Envoi du compteur non-lus pour UNE conversation à un user. Source
+  // de vérité utilisée par le client pour la pastille de la conv (au
+  // lieu d'un increment local qui peut diverger).
+  // ----------------------------------------------------------------
+  sendConversationUnread(
+    userId: number,
+    conversationId: number,
+    unreadCount: number,
+  ): void {
+    if (!this.server) return;
+    this.server
+      .to(this.userRoom(userId))
+      .emit(WsEvents.SERVER_CONVERSATION_UNREAD, {
+        conversationId,
+        unreadCount,
+      });
+  }
+
+  // ----------------------------------------------------------------
   // Indique si un destinataire a une socket actuellement dans la conv
   // (utilisé pour skipper la notif push)
   // ----------------------------------------------------------------

@@ -220,6 +220,39 @@ export class ConversationService {
   }
 
   // -----------------------------------------------------------------
+  // Compteur de messages non-lus pour UNE conversation, du point de
+  // vue d'un user donné. Respecte le filtre `createdAt > deletedAt`
+  // si l'user a soft-delete la conv. Utilisé pour pousser la valeur
+  // authoritative via WS au lieu d'un increment client.
+  // -----------------------------------------------------------------
+  async getConversationUnreadCount(
+    userId: number,
+    conversationId: number,
+  ): Promise<number> {
+    const conv = await this.prisma.conversation.findFirst({
+      where: {
+        id: conversationId,
+        OR: [{ user1Id: userId }, { user2Id: userId }],
+      },
+      select: {
+        user1Id: true,
+        user1DeletedAt: true,
+        user2DeletedAt: true,
+      },
+    });
+    if (!conv) return 0;
+    const deletedAt = this.getDeletedAtForUser(conv, userId);
+    return this.prisma.message.count({
+      where: {
+        conversationId,
+        readAt: null,
+        NOT: { senderId: userId },
+        ...(deletedAt ? { createdAt: { gt: deletedAt } } : {}),
+      },
+    });
+  }
+
+  // -----------------------------------------------------------------
   // POST /conversations
   //
   // Une conversation est strictement 1-1 entre deux utilisateurs : il ne peut

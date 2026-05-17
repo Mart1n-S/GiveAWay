@@ -160,11 +160,24 @@ export class MessagingGateway
       message,
     );
 
-    // Met à jour le compteur global du destinataire — source de vérité serveur.
-    // Évite que le client doive incrémenter localement (et se trompe quand il
-    // est dans la conv).
+    // Met à jour le compteur GLOBAL du destinataire (nombre de conv avec
+    // unread) — pastille tab Messages.
     const { count } = await this.conversationService.getUnreadCount(recipientId);
     this.events.sendUnreadCount(recipientId, count);
+
+    // Met à jour le compteur PER-CONV du destinataire — pastille sur l'item
+    // de conv dans la liste. C'est la source de vérité, le client n'a plus
+    // besoin d'incrémenter localement (qui peut diverger).
+    const convUnread =
+      await this.conversationService.getConversationUnreadCount(
+        recipientId,
+        dto.conversationId,
+      );
+    this.events.sendConversationUnread(
+      recipientId,
+      dto.conversationId,
+      convUnread,
+    );
 
     // Notification push si le destinataire ne lit pas activement la conv
     await this.pushService.notifyIfOffline(
@@ -200,9 +213,11 @@ export class MessagingGateway
         result.messageIds,
         result.readAt,
       );
-      // Met à jour le compteur du lecteur
+      // Met à jour le compteur GLOBAL du lecteur
       const { count } = await this.conversationService.getUnreadCount(user.id);
       this.events.sendUnreadCount(user.id, count);
+      // Met à jour le compteur PER-CONV du lecteur (à 0 après mark-read).
+      this.events.sendConversationUnread(user.id, conversationId, 0);
     }
     return { ok: true, messageIds: result.messageIds };
   }

@@ -1,5 +1,10 @@
 import { useMemo } from "react";
-import { ActivityIndicator, FlatList, ListRenderItem, View } from "react-native";
+import {
+  ActivityIndicator,
+  FlatList,
+  ListRenderItem,
+  View,
+} from "react-native";
 import type { MessageDto } from "@repo/shared";
 import { colors } from "../theme/tokens";
 import { Text } from "../text/text";
@@ -35,6 +40,7 @@ export function MessageList({
           content={item.content}
           isMine={item.senderId === currentUserId}
           createdAt={item.createdAt}
+          readAt={item.readAt}
         />
       ),
     [currentUserId],
@@ -52,14 +58,14 @@ export function MessageList({
       contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 12 }}
       ListFooterComponent={
         isLoadingMore ? (
-          <View className="py-3 items-center">
+          <View className="items-center py-3">
             <ActivityIndicator color={colors.primary.default} />
           </View>
         ) : null
       }
       ListEmptyComponent={
-        <View className="py-12 items-center">
-          <Text className="text-grey-600 text-sm">
+        <View className="items-center py-12">
+          <Text className="text-sm text-grey-600">
             Aucun message pour le moment. Lancez la conversation !
           </Text>
         </View>

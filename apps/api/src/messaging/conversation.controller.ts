@@ -194,6 +194,9 @@ export class ConversationController {
     const { count } = await this.conversationService.getUnreadCount(userId);
     this.events.sendUnreadCount(userId, count);
 
+    // Compteur PER-CONV du lecteur : 0 après mark-read.
+    this.events.sendConversationUnread(userId, conversationId, 0);
+
     return {
       messageIds: result.messageIds,
       readAt: result.readAt.toISOString(),
