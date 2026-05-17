@@ -379,9 +379,11 @@ export class ConversationService {
     const conversations = await this.prisma.conversation.findMany({
       where: {
         OR: [{ user1Id: userId }, { user2Id: userId }],
-        // N'inclut pas les conv sans message : un clic "Contacter" qui ne
-        // donne pas lieu à un envoi ne doit pas polluer la liste.
-        messages: { some: {} },
+        // On inclut TOUTES les conv (même sans message). Les conv "vides"
+        // (créées par un clic 'Contacter' sans envoi) sont filtrées côté
+        // frontend (`lastMessage !== null`) pour ne pas polluer la liste,
+        // mais elles doivent rester dans le store pour que le titre/header
+        // de l'écran de discussion puisse afficher le nom du destinataire.
       },
       orderBy: [{ lastMessageAt: 'desc' }, { createdAt: 'desc' }],
       include: {
