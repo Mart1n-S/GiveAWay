@@ -601,7 +601,7 @@ export class ProfileService {
     //    skipDelete=true : on laisse la cascade Prisma faire la suppression.
     await this.conversationService.deleteConversationsAndNotify({
       where: {
-        OR: [{ volunteerId: userId }, { associationMemberId: userId }],
+        OR: [{ user1Id: userId }, { user2Id: userId }],
       },
       reason: 'user_deleted',
       excludedUserId: userId,

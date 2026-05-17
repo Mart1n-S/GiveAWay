@@ -733,7 +733,7 @@ describe('AssociationService', () => {
   // removeMember
   // ===========================================================================
   describe('removeMember', () => {
-    it('✅ Retire un membre EDITOR avec succès (par un OWNER) + notifie+supprime les conversations liées', async () => {
+    it("✅ Retire un membre EDITOR avec succès (par un OWNER) sans toucher aux conversations (modèle 1-1)", async () => {
       mockPrisma.associationUser.findFirst
         .mockResolvedValueOnce(mockEditorMember)
         .mockResolvedValueOnce(mockOwnerMember);
@@ -741,13 +741,11 @@ describe('AssociationService', () => {
 
       await service.removeMember(42, 12, mockUser1.id);
 
+      // Les conversations sont 1-1 et indépendantes des assos : leur sort
+      // ne dépend plus du départ d'un membre.
       expect(
         mockConversationService.deleteConversationsAndNotify,
-      ).toHaveBeenCalledWith({
-        where: { associationId: 42, associationMemberId: mockEditorUser.id },
-        reason: 'member_left',
-        excludedUserId: mockEditorUser.id,
-      });
+      ).not.toHaveBeenCalled();
       expect(mockPrisma.associationUser.delete).toHaveBeenCalledWith({
         where: { id: 12 },
       });
@@ -811,7 +809,7 @@ describe('AssociationService', () => {
   // leaveAssociation
   // ===========================================================================
   describe('leaveAssociation', () => {
-    it("✅ Permet à un EDITOR de quitter l'association + notifie+supprime les conversations liées", async () => {
+    it("✅ Permet à un EDITOR de quitter l'association sans toucher aux conversations (modèle 1-1)", async () => {
       mockPrisma.associationUser.findFirst.mockResolvedValue(mockEditorMember);
       mockPrisma.associationUser.delete.mockResolvedValue(mockEditorMember);
 
@@ -819,11 +817,7 @@ describe('AssociationService', () => {
 
       expect(
         mockConversationService.deleteConversationsAndNotify,
-      ).toHaveBeenCalledWith({
-        where: { associationId: 42, associationMemberId: mockEditorUser.id },
-        reason: 'member_left',
-        excludedUserId: mockEditorUser.id,
-      });
+      ).not.toHaveBeenCalled();
       expect(mockPrisma.associationUser.delete).toHaveBeenCalledWith({
         where: { id: mockEditorMember.id },
       });

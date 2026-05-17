@@ -6,11 +6,9 @@ import { MESSAGE_MAX_LENGTH } from "./message.dto";
 // Schéma — création d'une conversation
 // ---------------------------------------------------------------------
 
+// Une conversation est strictement 1-1 entre deux utilisateurs : aucune
+// association n'est requise. Seul l'ID du destinataire est nécessaire.
 export const CreateConversationSchema = z.object({
-  associationId: z
-    .number({ message: "L'identifiant de l'association est requis" })
-    .int("L'identifiant doit être un entier")
-    .positive("L'identifiant doit être positif"),
   recipientId: z
     .number({ message: "L'identifiant du destinataire est requis" })
     .int("L'identifiant doit être un entier")

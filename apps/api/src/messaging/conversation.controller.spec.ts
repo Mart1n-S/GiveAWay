@@ -69,23 +69,24 @@ describe('ConversationController', () => {
   });
 
   describe('create', () => {
+    const baseConvResponse = {
+      id: 1,
+      otherUser: {
+        id: 99,
+        firstName: 'X',
+        lastName: 'Y',
+        profilePicture: null,
+      },
+      otherUserAssociation: { id: 10, name: 'A', logoUrl: null },
+      lastMessage: null,
+      unreadCount: 0,
+      createdAt: '2026-01-01T10:00:00Z',
+      updatedAt: '2026-01-01T10:00:00Z',
+    };
+
     it('✅ crée la conversation et broadcast si message initial', async () => {
       convSvc.createConversation.mockResolvedValue({
-        conversation: {
-          id: 1,
-          association: { id: 10, name: 'A', logoUrl: null },
-          otherUser: {
-            id: 99,
-            firstName: 'X',
-            lastName: 'Y',
-            profilePicture: null,
-          },
-          currentUserSide: 'volunteer',
-          lastMessage: null,
-          unreadCount: 0,
-          createdAt: '2026-01-01T10:00:00Z',
-          updatedAt: '2026-01-01T10:00:00Z',
-        },
+        conversation: baseConvResponse,
         firstMessage: {
           id: 100,
           conversationId: 1,
@@ -96,7 +97,6 @@ describe('ConversationController', () => {
         },
       });
       await controller.create(fakeReq(42), {
-        associationId: 10,
         recipientId: 99,
         initialMessage: 'hello',
       });
@@ -110,27 +110,10 @@ describe('ConversationController', () => {
 
     it('✅ ne broadcast pas sans message initial', async () => {
       convSvc.createConversation.mockResolvedValue({
-        conversation: {
-          id: 1,
-          association: { id: 10, name: 'A', logoUrl: null },
-          otherUser: {
-            id: 99,
-            firstName: 'X',
-            lastName: 'Y',
-            profilePicture: null,
-          },
-          currentUserSide: 'volunteer',
-          lastMessage: null,
-          unreadCount: 0,
-          createdAt: '2026-01-01T10:00:00Z',
-          updatedAt: '2026-01-01T10:00:00Z',
-        },
+        conversation: baseConvResponse,
         firstMessage: null,
       });
-      await controller.create(fakeReq(42), {
-        associationId: 10,
-        recipientId: 99,
-      });
+      await controller.create(fakeReq(42), { recipientId: 99 });
       expect(events.broadcastNewMessage).not.toHaveBeenCalled();
     });
   });

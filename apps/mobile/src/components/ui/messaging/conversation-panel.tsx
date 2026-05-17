@@ -58,7 +58,7 @@ export function ConversationPanel({
   });
   const associationName = useMessageStore((s) => {
     const conv = s.conversations.find((c) => c.id === conversationId);
-    return conv?.association.name ?? null;
+    return conv?.otherUserAssociation?.name ?? null;
   });
   const headerTitle = otherUserName ?? "Discussion";
 

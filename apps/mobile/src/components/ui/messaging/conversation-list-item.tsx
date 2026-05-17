@@ -93,11 +93,13 @@ export function ConversationListItem({
             {formatRelative(conversation.updatedAt)}
           </Text>
         </View>
-        <View className="flex-row items-center mt-0.5">
-          <Text className="text-xs text-grey-600 mr-1" numberOfLines={1}>
-            via {conversation.association.name}
-          </Text>
-        </View>
+        {conversation.otherUserAssociation && (
+          <View className="flex-row items-center mt-0.5">
+            <Text className="text-xs text-grey-600 mr-1" numberOfLines={1}>
+              via {conversation.otherUserAssociation.name}
+            </Text>
+          </View>
+        )}
         <View className="flex-row items-center mt-1">
           <Text
             className={clsx(

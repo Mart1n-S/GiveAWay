@@ -180,7 +180,7 @@ export class AdminUserService {
     // 1. Notifier WS les autres participants des conversations supprimées
     await this.conversationService.deleteConversationsAndNotify({
       where: {
-        OR: [{ volunteerId: id }, { associationMemberId: id }],
+        OR: [{ user1Id: id }, { user2Id: id }],
       },
       reason: 'user_deleted',
       excludedUserId: id,

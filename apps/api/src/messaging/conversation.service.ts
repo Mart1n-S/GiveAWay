@@ -19,10 +19,14 @@ import {
   UserStatus,
 } from '../generated/prisma/client';
 
-type ConversationWithRelations = Prisma.ConversationGetPayload<{
+/**
+ * Une conversation est strictement 1-1 entre deux utilisateurs, classés
+ * dans un ordre canonique (user1Id < user2Id) pour garantir l'unicité
+ * indépendamment de qui a initié et via quelle association.
+ */
+type ConversationWithUsers = Prisma.ConversationGetPayload<{
   include: {
-    association: { select: { id: true; name: true; logoUrl: true } };
-    volunteer: {
+    user1: {
       select: {
         id: true;
         firstName: true;
@@ -30,7 +34,7 @@ type ConversationWithRelations = Prisma.ConversationGetPayload<{
         profilePicture: true;
       };
     };
-    associationMember: {
+    user2: {
       select: {
         id: true;
         firstName: true;
@@ -40,6 +44,18 @@ type ConversationWithRelations = Prisma.ConversationGetPayload<{
     };
   };
 }>;
+
+/** Association "primaire" d'un utilisateur (la première à laquelle il a
+ *  adhéré). `null` si l'utilisateur n'est membre d'aucune asso. */
+type PrimaryAssociation = {
+  id: number;
+  name: string;
+  logoUrl: string | null;
+} | null;
+
+function canonicalPair(a: number, b: number): { user1Id: number; user2Id: number } {
+  return a < b ? { user1Id: a, user2Id: b } : { user1Id: b, user2Id: a };
+}
 
 @Injectable()
 export class ConversationService {
@@ -71,7 +87,7 @@ export class ConversationService {
     const client = args.tx ?? this.prisma;
     const convs = await client.conversation.findMany({
       where: args.where,
-      select: { id: true, volunteerId: true, associationMemberId: true },
+      select: { id: true, user1Id: true, user2Id: true },
     });
     if (convs.length === 0) {
       return { deletedCount: 0, notifiedUserIds: [] };
@@ -81,7 +97,7 @@ export class ConversationService {
     //    pas sur la conv, donc on peut le faire avant ou après la BDD)
     const notifiedUserIds = new Set<number>();
     for (const conv of convs) {
-      for (const userId of [conv.volunteerId, conv.associationMemberId]) {
+      for (const userId of [conv.user1Id, conv.user2Id]) {
         if (userId === args.excludedUserId) continue;
         this.events.broadcastConversationDeleted(userId, conv.id, args.reason);
         notifiedUserIds.add(userId);
@@ -106,7 +122,7 @@ export class ConversationService {
         const count = await client.conversation.count({
           where: {
             id: { notIn: convIdsBeingDeleted },
-            OR: [{ volunteerId: userId }, { associationMemberId: userId }],
+            OR: [{ user1Id: userId }, { user2Id: userId }],
             messages: {
               some: { readAt: null, NOT: { senderId: userId } },
             },
@@ -129,24 +145,22 @@ export class ConversationService {
     userId: number,
   ): Promise<{
     id: number;
-    volunteerId: number;
-    associationMemberId: number;
-    associationId: number;
-    volunteerDeletedAt: Date | null;
-    associationMemberDeletedAt: Date | null;
+    user1Id: number;
+    user2Id: number;
+    user1DeletedAt: Date | null;
+    user2DeletedAt: Date | null;
   }> {
     const conv = await this.prisma.conversation.findFirst({
       where: {
         id: conversationId,
-        OR: [{ volunteerId: userId }, { associationMemberId: userId }],
+        OR: [{ user1Id: userId }, { user2Id: userId }],
       },
       select: {
         id: true,
-        volunteerId: true,
-        associationMemberId: true,
-        associationId: true,
-        volunteerDeletedAt: true,
-        associationMemberDeletedAt: true,
+        user1Id: true,
+        user2Id: true,
+        user1DeletedAt: true,
+        user2DeletedAt: true,
       },
     });
     if (!conv) {
@@ -160,15 +174,13 @@ export class ConversationService {
   // -----------------------------------------------------------------
   getDeletedAtForUser(
     conv: {
-      volunteerId: number;
-      volunteerDeletedAt: Date | null;
-      associationMemberDeletedAt: Date | null;
+      user1Id: number;
+      user1DeletedAt: Date | null;
+      user2DeletedAt: Date | null;
     },
     userId: number,
   ): Date | null {
-    return conv.volunteerId === userId
-      ? conv.volunteerDeletedAt
-      : conv.associationMemberDeletedAt;
+    return conv.user1Id === userId ? conv.user1DeletedAt : conv.user2DeletedAt;
   }
 
   // -----------------------------------------------------------------
@@ -183,12 +195,12 @@ export class ConversationService {
     conversationId: number,
   ): Promise<void> {
     const conv = await this.assertOwnership(conversationId, userId);
-    const isVolunteer = conv.volunteerId === userId;
+    const isUser1 = conv.user1Id === userId;
     await this.prisma.conversation.update({
       where: { id: conv.id },
-      data: isVolunteer
-        ? { volunteerDeletedAt: new Date() }
-        : { associationMemberDeletedAt: new Date() },
+      data: isUser1
+        ? { user1DeletedAt: new Date() }
+        : { user2DeletedAt: new Date() },
     });
 
     // Le compteur global non-lus côté user peut avoir changé : on le
@@ -200,17 +212,19 @@ export class ConversationService {
   // -----------------------------------------------------------------
   // Retourne l'ID du destinataire (l'autre participant)
   // -----------------------------------------------------------------
-  getRecipientId(
-    conv: { volunteerId: number; associationMemberId: number },
+  getOtherUserId(
+    conv: { user1Id: number; user2Id: number },
     senderId: number,
   ): number {
-    return conv.volunteerId === senderId
-      ? conv.associationMemberId
-      : conv.volunteerId;
+    return conv.user1Id === senderId ? conv.user2Id : conv.user1Id;
   }
 
   // -----------------------------------------------------------------
   // POST /conversations
+  //
+  // Une conversation est strictement 1-1 entre deux utilisateurs : il ne peut
+  // donc en exister qu'une seule entre un couple donné. On résout la paire
+  // canonique (user1Id < user2Id) et on upsert dessus.
   // -----------------------------------------------------------------
   async createConversation(
     requesterId: number,
@@ -225,21 +239,7 @@ export class ConversationService {
       );
     }
 
-    // 1. Vérifier l'association : doit être VALIDATED
-    const association = await this.prisma.association.findUnique({
-      where: { id: dto.associationId },
-      select: { id: true, status: true, name: true },
-    });
-    if (!association) {
-      throw new NotFoundException('Association introuvable');
-    }
-    if (association.status !== AssociationStatus.VALIDATED) {
-      throw new ForbiddenException(
-        "Cette association n'accepte pas encore les messages",
-      );
-    }
-
-    // 2. Vérifier le destinataire : doit exister et être ACTIF
+    // Le destinataire doit exister et être ACTIF
     const recipient = await this.prisma.user.findUnique({
       where: { id: dto.recipientId },
       select: { id: true, status: true },
@@ -253,58 +253,17 @@ export class ConversationService {
       );
     }
 
-    // 3. Identifier qui est membre — un et un seul des deux doit l'être
-    const memberships = await this.prisma.associationUser.findMany({
-      where: {
-        associationId: dto.associationId,
-        userId: { in: [requesterId, dto.recipientId] },
-      },
-      select: { userId: true },
-    });
-    const memberIds = new Set(memberships.map((m) => m.userId));
-
-    const requesterIsMember = memberIds.has(requesterId);
-    const recipientIsMember = memberIds.has(dto.recipientId);
-
-    if (requesterIsMember && recipientIsMember) {
-      throw new ForbiddenException(
-        "Deux membres d'une même association ne peuvent pas se contacter via la messagerie bénévole",
-      );
-    }
-    if (!requesterIsMember && !recipientIsMember) {
-      throw new ForbiddenException(
-        "Au moins un des deux participants doit être membre de l'association",
-      );
-    }
-
-    // 4. Calculer le triplet ordonné
-    const volunteerId = requesterIsMember ? dto.recipientId : requesterId;
-    const associationMemberId = requesterIsMember
-      ? requesterId
-      : dto.recipientId;
-
-    // 5. Upsert atomique de la conversation
+    const { user1Id, user2Id } = canonicalPair(requesterId, dto.recipientId);
     const initialContent = dto.initialMessage?.trim();
     const now = new Date();
 
     const result = await this.prisma.$transaction(async (tx) => {
       const conv = await tx.conversation.upsert({
-        where: {
-          unique_conversation_per_triple: {
-            volunteerId,
-            associationMemberId,
-            associationId: dto.associationId,
-          },
-        },
-        create: {
-          volunteerId,
-          associationMemberId,
-          associationId: dto.associationId,
-        },
+        where: { unique_conversation_per_pair: { user1Id, user2Id } },
+        create: { user1Id, user2Id },
         update: {},
         include: {
-          association: { select: { id: true, name: true, logoUrl: true } },
-          volunteer: {
+          user1: {
             select: {
               id: true,
               firstName: true,
@@ -312,7 +271,7 @@ export class ConversationService {
               profilePicture: true,
             },
           },
-          associationMember: {
+          user2: {
             select: {
               id: true,
               firstName: true,
@@ -343,8 +302,34 @@ export class ConversationService {
       return { conv, firstMessage };
     });
 
-    const listItem = this.toListItem(result.conv, requesterId, 0);
+    // Pour le DTO retourné, on récupère l'asso primaire de l'AUTRE user.
+    const otherUserId = this.getOtherUserId(result.conv, requesterId);
+    const otherUserAssociation = await this.findPrimaryAssociation(otherUserId);
+
+    const listItem = this.toListItem(
+      result.conv,
+      requesterId,
+      0,
+      otherUserAssociation,
+    );
     return { conversation: listItem, firstMessage: result.firstMessage };
+  }
+
+  // -----------------------------------------------------------------
+  // Asso primaire d'un utilisateur (la plus ancienne membership).
+  // `null` si l'utilisateur n'est membre d'aucune association.
+  // Règle métier : un user n'a qu'UNE asso à la fois (cf.
+  // AssociationService.addMember) — donc on en récupère une seule.
+  // -----------------------------------------------------------------
+  async findPrimaryAssociation(userId: number): Promise<PrimaryAssociation> {
+    const membership = await this.prisma.associationUser.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        association: { select: { id: true, name: true, logoUrl: true } },
+      },
+    });
+    return membership ? membership.association : null;
   }
 
   // -----------------------------------------------------------------
@@ -393,15 +378,14 @@ export class ConversationService {
   async listConversations(userId: number): Promise<ConversationListItemDto[]> {
     const conversations = await this.prisma.conversation.findMany({
       where: {
-        OR: [{ volunteerId: userId }, { associationMemberId: userId }],
+        OR: [{ user1Id: userId }, { user2Id: userId }],
         // N'inclut pas les conv sans message : un clic "Contacter" qui ne
         // donne pas lieu à un envoi ne doit pas polluer la liste.
         messages: { some: {} },
       },
       orderBy: [{ lastMessageAt: 'desc' }, { createdAt: 'desc' }],
       include: {
-        association: { select: { id: true, name: true, logoUrl: true } },
-        volunteer: {
+        user1: {
           select: {
             id: true,
             firstName: true,
@@ -409,7 +393,7 @@ export class ConversationService {
             profilePicture: true,
           },
         },
-        associationMember: {
+        user2: {
           select: {
             id: true,
             firstName: true,
@@ -429,52 +413,61 @@ export class ConversationService {
       return conv.lastMessageAt !== null && conv.lastMessageAt > deletedAt;
     });
 
-    // Pour chaque conv visible : récupère le dernier message + le compteur
-    // non-lus, en respectant le filtre `createdAt > deletedAt` côté user.
-    // Le nombre de conv par utilisateur est borné, donc le N+1 est
-    // acceptable ici (et reste cache-friendly côté Postgres).
+    // Pour chaque conv visible : récupère le dernier message, le compteur
+    // non-lus, ET l'asso primaire de l'AUTRE utilisateur (affichée en "via").
+    // Le N+1 est borné par le nombre de conv par user.
     const enriched = await Promise.all(
       visible.map(async (conv) => {
         const deletedAt = this.getDeletedAtForUser(conv, userId);
         const dateFilter = deletedAt ? { createdAt: { gt: deletedAt } } : {};
+        const otherUserId = this.getOtherUserId(conv, userId);
 
-        const [lastMessage, unreadCount] = await Promise.all([
-          this.prisma.message.findFirst({
-            where: { conversationId: conv.id, ...dateFilter },
-            orderBy: { id: 'desc' },
-            select: {
-              id: true,
-              content: true,
-              senderId: true,
-              createdAt: true,
-            },
-          }),
-          this.prisma.message.count({
-            where: {
-              conversationId: conv.id,
-              readAt: null,
-              NOT: { senderId: userId },
-              ...dateFilter,
-            },
-          }),
-        ]);
+        const [lastMessage, unreadCount, otherUserAssociation] =
+          await Promise.all([
+            this.prisma.message.findFirst({
+              where: { conversationId: conv.id, ...dateFilter },
+              orderBy: { id: 'desc' },
+              select: {
+                id: true,
+                content: true,
+                senderId: true,
+                createdAt: true,
+              },
+            }),
+            this.prisma.message.count({
+              where: {
+                conversationId: conv.id,
+                readAt: null,
+                NOT: { senderId: userId },
+                ...dateFilter,
+              },
+            }),
+            this.findPrimaryAssociation(otherUserId),
+          ]);
 
-        return { conv, lastMessage, unreadCount };
+        return { conv, lastMessage, unreadCount, otherUserAssociation };
       }),
     );
 
-    return enriched.map(({ conv, lastMessage, unreadCount }) => {
-      const item = this.toListItem(conv, userId, unreadCount);
-      if (lastMessage) {
-        item.lastMessage = {
-          id: lastMessage.id,
-          content: lastMessage.content,
-          senderId: lastMessage.senderId,
-          createdAt: lastMessage.createdAt.toISOString(),
-        };
-      }
-      return item;
-    });
+    return enriched.map(
+      ({ conv, lastMessage, unreadCount, otherUserAssociation }) => {
+        const item = this.toListItem(
+          conv,
+          userId,
+          unreadCount,
+          otherUserAssociation,
+        );
+        if (lastMessage) {
+          item.lastMessage = {
+            id: lastMessage.id,
+            content: lastMessage.content,
+            senderId: lastMessage.senderId,
+            createdAt: lastMessage.createdAt.toISOString(),
+          };
+        }
+        return item;
+      },
+    );
   }
 
   // -----------------------------------------------------------------
@@ -485,12 +478,12 @@ export class ConversationService {
     // les messages selon `createdAt > <user>DeletedAt`. On récupère les
     // metadonnées minimales puis on agrège côté JS.
     const convs = await this.prisma.conversation.findMany({
-      where: { OR: [{ volunteerId: userId }, { associationMemberId: userId }] },
+      where: { OR: [{ user1Id: userId }, { user2Id: userId }] },
       select: {
         id: true,
-        volunteerId: true,
-        volunteerDeletedAt: true,
-        associationMemberDeletedAt: true,
+        user1Id: true,
+        user1DeletedAt: true,
+        user2DeletedAt: true,
         lastMessageAt: true,
       },
     });
@@ -541,26 +534,21 @@ export class ConversationService {
   }
 
   toListItem(
-    conv: ConversationWithRelations,
+    conv: ConversationWithUsers,
     currentUserId: number,
     unreadCount: number,
+    otherUserAssociation: PrimaryAssociation,
   ): ConversationListItemDto {
-    const isVolunteer = conv.volunteerId === currentUserId;
-    const other = isVolunteer ? conv.associationMember : conv.volunteer;
+    const other = conv.user1Id === currentUserId ? conv.user2 : conv.user1;
     return {
       id: conv.id,
-      association: {
-        id: conv.association.id,
-        name: conv.association.name,
-        logoUrl: conv.association.logoUrl,
-      },
       otherUser: {
         id: other.id,
         firstName: other.firstName,
         lastName: other.lastName,
         profilePicture: other.profilePicture,
       },
-      currentUserSide: isVolunteer ? 'volunteer' : 'associationMember',
+      otherUserAssociation,
       lastMessage: null,
       unreadCount,
       createdAt: conv.createdAt.toISOString(),

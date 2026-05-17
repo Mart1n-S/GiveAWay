@@ -31,7 +31,7 @@ describe('MessageService', () => {
   let conversationService: {
     assertOwnership: jest.Mock;
     toMessageDto: jest.Mock;
-    getRecipientId: jest.Mock;
+    getOtherUserId: jest.Mock;
     getDeletedAtForUser: jest.Mock;
   };
 
@@ -53,7 +53,7 @@ describe('MessageService', () => {
         createdAt: m.createdAt.toISOString(),
         readAt: m.readAt ? m.readAt.toISOString() : null,
       })),
-      getRecipientId: jest.fn().mockReturnValue(20),
+      getOtherUserId: jest.fn().mockReturnValue(20),
       // Par défaut : pas de soft-delete (les tests qui veulent l'inverse
       // surchargent ce mock via mockReturnValueOnce).
       getDeletedAtForUser: jest.fn().mockReturnValue(null),

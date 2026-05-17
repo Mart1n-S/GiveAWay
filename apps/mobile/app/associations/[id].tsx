@@ -493,15 +493,13 @@ export default function AssociationPublicProfileScreen() {
     if (!id) return;
     setPendingMemberId(recipientId);
     try {
-      const { conversation } = await MessagingService.create({
-        associationId: Number(id),
-        recipientId,
-      });
+      const { conversation } = await MessagingService.create({ recipientId });
       useMessageStore.getState().upsertConversation(conversation);
 
       // On passe le nom de l'autre + nom de l'asso en params URL : ainsi la
       // page conversation peut afficher le bon header dès le premier rendu,
       // sans dépendre du fetch /conversations (qui peut être asynchrone).
+      // L'asso affichée = asso de l'autre user (peut être null si pas de membership).
       const otherName =
         `${conversation.otherUser.firstName} ${conversation.otherUser.lastName}`.trim();
       setPickerOpen(false);
@@ -510,7 +508,9 @@ export default function AssociationPublicProfileScreen() {
         params: {
           id: String(conversation.id),
           otherName,
-          assocName: conversation.association.name,
+          ...(conversation.otherUserAssociation
+            ? { assocName: conversation.otherUserAssociation.name }
+            : {}),
         },
       } as any);
     } catch (err) {

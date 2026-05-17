@@ -61,9 +61,9 @@ export class ConversationController {
 
   /**
    * POST /conversations
-   * Crée (ou retourne existante) une conversation avec un autre user
-   * dans le contexte d'une association validée.
-   * Règle métier : un des deux participants doit être membre de l'asso, l'autre non.
+   * Crée (ou retourne existante) une conversation 1-1 avec un autre
+   * utilisateur. Strictement indépendante de toute association : seule la
+   * paire d'utilisateurs définit l'identité de la conversation.
    */
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -112,7 +112,6 @@ export class ConversationController {
     const recipientId =
       await this.conversationService.findPrimaryContactUserId(associationId);
     const dto: CreateConversationDto = {
-      associationId,
       recipientId,
       ...(body.initialMessage ? { initialMessage: body.initialMessage } : {}),
     };

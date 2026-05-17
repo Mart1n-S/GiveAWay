@@ -86,7 +86,7 @@ export class MessageService {
 
     return {
       message: this.conversationService.toMessageDto(created),
-      recipientId: this.conversationService.getRecipientId(conv, senderId),
+      recipientId: this.conversationService.getOtherUserId(conv, senderId),
     };
   }
 

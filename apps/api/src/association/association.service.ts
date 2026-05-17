@@ -534,15 +534,10 @@ export class AssociationService {
       );
     }
 
-    // 1. Notifier les bénévoles concernés via WS + supprimer les conv
-    //    où ce membre représentait l'association.
-    await this.conversationService.deleteConversationsAndNotify({
-      where: { associationId, associationMemberId: member.userId },
-      reason: 'member_left',
-      excludedUserId: member.userId,
-    });
-
-    // 2. Retirer le membre
+    // Les conversations étant désormais 1-1 entre utilisateurs (indépendantes
+    // de toute asso), le départ d'un membre ne supprime plus les threads
+    // existants. La mention "via Asso" affichée côté autre user se mettra
+    // simplement à jour au prochain listing (asso primaire recalculée).
     await this.prisma.associationUser.delete({ where: { id: memberId } });
   }
 
@@ -567,15 +562,7 @@ export class AssociationService {
       );
     }
 
-    // 1. Notifier les bénévoles concernés via WS + supprimer les conv
-    //    où ce membre représentait l'association.
-    await this.conversationService.deleteConversationsAndNotify({
-      where: { associationId, associationMemberId: userId },
-      reason: 'member_left',
-      excludedUserId: userId,
-    });
-
-    // 2. Départ du membre
+    // Conversations préservées : voir commentaire dans removeMember.
     await this.prisma.associationUser.delete({ where: { id: member.id } });
   }
 

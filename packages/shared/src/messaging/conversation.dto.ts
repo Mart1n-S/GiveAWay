@@ -2,23 +2,26 @@ import type { MessageDto } from "./message.dto";
 
 /**
  * Aperçu d'une conversation pour la liste (sidebar / écran "Messages").
- * `otherUser` = l'autre participant (bénévole ou membre de l'asso, selon l'utilisateur courant).
+ * `otherUser` = l'autre participant (la conv est strictement 1-1, indépendante
+ * de toute association).
+ * `otherUserAssociation` = l'association à laquelle l'AUTRE participant
+ * appartient (au moment du listing). `null` si l'autre user n'est membre
+ * d'aucune asso. C'est ce qu'on affiche en "via Asso" — donc deux users
+ * voient des assos différentes : chacun voit l'asso de SON interlocuteur.
  */
 export interface ConversationListItemDto {
   id: number;
-  association: {
-    id: number;
-    name: string;
-    logoUrl: string | null;
-  };
   otherUser: {
     id: number;
     firstName: string;
     lastName: string;
     profilePicture: string | null;
   };
-  // Côté "rôle" de l'utilisateur courant dans la conv
-  currentUserSide: "volunteer" | "associationMember";
+  otherUserAssociation: {
+    id: number;
+    name: string;
+    logoUrl: string | null;
+  } | null;
   lastMessage: {
     id: number;
     content: string;
@@ -32,9 +35,8 @@ export interface ConversationListItemDto {
 
 export interface ConversationDto {
   id: number;
-  associationId: number;
-  volunteerId: number;
-  associationMemberId: number;
+  user1Id: number;
+  user2Id: number;
   createdAt: string;
   lastMessageAt: string | null;
 }

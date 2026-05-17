@@ -215,14 +215,9 @@ export class AdminAssociationService {
     const documents = asso.documents;
     const reason = asso.rejectionReason ?? '';
 
-    // Notifier WS les participants des conversations qui vont être supprimées
-    // en cascade par Prisma quand l'association sera deleted.
-    await this.conversationService.deleteConversationsAndNotify({
-      where: { associationId: id },
-      reason: 'association_deleted',
-      skipDelete: true,
-    });
-
+    // Les conversations ne sont plus liées à une association (modèle 1-1
+    // user-à-user). La suppression d'une asso ne supprime donc plus de
+    // conversation et n'a pas besoin d'envoyer de notification WS.
     await this.prisma.association.delete({ where: { id } });
 
     for (const doc of documents) {

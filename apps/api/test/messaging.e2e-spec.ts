@@ -499,18 +499,19 @@ describe('Messaging Module (E2E)', () => {
       await request(httpServer)
         .post('/conversations')
         .set('Authorization', `Bearer ${volunteerToken}`)
-        .send({ associationId, recipientId: memberId });
+        .send({ recipientId: memberId });
 
       await prisma.user.delete({ where: { id: volunteerId } });
       const remain = await prisma.conversation.count({
-        where: { OR: [{ volunteerId }, { associationMemberId: volunteerId }] },
+        where: { OR: [{ user1Id: volunteerId }, { user2Id: volunteerId }] },
       });
       expect(remain).toBe(0);
     });
 
-    it("✅ membre quitte l'asso → conversations correspondantes supprimées", async () => {
-      // 1. On rétrograde memberId en EDITOR pour pouvoir le retirer
-      //    (l'OWNER ne peut pas être retiré). On crée donc un autre user OWNER.
+    it("✅ membre quitte l'asso → conversations préservées (modèle 1-1)", async () => {
+      // Les conversations ne sont plus liées à une asso : le départ d'un
+      // membre ne les supprime plus. Seule la mention "via Asso" affichée
+      // côté autre user se met à jour au prochain listing.
       const ownerUser = await createTestUser(5);
       await prisma.associationUser.update({
         where: {
@@ -530,42 +531,55 @@ describe('Messaging Module (E2E)', () => {
         },
       });
 
-      // 2. Création conv volunteer ↔ member
       await request(httpServer)
         .post('/conversations')
         .set('Authorization', `Bearer ${volunteerToken}`)
-        .send({ associationId, recipientId: memberId });
+        .send({ recipientId: memberId });
 
-      const before = await prisma.conversation.count({
-        where: { associationId, associationMemberId: memberId },
+      const convCountBefore = await prisma.conversation.count({
+        where: {
+          OR: [{ user1Id: memberId }, { user2Id: memberId }],
+        },
       });
-      expect(before).toBe(1);
+      expect(convCountBefore).toBe(1);
 
-      // 3. Le membre quitte
       const ownerToken = await loginUser('e2e.5@test.com', 'Password123!');
       await request(httpServer)
         .delete(`/associations/${associationId}/members/${memberAssocId}`)
         .set('Authorization', `Bearer ${ownerToken}`)
         .expect(204);
 
-      // 4. Conv supprimée
-      const after = await prisma.conversation.count({
-        where: { associationId, associationMemberId: memberId },
+      // Conv toujours présente (indépendante de l'asso)
+      const convCountAfter = await prisma.conversation.count({
+        where: {
+          OR: [{ user1Id: memberId }, { user2Id: memberId }],
+        },
       });
-      expect(after).toBe(0);
+      expect(convCountAfter).toBe(1);
     });
 
-    it('✅ association supprimée → conversations supprimées', async () => {
+    it('✅ association supprimée → conversations préservées (modèle 1-1)', async () => {
       await request(httpServer)
         .post('/conversations')
         .set('Authorization', `Bearer ${volunteerToken}`)
-        .send({ associationId, recipientId: memberId });
+        .send({ recipientId: memberId });
+
+      const before = await prisma.conversation.count({
+        where: {
+          OR: [{ user1Id: memberId }, { user2Id: memberId }],
+        },
+      });
+      expect(before).toBe(1);
 
       await prisma.association.delete({ where: { id: associationId } });
-      const remain = await prisma.conversation.count({
-        where: { associationId },
+
+      // Conv toujours présente : la suppression de l'asso n'affecte plus les conv
+      const after = await prisma.conversation.count({
+        where: {
+          OR: [{ user1Id: memberId }, { user2Id: memberId }],
+        },
       });
-      expect(remain).toBe(0);
+      expect(after).toBe(1);
     });
   });
 

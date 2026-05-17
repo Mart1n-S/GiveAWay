@@ -8,6 +8,14 @@ import {
 
 const VALID_PASSWORD = "Password123!";
 
+/**
+ * Helper : ordre canonique de la paire d'utilisateurs pour insérer
+ * directement une conversation en BDD (user1Id < user2Id, cf. schema Prisma).
+ */
+function canonicalPair(a: number, b: number) {
+  return a < b ? { user1Id: a, user2Id: b } : { user1Id: b, user2Id: a };
+}
+
 test.beforeEach(async () => {
   await cleanDatabase();
 });
@@ -56,9 +64,7 @@ test.describe("Messagerie — accès et liste", () => {
     // Conv volontaire → membre, avec un message du membre non lu côté volontaire
     const conv = await prisma.conversation.create({
       data: {
-        volunteerId: volunteer.id,
-        associationMemberId: member.id,
-        associationId: association.id,
+        ...canonicalPair(volunteer.id, member.id),
         lastMessageAt: new Date(),
       },
     });
@@ -94,9 +100,7 @@ test.describe("Messagerie — discussion", () => {
 
     const conv = await prisma.conversation.create({
       data: {
-        volunteerId: volunteer.id,
-        associationMemberId: member.id,
-        associationId: association.id,
+        ...canonicalPair(volunteer.id, member.id),
         lastMessageAt: new Date(),
       },
     });
@@ -142,9 +146,7 @@ test.describe("Messagerie — discussion", () => {
 
     const conv = await prisma.conversation.create({
       data: {
-        volunteerId: volunteer.id,
-        associationMemberId: member.id,
-        associationId: association.id,
+        ...canonicalPair(volunteer.id, member.id),
         lastMessageAt: new Date(),
       },
     });
@@ -182,9 +184,7 @@ test.describe("Messagerie — discussion", () => {
 
     const conv = await prisma.conversation.create({
       data: {
-        volunteerId: volunteer.id,
-        associationMemberId: member.id,
-        associationId: association.id,
+        ...canonicalPair(volunteer.id, member.id),
       },
     });
 
@@ -206,9 +206,7 @@ test.describe("Messagerie — discussion", () => {
 
     const conv = await prisma.conversation.create({
       data: {
-        volunteerId: volunteer.id,
-        associationMemberId: member.id,
-        associationId: association.id,
+        ...canonicalPair(volunteer.id, member.id),
       },
     });
 
@@ -258,9 +256,7 @@ test.describe("Bouton contact association", () => {
     // Une conversation a bien été créée côté BDD
     const conv = await prisma.conversation.findFirst({
       where: {
-        volunteerId: volunteer.id,
-        associationMemberId: owner.id,
-        associationId: association.id,
+        ...canonicalPair(volunteer.id, owner.id),
       },
     });
     expect(conv).not.toBeNull();

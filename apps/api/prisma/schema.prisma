@@ -142,8 +142,8 @@ model User {
   follows        UserAssociationFollow[]
 
   // Messagerie
-  volunteerConversations   Conversation[] @relation("ConversationVolunteer")
-  associationConversations Conversation[] @relation("ConversationAssoMember")
+  conversationsAsUser1 Conversation[] @relation("ConversationUser1")
+  conversationsAsUser2 Conversation[] @relation("ConversationUser2")
   sentMessages             Message[]      @relation("MessageSender")
 
   @@map("users")
@@ -375,7 +375,6 @@ model Association {
   missions             Mission[]
   documents            AssociationDocument[]
   followers            UserAssociationFollow[]
-  conversations        Conversation[]
 
   @@map("associations")
 }
@@ -456,18 +455,14 @@ model AdminRefreshToken {
 model Conversation {
   id Int @id @default(autoincrement())
 
-  // Bénévole côté "extérieur" — non-membre de l'association
-  volunteerId Int  @map("volunteer_id")
-  volunteer   User @relation("ConversationVolunteer", fields: [volunteerId], references: [id], onDelete: Cascade)
+  // Paire d'utilisateurs en ordre canonique (user1Id < user2Id) — une seule
+  // conversation possible entre deux personnes, quel que soit qui a contacté
+  // l'autre en premier ou via quelle association.
+  user1Id Int  @map("user1_id")
+  user1   User @relation("ConversationUser1", fields: [user1Id], references: [id], onDelete: Cascade)
 
-  // Membre représentant l'association (au moment de l'initialisation)
-  associationMemberId Int  @map("association_member_id")
-  associationMember   User @relation("ConversationAssoMember", fields: [associationMemberId], references: [id], onDelete: Cascade)
-
-  // Contexte associatif — sert au tri/affichage et déclenche la suppression
-  // si le membre quitte l'association (logique applicative)
-  associationId Int         @map("association_id")
-  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  user2Id Int  @map("user2_id")
+  user2   User @relation("ConversationUser2", fields: [user2Id], references: [id], onDelete: Cascade)
 
   createdAt     DateTime  @default(now()) @map("created_at")
   lastMessageAt DateTime? @map("last_message_at")
@@ -476,15 +471,14 @@ model Conversation {
   // pour cet utilisateur ; elle réapparaît automatiquement si un nouveau
   // message arrive (lastMessageAt > <user>DeletedAt), mais seuls les
   // messages postérieurs à cette date sont visibles côté listing/messages.
-  volunteerDeletedAt         DateTime? @map("volunteer_deleted_at")
-  associationMemberDeletedAt DateTime? @map("association_member_deleted_at")
+  user1DeletedAt DateTime? @map("user1_deleted_at")
+  user2DeletedAt DateTime? @map("user2_deleted_at")
 
   messages Message[]
 
-  @@unique([volunteerId, associationMemberId, associationId], name: "unique_conversation_per_triple")
-  @@index([volunteerId, lastMessageAt(sort: Desc)])
-  @@index([associationMemberId, lastMessageAt(sort: Desc)])
-  @@index([associationId])
+  @@unique([user1Id, user2Id], name: "unique_conversation_per_pair")
+  @@index([user1Id, lastMessageAt(sort: Desc)])
+  @@index([user2Id, lastMessageAt(sort: Desc)])
   @@map("conversations")
 }
 

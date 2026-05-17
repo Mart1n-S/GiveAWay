@@ -3,7 +3,6 @@ import { MESSAGE_MAX_LENGTH } from "./message.dto";
 
 describe("CreateConversationSchema", () => {
   const validPayload = {
-    associationId: 10,
     recipientId: 20,
   };
 
@@ -23,21 +22,13 @@ describe("CreateConversationSchema", () => {
     }
   });
 
-  it("refuse associationId manquant", () => {
-    const result = CreateConversationSchema.safeParse({ recipientId: 20 });
-    expect(result.success).toBe(false);
-  });
-
   it("refuse recipientId manquant", () => {
-    const result = CreateConversationSchema.safeParse({ associationId: 10 });
+    const result = CreateConversationSchema.safeParse({});
     expect(result.success).toBe(false);
   });
 
-  it("refuse associationId négatif", () => {
-    const result = CreateConversationSchema.safeParse({
-      ...validPayload,
-      associationId: -5,
-    });
+  it("refuse recipientId négatif", () => {
+    const result = CreateConversationSchema.safeParse({ recipientId: -5 });
     expect(result.success).toBe(false);
   });
 
