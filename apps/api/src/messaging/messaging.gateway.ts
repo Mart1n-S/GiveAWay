@@ -162,7 +162,8 @@ export class MessagingGateway
 
     // Met à jour le compteur GLOBAL du destinataire (nombre de conv avec
     // unread) — pastille tab Messages.
-    const { count } = await this.conversationService.getUnreadCount(recipientId);
+    const { count } =
+      await this.conversationService.getUnreadCount(recipientId);
     this.events.sendUnreadCount(recipientId, count);
 
     // Met à jour le compteur PER-CONV du destinataire — pastille sur l'item
@@ -236,7 +237,14 @@ export class MessagingGateway
   private requireConversationId(payload: unknown): number {
     const obj = payload as { conversationId?: unknown } | null | undefined;
     const raw = obj?.conversationId;
-    const id = typeof raw === 'number' ? raw : Number.parseInt(String(raw), 10);
+    let id: number;
+    if (typeof raw === 'number') {
+      id = raw;
+    } else if (typeof raw === 'string') {
+      id = Number.parseInt(raw, 10);
+    } else {
+      id = Number.NaN;
+    }
     if (!Number.isInteger(id) || id <= 0) {
       throw new WsException('Identifiant de conversation invalide');
     }

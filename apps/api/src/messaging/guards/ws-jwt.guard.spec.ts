@@ -182,7 +182,7 @@ describe('WsJwtGuard', () => {
       );
     });
 
-    it("✅ priorise handshake.auth.token sur les cookies (mobile gagne)", async () => {
+    it('✅ priorise handshake.auth.token sur les cookies (mobile gagne)', async () => {
       mockJwt.verifyAsync.mockResolvedValue({ sub: '42', email: 'a@a.com' });
       mockPrisma.user.findUnique.mockResolvedValue({
         id: 42,

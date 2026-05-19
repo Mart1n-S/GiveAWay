@@ -68,7 +68,11 @@ function connectSocket(baseUrl: string, token: string): Promise<Socket> {
     const fail = (err: unknown) => {
       cleanup();
       socket.disconnect();
-      reject(err instanceof Error ? err : new Error(String(err ?? 'WS error')));
+      reject(
+        err instanceof Error
+          ? err
+          : new Error(typeof err === 'string' ? err : 'WS error'),
+      );
     };
     socket.once('connect_error', fail);
     socket.once('error', fail);

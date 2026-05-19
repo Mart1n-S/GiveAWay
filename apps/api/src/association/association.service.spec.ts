@@ -733,7 +733,7 @@ describe('AssociationService', () => {
   // removeMember
   // ===========================================================================
   describe('removeMember', () => {
-    it("✅ Retire un membre EDITOR avec succès (par un OWNER) sans toucher aux conversations (modèle 1-1)", async () => {
+    it('✅ Retire un membre EDITOR avec succès (par un OWNER) sans toucher aux conversations (modèle 1-1)', async () => {
       mockPrisma.associationUser.findFirst
         .mockResolvedValueOnce(mockEditorMember)
         .mockResolvedValueOnce(mockOwnerMember);

@@ -27,7 +27,7 @@ export class MessagingPushService {
     unreadCount?: number,
   ): Promise<void> {
     try {
-      const inRoom = await this.events.isUserInConversationRoom(
+      const inRoom = this.events.isUserInConversationRoom(
         conversationId,
         recipientId,
       );

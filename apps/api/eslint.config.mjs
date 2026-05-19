@@ -39,6 +39,8 @@ export default tseslint.config(
       '**/*.guard.ts',
       '**/*.interceptor.ts',
       '**/*.decorator.ts',
+      '**/*.gateway.ts',
+      '**/*.events.ts',
       '**/*.spec.ts',
       '**/*.e2e-spec.ts',
       '**/prisma-test-helper.ts',

@@ -35,7 +35,10 @@ describe('ProfileService — deleteProfile', () => {
         { provide: AuthService, useValue: mockAuthService },
         { provide: FILE_SERVICE, useValue: mockFileService },
         { provide: CookieService, useValue: mockCookieService },
-        { provide: ConversationService, useValue: createMockConversationService() },
+        {
+          provide: ConversationService,
+          useValue: createMockConversationService(),
+        },
       ],
     }).compile();
 

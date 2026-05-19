@@ -29,6 +29,7 @@ export const prisma = new PrismaClient({ adapter });
  * passent `testInfo.parallelIndex`. Retourne toujours le même client
  * puisqu'on n'a qu'une seule BDD de test.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function getPrisma(_workerIndex: number = 0): PrismaClient {
   return prisma;
 }
@@ -242,10 +243,7 @@ const userDto = {
   },
 };
 
-export async function createTestUser(
-  workerIndex: number = 0,
-  suffix?: string,
-) {
+export async function createTestUser(workerIndex: number = 0, suffix?: string) {
   const argon2 = await import('argon2');
   const hashedPassword = await argon2.hash(userDto.password);
 

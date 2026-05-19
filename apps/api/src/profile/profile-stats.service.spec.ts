@@ -46,7 +46,10 @@ describe('ProfileService — getParticipationStats', () => {
         { provide: AuthService, useValue: mockAuthService },
         { provide: FILE_SERVICE, useValue: createMockFileService() },
         { provide: CookieService, useValue: createMockCookieService() },
-        { provide: ConversationService, useValue: createMockConversationService() },
+        {
+          provide: ConversationService,
+          useValue: createMockConversationService(),
+        },
       ],
     }).compile();
 

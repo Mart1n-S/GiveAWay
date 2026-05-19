@@ -38,20 +38,20 @@ describe('MessagingPushService', () => {
   });
 
   it('ne push pas si le destinataire est dans la conv', async () => {
-    mockEvents.isUserInConversationRoom.mockResolvedValue(true);
+    mockEvents.isUserInConversationRoom.mockReturnValue(true);
     await service.notifyIfOffline(10, 99, sender, msg);
     expect(mockNotifs.sendPushNotifications).not.toHaveBeenCalled();
   });
 
   it('ne push pas si pas de pushToken', async () => {
-    mockEvents.isUserInConversationRoom.mockResolvedValue(false);
+    mockEvents.isUserInConversationRoom.mockReturnValue(false);
     mockPrisma.user.findUnique.mockResolvedValue({ pushToken: null });
     await service.notifyIfOffline(10, 99, sender, msg);
     expect(mockNotifs.sendPushNotifications).not.toHaveBeenCalled();
   });
 
   it('push avec title=nom expéditeur et data.conversationId', async () => {
-    mockEvents.isUserInConversationRoom.mockResolvedValue(false);
+    mockEvents.isUserInConversationRoom.mockReturnValue(false);
     mockPrisma.user.findUnique.mockResolvedValue({
       pushToken: 'ExponentPushToken[xxx]',
     });
@@ -69,7 +69,7 @@ describe('MessagingPushService', () => {
   });
 
   it('inclut le badge si unreadCount est fourni', async () => {
-    mockEvents.isUserInConversationRoom.mockResolvedValue(false);
+    mockEvents.isUserInConversationRoom.mockReturnValue(false);
     mockPrisma.user.findUnique.mockResolvedValue({
       pushToken: 'ExponentPushToken[xxx]',
     });
@@ -79,7 +79,7 @@ describe('MessagingPushService', () => {
   });
 
   it("n'inclut pas le badge si unreadCount n'est pas fourni", async () => {
-    mockEvents.isUserInConversationRoom.mockResolvedValue(false);
+    mockEvents.isUserInConversationRoom.mockReturnValue(false);
     mockPrisma.user.findUnique.mockResolvedValue({
       pushToken: 'ExponentPushToken[xxx]',
     });
@@ -89,7 +89,7 @@ describe('MessagingPushService', () => {
   });
 
   it('tronque le contenu à 120 caractères', async () => {
-    mockEvents.isUserInConversationRoom.mockResolvedValue(false);
+    mockEvents.isUserInConversationRoom.mockReturnValue(false);
     mockPrisma.user.findUnique.mockResolvedValue({
       pushToken: 'ExponentPushToken[xxx]',
     });
@@ -100,7 +100,7 @@ describe('MessagingPushService', () => {
   });
 
   it("ne crash pas en cas d'erreur Prisma", async () => {
-    mockEvents.isUserInConversationRoom.mockResolvedValue(false);
+    mockEvents.isUserInConversationRoom.mockReturnValue(false);
     mockPrisma.user.findUnique.mockRejectedValue(new Error('boom'));
     await expect(
       service.notifyIfOffline(10, 99, sender, msg),

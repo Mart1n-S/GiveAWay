@@ -486,7 +486,7 @@ describe('AssociationController', () => {
   // getContactableMembers
   // =========================================================================
   describe('getContactableMembers', () => {
-    it("✅ Délègue au service avec associationId et user.id du requêteur", async () => {
+    it('✅ Délègue au service avec associationId et user.id du requêteur', async () => {
       const fakeMembers = [
         {
           userId: 7,

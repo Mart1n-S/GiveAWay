@@ -120,10 +120,7 @@ export class MessagingEvents {
   // Indique si un destinataire a une socket actuellement dans la conv
   // (utilisé pour skipper la notif push)
   // ----------------------------------------------------------------
-  async isUserInConversationRoom(
-    conversationId: number,
-    userId: number,
-  ): Promise<boolean> {
+  isUserInConversationRoom(conversationId: number, userId: number): boolean {
     if (!this.server) return false;
     // NestJS injecte un Namespace (et non un Server) quand le gateway a un
     // namespace défini. Sur un Namespace : `.adapter` est direct, et `.sockets`
@@ -134,8 +131,8 @@ export class MessagingEvents {
     if (!room) return false;
     for (const sid of room) {
       const s = this.server.sockets.get(sid);
-      const u = s?.data?.user as { id?: number } | undefined;
-      if (u?.id === userId) return true;
+      const data = s?.data as { user?: { id?: number } } | undefined;
+      if (data?.user?.id === userId) return true;
     }
     return false;
   }

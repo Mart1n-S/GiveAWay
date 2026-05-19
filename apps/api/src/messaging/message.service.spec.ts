@@ -153,7 +153,7 @@ describe('MessageService', () => {
   // ==============================================================
   describe('send', () => {
     it('✅ Crée le message et met à jour la conversation', async () => {
-      mockPrisma.$transaction.mockImplementation(async (cb) => {
+      mockPrisma.$transaction.mockImplementation((cb) => {
         return cb({
           message: {
             create: jest
@@ -179,7 +179,7 @@ describe('MessageService', () => {
       const createMock = jest
         .fn()
         .mockResolvedValue(makeMessage({ id: 1, content: 'trimmed' }));
-      mockPrisma.$transaction.mockImplementation(async (cb) =>
+      mockPrisma.$transaction.mockImplementation((cb) =>
         cb({
           message: { create: createMock },
           conversation: { update: jest.fn() },

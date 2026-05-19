@@ -129,14 +129,14 @@ describe('ConversationService', () => {
   // ==============================================================
   describe('getOtherUserId', () => {
     it('✅ Retourne user2 si sender = user1', () => {
-      expect(
-        service.getOtherUserId({ user1Id: 100, user2Id: 200 }, 100),
-      ).toBe(200);
+      expect(service.getOtherUserId({ user1Id: 100, user2Id: 200 }, 100)).toBe(
+        200,
+      );
     });
     it('✅ Retourne user1 si sender = user2', () => {
-      expect(
-        service.getOtherUserId({ user1Id: 100, user2Id: 200 }, 200),
-      ).toBe(100);
+      expect(service.getOtherUserId({ user1Id: 100, user2Id: 200 }, 200)).toBe(
+        100,
+      );
     });
   });
 
@@ -149,7 +149,7 @@ describe('ConversationService', () => {
         id: 200,
         status: UserStatus.ACTIVE,
       });
-      mockPrisma.$transaction.mockImplementation(async (cb) =>
+      mockPrisma.$transaction.mockImplementation((cb) =>
         cb({
           conversation: {
             upsert: jest.fn().mockResolvedValue(baseConvInclude()),
@@ -287,7 +287,7 @@ describe('ConversationService', () => {
       expect(mockPrisma.message.count).not.toHaveBeenCalled();
     });
 
-    it("✅ Garde la conv soft-deletée si lastMessageAt > deletedAt et filtre par date", async () => {
+    it('✅ Garde la conv soft-deletée si lastMessageAt > deletedAt et filtre par date', async () => {
       const deletedAt = new Date('2026-01-05T10:00:00Z');
       mockPrisma.conversation.findMany.mockResolvedValue([
         {

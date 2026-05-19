@@ -53,7 +53,10 @@ type PrimaryAssociation = {
   logoUrl: string | null;
 } | null;
 
-function canonicalPair(a: number, b: number): { user1Id: number; user2Id: number } {
+function canonicalPair(
+  a: number,
+  b: number,
+): { user1Id: number; user2Id: number } {
   return a < b ? { user1Id: a, user2Id: b } : { user1Id: b, user2Id: a };
 }
 

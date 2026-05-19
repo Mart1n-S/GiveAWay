@@ -125,12 +125,12 @@ describe('MessagingEvents', () => {
     });
   });
 
-  it('isUserInConversationRoom retourne false sans serveur', async () => {
-    const res = await events.isUserInConversationRoom(1, 42);
+  it('isUserInConversationRoom retourne false sans serveur', () => {
+    const res = events.isUserInConversationRoom(1, 42);
     expect(res).toBe(false);
   });
 
-  it('isUserInConversationRoom retourne true si user présent', async () => {
+  it('isUserInConversationRoom retourne true si user présent', () => {
     const sockets = new Map<string, unknown>();
     sockets.set('sid-1', { data: { user: { id: 42 } } });
     const rooms = new Map<string, Set<string>>();
@@ -142,11 +142,11 @@ describe('MessagingEvents', () => {
       sockets,
     } as unknown as import('socket.io').Server;
     events.setServer(fakeServer);
-    const res = await events.isUserInConversationRoom(1, 42);
+    const res = events.isUserInConversationRoom(1, 42);
     expect(res).toBe(true);
   });
 
-  it('isUserInConversationRoom retourne false si user absent de la room', async () => {
+  it('isUserInConversationRoom retourne false si user absent de la room', () => {
     const sockets = new Map<string, unknown>();
     sockets.set('sid-1', { data: { user: { id: 99 } } });
     const rooms = new Map<string, Set<string>>();
@@ -157,7 +157,7 @@ describe('MessagingEvents', () => {
       sockets,
     } as unknown as import('socket.io').Server;
     events.setServer(fakeServer);
-    const res = await events.isUserInConversationRoom(1, 42);
+    const res = events.isUserInConversationRoom(1, 42);
     expect(res).toBe(false);
   });
 
