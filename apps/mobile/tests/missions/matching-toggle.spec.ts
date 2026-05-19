@@ -1,16 +1,16 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../_fixtures";
 import {
-  cleanDatabase,
+  cleanDatabaseForWorker,
   createTestAssociation,
   createTestMission,
   createTestUser,
-  prisma,
+  prisma, getPrisma
 } from "../../../api/test/prisma-test-helper";
 
 const VALID_PASSWORD = "Password123!";
 
-test.beforeEach(async () => {
-  await cleanDatabase();
+test.beforeEach(async ({}, testInfo) => {
+  await cleanDatabaseForWorker(testInfo.parallelIndex);
 });
 
 // ===========================================================================
@@ -24,32 +24,32 @@ test.beforeEach(async () => {
  */
 async function seedMatchingDataset(workerIndex: number) {
   const user = await createTestUser(workerIndex);
-  const assoc = await createTestAssociation(user.id);
+  const assoc = await createTestAssociation(user.id, workerIndex);
   const mission = await createTestMission(assoc.id, {
     title: "Mission matchante E2E",
   });
 
-  const skill = await prisma.skill.upsert({
+  const skill = await getPrisma(test.info().parallelIndex).skill.upsert({
     where: { label: "E2E Toggle Skill" },
     update: {},
     create: { label: "E2E Toggle Skill" },
   });
-  const cause = await prisma.cause.upsert({
+  const cause = await getPrisma(test.info().parallelIndex).cause.upsert({
     where: { label: "E2E Toggle Cause" },
     update: {},
     create: { label: "E2E Toggle Cause" },
   });
 
-  await prisma.userSkill.create({
+  await getPrisma(test.info().parallelIndex).userSkill.create({
     data: { userId: user.id, skillId: skill.id },
   });
-  await prisma.userCause.create({
+  await getPrisma(test.info().parallelIndex).userCause.create({
     data: { userId: user.id, causeId: cause.id },
   });
-  await prisma.missionSkill.create({
+  await getPrisma(test.info().parallelIndex).missionSkill.create({
     data: { missionId: mission.id, skillId: skill.id },
   });
-  await prisma.missionCause.create({
+  await getPrisma(test.info().parallelIndex).missionCause.create({
     data: { missionId: mission.id, causeId: cause.id },
   });
 
@@ -80,7 +80,7 @@ test.describe("Toggle Pour moi — Visibilité", () => {
   test("ne doit PAS être visible quand l'utilisateur n'est pas authentifié", async ({
     page,
   }, testInfo) => {
-    await seedMatchingDataset(testInfo.workerIndex);
+    await seedMatchingDataset(testInfo.parallelIndex);
 
     await page.goto("/missions");
 
@@ -92,7 +92,7 @@ test.describe("Toggle Pour moi — Visibilité", () => {
   test("doit être visible (avec bouton info) quand l'utilisateur est authentifié", async ({
     page,
   }, testInfo) => {
-    const { user } = await seedMatchingDataset(testInfo.workerIndex);
+    const { user } = await seedMatchingDataset(testInfo.parallelIndex);
     await loginViaUI(page, user.email);
 
     await page.goto("/missions");
@@ -109,7 +109,7 @@ test.describe("Toggle Pour moi — Modal d'information", () => {
   test("le bouton info doit ouvrir la modale explicative", async ({
     page,
   }, testInfo) => {
-    const { user } = await seedMatchingDataset(testInfo.workerIndex);
+    const { user } = await seedMatchingDataset(testInfo.parallelIndex);
     await loginViaUI(page, user.email);
 
     await page.goto("/missions");
@@ -129,7 +129,7 @@ test.describe("Toggle Pour moi — Modal d'information", () => {
   test("le bouton 'J'ai compris' doit fermer la modale", async ({
     page,
   }, testInfo) => {
-    const { user } = await seedMatchingDataset(testInfo.workerIndex);
+    const { user } = await seedMatchingDataset(testInfo.parallelIndex);
     await loginViaUI(page, user.email);
 
     await page.goto("/missions");
@@ -149,7 +149,7 @@ test.describe("Toggle Pour moi — Surbrillance des cards", () => {
   test("le badge 'Recommandé' n'est PAS affiché tant que le toggle est OFF", async ({
     page,
   }, testInfo) => {
-    const { user, mission } = await seedMatchingDataset(testInfo.workerIndex);
+    const { user, mission } = await seedMatchingDataset(testInfo.parallelIndex);
     await loginViaUI(page, user.email);
 
     await page.goto("/missions");
@@ -164,7 +164,7 @@ test.describe("Toggle Pour moi — Surbrillance des cards", () => {
   test("activer le toggle doit faire apparaître le badge 'Recommandé' sur la mission matchée", async ({
     page,
   }, testInfo) => {
-    const { user, mission } = await seedMatchingDataset(testInfo.workerIndex);
+    const { user, mission } = await seedMatchingDataset(testInfo.parallelIndex);
     await loginViaUI(page, user.email);
 
     await page.goto("/missions");

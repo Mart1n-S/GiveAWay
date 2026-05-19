@@ -375,7 +375,7 @@ describe('Mission Module (E2E)', () => {
       const res = await request(httpServer)
         .post('/auth/login')
         .set('x-client-type', 'mobile')
-        .send({ email: 'e2e.0@test.com', password: 'Password123!' });
+        .send({ email: 'e2e.w0@test.com', password: 'Password123!' });
 
       const body = res.body as LoginResponseBody;
       return body.backendTokens?.accessToken ?? '';
@@ -447,7 +447,7 @@ describe('Mission Module (E2E)', () => {
 
     it('✅ GET /missions avec token + withMatching=true → matchScore présent', async () => {
       const owner = await prisma.user.findUnique({
-        where: { email: 'e2e.0@test.com' },
+        where: { email: 'e2e.w0@test.com' },
       });
       await seedMatchingProfile(owner.id, missionId);
 
@@ -486,7 +486,7 @@ describe('Mission Module (E2E)', () => {
 
     it('✅ GET /missions/map avec token + withMatching=true → matchScore sur les items', async () => {
       const owner = await prisma.user.findUnique({
-        where: { email: 'e2e.0@test.com' },
+        where: { email: 'e2e.w0@test.com' },
       });
       await seedMatchingProfile(owner.id, missionId);
 

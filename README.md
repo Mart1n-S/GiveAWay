@@ -22,6 +22,7 @@ L'application repose sur un **algorithme de matching intelligent** qui propose d
 - 🎯 **Matching Intelligent :** Algorithme de pertinence (Géolocalisation + Tags).
 - 📱 **Expérience Mobile First :** Application fluide et intuitive (Expo / React Native).
 - 🏢 **Espace Association :** Publication de missions et vérification d'identité (RNA).
+- 💬 **Messagerie temps réel :** Conversations 1-à-1 entre bénévoles et membres d'associations, avec compteur de messages non lus et accusés de lecture (WebSocket).
 - 🔒 **Architecture Sécurisée :** Séparation stricte Client/Serveur et base de données isolée.
 
 ---
@@ -40,6 +41,7 @@ Ce projet est conçu comme un **Monorepo** orchestré par **Turborepo**, garanti
 | **Forms**        | **React Hook Form**     | Gestion performante des formulaires & validation. |
 | **Backend**      | **NestJS**              | Framework Node.js modulaire et robuste.           |
 | **Data**         | **PostgreSQL + Prisma** | Base de données relationnelle et ORM moderne.     |
+| **Temps réel**   | **Socket.IO**           | WebSocket pour la messagerie (typing, accusés de lecture, badges non lus). |
 | **Infra (Dev)**  | **Docker**              | Conteneurisation de la BDD et outils d'admin.     |
 
 ---
@@ -75,6 +77,7 @@ Nous disposons actuellement de composants fondamentaux déclinés en plusieurs v
 2. **Input :** Champs de saisie avec icônes (gauche/droite), textes d'aide et validation d'erreurs.
 3. **TextArea :** Zones de texte multi-lignes auto-extensibles avec compteurs de caractères.
 4. **AppShell :** Structure globale gérant la navigation responsive (NavBar Web / Tabs Mobile).
+5. **Messagerie :** Panneau de conversation avec bulles et accusés de lecture, liste des discussions, composer de message, picker de membre pour contacter une association.
 
 ### 🕹️ Documentation Interactive (Playground)
 

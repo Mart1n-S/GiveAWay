@@ -1,9 +1,9 @@
-import { test, expect, Page } from "@playwright/test";
+import { test, expect, Page } from "../_fixtures";
 import {
-  cleanDatabase,
+  cleanDatabaseForWorker,
   createTestUser,
   createTestAssociation,
-  prisma,
+  prisma, getPrisma
 } from "../../../api/test/prisma-test-helper";
 
 const VALID_PASSWORD = "Password123!";
@@ -16,8 +16,8 @@ function canonicalPair(a: number, b: number) {
   return a < b ? { user1Id: a, user2Id: b } : { user1Id: b, user2Id: a };
 }
 
-test.beforeEach(async () => {
-  await cleanDatabase();
+test.beforeEach(async ({}, testInfo) => {
+  await cleanDatabaseForWorker(testInfo.parallelIndex);
 });
 
 async function loginAs(page: Page, email: string, isMobile: boolean) {
@@ -44,7 +44,7 @@ test.describe("Messagerie — accès et liste", () => {
   test("affiche la liste vide quand aucune conversation", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
     await loginAs(page, user.email, isMobile);
 
@@ -57,18 +57,18 @@ test.describe("Messagerie — accès et liste", () => {
     page,
   }, testInfo) => {
     const isMobile = testInfo.project.name.includes("Mobile");
-    const volunteer = await createTestUser(testInfo.workerIndex);
-    const member = await createTestUser(testInfo.workerIndex + 100);
-    const association = await createTestAssociation(member.id);
+    const volunteer = await createTestUser(testInfo.parallelIndex);
+    const member = await createTestUser(testInfo.parallelIndex, 'member');
+    const association = await createTestAssociation(member.id, testInfo.parallelIndex);
 
     // Conv volontaire → membre, avec un message du membre non lu côté volontaire
-    const conv = await prisma.conversation.create({
+    const conv = await getPrisma(test.info().parallelIndex).conversation.create({
       data: {
         ...canonicalPair(volunteer.id, member.id),
         lastMessageAt: new Date(),
       },
     });
-    await prisma.message.create({
+    await getPrisma(test.info().parallelIndex).message.create({
       data: {
         conversationId: conv.id,
         senderId: member.id,
@@ -94,17 +94,17 @@ test.describe("Messagerie — discussion", () => {
     page,
   }, testInfo) => {
     const isMobile = testInfo.project.name.includes("Mobile");
-    const volunteer = await createTestUser(testInfo.workerIndex);
-    const member = await createTestUser(testInfo.workerIndex + 100);
-    const association = await createTestAssociation(member.id);
+    const volunteer = await createTestUser(testInfo.parallelIndex);
+    const member = await createTestUser(testInfo.parallelIndex, 'member');
+    const association = await createTestAssociation(member.id, testInfo.parallelIndex);
 
-    const conv = await prisma.conversation.create({
+    const conv = await getPrisma(test.info().parallelIndex).conversation.create({
       data: {
         ...canonicalPair(volunteer.id, member.id),
         lastMessageAt: new Date(),
       },
     });
-    await prisma.message.create({
+    await getPrisma(test.info().parallelIndex).message.create({
       data: {
         conversationId: conv.id,
         senderId: member.id,
@@ -117,8 +117,12 @@ test.describe("Messagerie — discussion", () => {
 
     await expect(page.getByTestId("conversation-screen")).toBeVisible();
     await expect(page.getByTestId("messages-list")).toBeVisible();
-    // Le message doit s'afficher
-    await expect(page.getByText("Hello")).toBeVisible();
+    // Le message doit s'afficher dans la liste des messages (scope nécessaire :
+    // en mode split-pane web, "Hello" apparaît aussi comme preview du dernier
+    // message dans la liste des conversations à gauche).
+    await expect(
+      page.getByTestId("messages-list").getByText("Hello"),
+    ).toBeVisible();
     // Le composer doit être présent
     await expect(page.getByTestId("composer-input")).toBeVisible();
 
@@ -126,7 +130,7 @@ test.describe("Messagerie — discussion", () => {
     await expect
       .poll(
         async () => {
-          const msg = await prisma.message.findFirst({
+          const msg = await getPrisma(test.info().parallelIndex).message.findFirst({
             where: { conversationId: conv.id },
           });
           return msg?.readAt;
@@ -140,11 +144,11 @@ test.describe("Messagerie — discussion", () => {
     page,
   }, testInfo) => {
     const isMobile = testInfo.project.name.includes("Mobile");
-    const volunteer = await createTestUser(testInfo.workerIndex);
-    const member = await createTestUser(testInfo.workerIndex + 100);
-    const association = await createTestAssociation(member.id);
+    const volunteer = await createTestUser(testInfo.parallelIndex);
+    const member = await createTestUser(testInfo.parallelIndex, 'member');
+    const association = await createTestAssociation(member.id, testInfo.parallelIndex);
 
-    const conv = await prisma.conversation.create({
+    const conv = await getPrisma(test.info().parallelIndex).conversation.create({
       data: {
         ...canonicalPair(volunteer.id, member.id),
         lastMessageAt: new Date(),
@@ -166,7 +170,7 @@ test.describe("Messagerie — discussion", () => {
     await expect
       .poll(
         async () => {
-          const m = await prisma.message.findFirst({
+          const m = await getPrisma(test.info().parallelIndex).message.findFirst({
             where: { conversationId: conv.id, senderId: volunteer.id },
           });
           return m?.content;
@@ -178,11 +182,11 @@ test.describe("Messagerie — discussion", () => {
 
   test("refuse l'envoi d'un message vide", async ({ page }, testInfo) => {
     const isMobile = testInfo.project.name.includes("Mobile");
-    const volunteer = await createTestUser(testInfo.workerIndex);
-    const member = await createTestUser(testInfo.workerIndex + 100);
-    const association = await createTestAssociation(member.id);
+    const volunteer = await createTestUser(testInfo.parallelIndex);
+    const member = await createTestUser(testInfo.parallelIndex, 'member');
+    const association = await createTestAssociation(member.id, testInfo.parallelIndex);
 
-    const conv = await prisma.conversation.create({
+    const conv = await getPrisma(test.info().parallelIndex).conversation.create({
       data: {
         ...canonicalPair(volunteer.id, member.id),
       },
@@ -200,11 +204,11 @@ test.describe("Messagerie — discussion", () => {
     page,
   }, testInfo) => {
     const isMobile = testInfo.project.name.includes("Mobile");
-    const volunteer = await createTestUser(testInfo.workerIndex);
-    const member = await createTestUser(testInfo.workerIndex + 100);
-    const association = await createTestAssociation(member.id);
+    const volunteer = await createTestUser(testInfo.parallelIndex);
+    const member = await createTestUser(testInfo.parallelIndex, 'member');
+    const association = await createTestAssociation(member.id, testInfo.parallelIndex);
 
-    const conv = await prisma.conversation.create({
+    const conv = await getPrisma(test.info().parallelIndex).conversation.create({
       data: {
         ...canonicalPair(volunteer.id, member.id),
       },
@@ -227,9 +231,9 @@ test.describe("Bouton contact association", () => {
     page,
   }, testInfo) => {
     const isMobile = testInfo.project.name.includes("Mobile");
-    const volunteer = await createTestUser(testInfo.workerIndex);
-    const owner = await createTestUser(testInfo.workerIndex + 100);
-    const association = await createTestAssociation(owner.id);
+    const volunteer = await createTestUser(testInfo.parallelIndex);
+    const owner = await createTestUser(testInfo.parallelIndex, 'owner');
+    const association = await createTestAssociation(owner.id, testInfo.parallelIndex);
 
     await loginAs(page, volunteer.email, isMobile);
     await page.goto(`/associations/${association.id}`);
@@ -241,20 +245,27 @@ test.describe("Bouton contact association", () => {
 
   test("crée une conversation et redirige", async ({ page }, testInfo) => {
     const isMobile = testInfo.project.name.includes("Mobile");
-    const volunteer = await createTestUser(testInfo.workerIndex);
-    const owner = await createTestUser(testInfo.workerIndex + 100);
-    const association = await createTestAssociation(owner.id);
+    const volunteer = await createTestUser(testInfo.parallelIndex);
+    const owner = await createTestUser(testInfo.parallelIndex, 'owner');
+    const association = await createTestAssociation(owner.id, testInfo.parallelIndex);
 
     await loginAs(page, volunteer.email, isMobile);
     await page.goto(`/associations/${association.id}`);
     await page.getByTestId("contact-association-button").click();
+
+    // Le bouton ouvre désormais une modale ContactMemberPickerModal
+    // (refactor 1-to-1 conversations). On sélectionne explicitement le owner.
+    await expect(
+      page.getByTestId("contact-member-picker-modal"),
+    ).toBeVisible();
+    await page.getByTestId(`contact-member-${owner.id}`).click();
 
     // Redirigé vers /messages/:id
     await page.waitForURL(/\/messages\/\d+/, { timeout: 8000 });
     await expect(page.getByTestId("conversation-screen")).toBeVisible();
 
     // Une conversation a bien été créée côté BDD
-    const conv = await prisma.conversation.findFirst({
+    const conv = await getPrisma(test.info().parallelIndex).conversation.findFirst({
       where: {
         ...canonicalPair(volunteer.id, owner.id),
       },

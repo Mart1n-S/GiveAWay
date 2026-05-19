@@ -1,12 +1,11 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../_fixtures";
 import {
-  cleanDatabase,
+  cleanDatabaseForWorker,
   createTestUser,
 } from "../../../api/test/prisma-test-helper";
 
-test.beforeEach(async () => {
-  // On vide la base avant chaque test pour repartir de zéro
-  await cleanDatabase();
+test.beforeEach(async ({}, testInfo) => {
+  await cleanDatabaseForWorker(testInfo.parallelIndex);
 });
 
 test.describe("Flux de Connexion", () => {
@@ -17,7 +16,7 @@ test.describe("Flux de Connexion", () => {
     page,
   }, testInfo) => {
     // 1. Préparation : On crée l'utilisateur pour qu'il existe bien en base
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
 
     await page.goto("/");
 
@@ -43,7 +42,7 @@ test.describe("Flux de Connexion", () => {
     page,
   }, testInfo) => {
     // --- ÉTAPE 1 : PRÉPARATION (Injection directe en BDD via helper) ---
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
 
     // --- ÉTAPE 2 : CONNEXION RÉELLE ---
     await test.step("Tentative de connexion", async () => {

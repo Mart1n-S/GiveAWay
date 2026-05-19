@@ -1,11 +1,11 @@
-import { test, expect, Page } from "@playwright/test";
+import { test, expect, Page } from "../_fixtures";
 import {
-  cleanDatabase,
+  cleanDatabaseForWorker,
   createTestUser,
 } from "../../../api/test/prisma-test-helper";
 
-test.beforeEach(async () => {
-  await cleanDatabase();
+test.beforeEach(async ({}, testInfo) => {
+  await cleanDatabaseForWorker(testInfo.parallelIndex);
 });
 
 
@@ -53,7 +53,7 @@ test.describe("Page Profil - Affichage", () => {
   test("devrait afficher les informations du profil connecté", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToProfile(page, user, isMobile);
@@ -77,7 +77,7 @@ test.describe("Page Profil - Modification du prénom", () => {
   test("devrait modifier le prénom et afficher la mise à jour sur la page profil", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
     const newFirstName = "Martin";
 
@@ -129,7 +129,7 @@ test.describe("Page Profil - Modification du prénom", () => {
   test("devrait afficher une erreur si le prénom est trop court", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToProfile(page, user, isMobile);
@@ -160,7 +160,7 @@ test.describe("Page Profil - Suppression de compte", () => {
   test("devrait naviguer vers la page de suppression au clic sur 'Supprimer le compte'", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToProfile(page, user, isMobile);
@@ -179,7 +179,7 @@ test.describe("Page Profil - Déconnexion", () => {
   test("devrait déconnecter l'utilisateur et le rediriger vers l'accueil", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToProfile(page, user, isMobile);

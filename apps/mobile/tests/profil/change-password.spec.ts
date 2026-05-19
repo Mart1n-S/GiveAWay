@@ -1,6 +1,6 @@
-import { test, expect, Page } from "@playwright/test";
+import { test, expect, Page } from "../_fixtures";
 import {
-  cleanDatabase,
+  cleanDatabaseForWorker,
   createTestUser,
 } from "../../../api/test/prisma-test-helper";
 
@@ -8,8 +8,8 @@ const VALID_PASSWORD = "Password123!";
 const NEW_VALID_PASSWORD = "NewPassword456@";
 const WEAK_PASSWORD = "weakpass";
 
-test.beforeEach(async () => {
-  await cleanDatabase();
+test.beforeEach(async ({}, testInfo) => {
+  await cleanDatabaseForWorker(testInfo.parallelIndex);
 });
 
 // ===========================================================================
@@ -70,7 +70,7 @@ test.describe("Page Changement de mot de passe - Navigation", () => {
   test("devrait naviguer vers la page de changement de mot de passe depuis le profil", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToProfile(page, user, isMobile);
@@ -84,7 +84,7 @@ test.describe("Page Changement de mot de passe - Navigation", () => {
   test("devrait retourner à la page profil en cliquant sur Annuler", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToChangePassword(page, user, isMobile);
@@ -102,7 +102,7 @@ test.describe("Page Changement de mot de passe - Affichage", () => {
   test("devrait afficher la bulle d'information de reconnexion et les champs du formulaire", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToChangePassword(page, user, isMobile);
@@ -129,7 +129,7 @@ test.describe("Page Changement de mot de passe - Validation", () => {
   test("devrait afficher des erreurs si les champs sont vides à la soumission", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToChangePassword(page, user, isMobile);
@@ -151,7 +151,7 @@ test.describe("Page Changement de mot de passe - Validation", () => {
   test("devrait afficher une erreur si le nouveau mot de passe ne respecte pas les critères", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToChangePassword(page, user, isMobile);
@@ -175,7 +175,7 @@ test.describe("Page Changement de mot de passe - Validation", () => {
   test("devrait afficher une erreur si la confirmation ne correspond pas au nouveau mot de passe", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToChangePassword(page, user, isMobile);
@@ -196,7 +196,7 @@ test.describe("Page Changement de mot de passe - Validation", () => {
   test("devrait afficher une erreur si le nouveau mot de passe est identique à l'ancien", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToChangePassword(page, user, isMobile);
@@ -222,7 +222,7 @@ test.describe("Page Changement de mot de passe - Erreurs serveur", () => {
   test("devrait afficher une erreur sur le champ 'ancien mot de passe' si le mot de passe actuel est incorrect", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToChangePassword(page, user, isMobile);
@@ -250,7 +250,7 @@ test.describe("Page Changement de mot de passe - Succès", () => {
   test("devrait changer le mot de passe, afficher un toast de succès et déconnecter l'utilisateur", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToChangePassword(page, user, isMobile);
@@ -306,7 +306,7 @@ test.describe("Page Changement de mot de passe - Succès", () => {
   test("ne devrait plus accepter l'ancien mot de passe après le changement", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToChangePassword(page, user, isMobile);

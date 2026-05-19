@@ -1,6 +1,6 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "../../_fixtures";
 import {
-  cleanDatabase,
+  cleanDatabaseForWorker,
   createTestUser,
   createTestAssociation,
   createTestMission,
@@ -9,8 +9,8 @@ import { MissionStatus } from "../../../../api/src/generated/prisma/client";
 
 const VALID_PASSWORD = "Password123!";
 
-test.beforeEach(async () => {
-  await cleanDatabase();
+test.beforeEach(async ({}, testInfo) => {
+  await cleanDatabaseForWorker(testInfo.parallelIndex);
 });
 
 // ===========================================================================
@@ -50,7 +50,7 @@ async function seedOneMission(
   options: Parameters<typeof createTestMission>[1] = {},
 ) {
   const user = await createTestUser(workerIndex);
-  const assoc = await createTestAssociation(user.id);
+  const assoc = await createTestAssociation(user.id, workerIndex);
   const mission = await createTestMission(assoc.id, options);
   return { user, assoc, mission };
 }
@@ -69,7 +69,7 @@ test.describe("Dashboard Missions — Accès", () => {
   test("devrait afficher un message si l'utilisateur n'appartient à aucune association", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginUser(page, user, isMobile);
@@ -88,7 +88,7 @@ test.describe("Dashboard Missions — Onglets", () => {
   test("devrait afficher les quatre onglets de navigation", async ({
     page,
   }, testInfo) => {
-    const { user } = await seedOneMission(testInfo.workerIndex);
+    const { user } = await seedOneMission(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToDashboard(page, user, isMobile);
@@ -102,7 +102,7 @@ test.describe("Dashboard Missions — Onglets", () => {
   test("devrait basculer sur l'onglet Archivées et afficher l'état vide", async ({
     page,
   }, testInfo) => {
-    const { user } = await seedOneMission(testInfo.workerIndex);
+    const { user } = await seedOneMission(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToDashboard(page, user, isMobile);
@@ -115,8 +115,8 @@ test.describe("Dashboard Missions — Onglets", () => {
   test("devrait basculer sur l'onglet Archivées et afficher la mission archivée", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     await createTestMission(assoc.id, {
       title: "Mission Archivée E2E",
       status: MissionStatus.ARCHIVED,
@@ -138,8 +138,8 @@ test.describe("Dashboard Missions — État vide", () => {
   test("devrait afficher l'état vide sur l'onglet Actives sans mission", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToDashboard(page, user, isMobile);
@@ -152,8 +152,8 @@ test.describe("Dashboard Missions — État vide", () => {
   test("devrait afficher le bouton 'Créer une mission' dans l'état vide", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToDashboard(page, user, isMobile);
@@ -171,7 +171,7 @@ test.describe("Dashboard Missions — Affichage", () => {
   test("devrait afficher le titre de la mission dans la card", async ({
     page,
   }, testInfo) => {
-    const { user } = await seedOneMission(testInfo.workerIndex, {
+    const { user } = await seedOneMission(testInfo.parallelIndex, {
       title: "Mission Visible E2E",
     });
     const isMobile = testInfo.project.name.includes("Mobile");
@@ -184,7 +184,7 @@ test.describe("Dashboard Missions — Affichage", () => {
   test("devrait afficher le badge de statut 'Active'", async ({
     page,
   }, testInfo) => {
-    const { user } = await seedOneMission(testInfo.workerIndex);
+    const { user } = await seedOneMission(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToDashboard(page, user, isMobile);
@@ -195,7 +195,7 @@ test.describe("Dashboard Missions — Affichage", () => {
   test("devrait afficher le badge de type d'activité", async ({
     page,
   }, testInfo) => {
-    const { user } = await seedOneMission(testInfo.workerIndex);
+    const { user } = await seedOneMission(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToDashboard(page, user, isMobile);
@@ -206,7 +206,7 @@ test.describe("Dashboard Missions — Affichage", () => {
   test("devrait naviguer vers le détail au clic sur la card", async ({
     page,
   }, testInfo) => {
-    const { user, mission } = await seedOneMission(testInfo.workerIndex, {
+    const { user, mission } = await seedOneMission(testInfo.parallelIndex, {
       title: "Mission Cliquable",
     });
     const isMobile = testInfo.project.name.includes("Mobile");
@@ -230,8 +230,8 @@ test.describe("Dashboard Missions — Bouton Créer", () => {
   }, testInfo) => {
     if (testInfo.project.name.includes("Mobile")) test.skip();
 
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
 
     await loginAndGoToDashboard(page, user, false);
 
@@ -245,8 +245,8 @@ test.describe("Dashboard Missions — Bouton Créer", () => {
   }, testInfo) => {
     if (testInfo.project.name.includes("Mobile")) test.skip();
 
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
 
     await loginAndGoToDashboard(page, user, false);
 
@@ -263,8 +263,8 @@ test.describe("Dashboard Missions — Recherche", () => {
   test("devrait filtrer les missions selon le terme de recherche", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     await createTestMission(assoc.id, { title: "Maraude nocturne" });
     await createTestMission(assoc.id, { title: "Distribution alimentaire" });
     const isMobile = testInfo.project.name.includes("Mobile");
@@ -284,7 +284,7 @@ test.describe("Dashboard Missions — Recherche", () => {
   test("devrait afficher un message si la recherche ne donne aucun résultat", async ({
     page,
   }, testInfo) => {
-    const { user } = await seedOneMission(testInfo.workerIndex, {
+    const { user } = await seedOneMission(testInfo.parallelIndex, {
       title: "Mission Existante",
     });
     const isMobile = testInfo.project.name.includes("Mobile");
@@ -305,7 +305,7 @@ test.describe("Dashboard Missions — Action Archiver", () => {
   test("devrait ouvrir la modale de confirmation d'archivage", async ({
     page,
   }, testInfo) => {
-    const { user } = await seedOneMission(testInfo.workerIndex, {
+    const { user } = await seedOneMission(testInfo.parallelIndex, {
       title: "Mission À Archiver",
     });
     const isMobile = testInfo.project.name.includes("Mobile");
@@ -324,7 +324,7 @@ test.describe("Dashboard Missions — Action Archiver", () => {
   test("devrait annuler l'archivage et rester sur la liste", async ({
     page,
   }, testInfo) => {
-    const { user } = await seedOneMission(testInfo.workerIndex, {
+    const { user } = await seedOneMission(testInfo.parallelIndex, {
       title: "Mission Non Archivée",
     });
     const isMobile = testInfo.project.name.includes("Mobile");
@@ -343,7 +343,7 @@ test.describe("Dashboard Missions — Action Archiver", () => {
   test("devrait archiver la mission et la retirer de l'onglet Actives", async ({
     page,
   }, testInfo) => {
-    const { user } = await seedOneMission(testInfo.workerIndex, {
+    const { user } = await seedOneMission(testInfo.parallelIndex, {
       title: "Mission À Archiver",
     });
     const isMobile = testInfo.project.name.includes("Mobile");
@@ -367,8 +367,8 @@ test.describe("Dashboard Missions — Action Désarchiver", () => {
   test("devrait désarchiver la mission et la retirer de l'onglet Archivées", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     await createTestMission(assoc.id, {
       title: "Mission À Désarchiver",
       status: MissionStatus.ARCHIVED,
@@ -396,7 +396,7 @@ test.describe("Dashboard Missions — Action Modifier", () => {
   test("devrait naviguer vers la page de modification", async ({
     page,
   }, testInfo) => {
-    const { user, mission } = await seedOneMission(testInfo.workerIndex, {
+    const { user, mission } = await seedOneMission(testInfo.parallelIndex, {
       title: "Mission À Modifier",
     });
     const isMobile = testInfo.project.name.includes("Mobile");
@@ -419,7 +419,7 @@ test.describe("Dashboard Missions — Action Supprimer", () => {
   test("devrait ouvrir la modale de confirmation de suppression", async ({
     page,
   }, testInfo) => {
-    const { user } = await seedOneMission(testInfo.workerIndex, {
+    const { user } = await seedOneMission(testInfo.parallelIndex, {
       title: "Mission À Supprimer",
     });
     const isMobile = testInfo.project.name.includes("Mobile");
@@ -440,7 +440,7 @@ test.describe("Dashboard Missions — Action Supprimer", () => {
   test("devrait supprimer la mission et afficher l'état vide", async ({
     page,
   }, testInfo) => {
-    const { user } = await seedOneMission(testInfo.workerIndex, {
+    const { user } = await seedOneMission(testInfo.parallelIndex, {
       title: "Mission À Supprimer",
     });
     const isMobile = testInfo.project.name.includes("Mobile");

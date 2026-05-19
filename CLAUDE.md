@@ -353,9 +353,7 @@ GET `/profile` → PATCH `/profile` (FormData) → transaction Prisma (infos + p
 - Profil bénévole (CRUD complet avec compétences, causes, disponibilités, adresse, avatar)
 - Référentiels skills et causes
 - Design system complet
+- Messagerie temps réel 1-à-1 (Socket.IO : conversations, accusés de lecture, compteur de messages non lus, picker de membre pour contacter une association)
+- Panel admin (Vite + React sur port 5173, gestion des admins/associations/logs)
 - Tests unitaires + E2E backend + E2E frontend (Playwright)
 
-### Non implémenté (A faire)
-- Algorithme de matching (géolocalisation + tags)
-- Panel admin
-- WebSocket (temps réel)

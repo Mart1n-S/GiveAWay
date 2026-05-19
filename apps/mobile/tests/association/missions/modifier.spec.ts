@@ -1,6 +1,6 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "../../_fixtures";
 import {
-  cleanDatabase,
+  cleanDatabaseForWorker,
   createTestUser,
   createTestAssociation,
   createTestMission,
@@ -9,8 +9,8 @@ import { MissionStatus } from "../../../../api/src/generated/prisma/client";
 
 const VALID_PASSWORD = "Password123!";
 
-test.beforeEach(async () => {
-  await cleanDatabase();
+test.beforeEach(async ({}, testInfo) => {
+  await cleanDatabaseForWorker(testInfo.parallelIndex);
 });
 
 // ===========================================================================
@@ -59,8 +59,8 @@ test.describe("Page Modifier Mission — Accès", () => {
   test("devrait rediriger si l'utilisateur n'est pas authentifié", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
 
     await page.goto(`/association/missions/${mission.id}/modifier`);
@@ -72,8 +72,8 @@ test.describe("Page Modifier Mission — Accès", () => {
   test("devrait rediriger vers le détail pour une mission archivée (accès refusé)", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id, {
       title: "Mission Archivée",
       status: MissionStatus.ARCHIVED,
@@ -103,8 +103,8 @@ test.describe("Page Modifier Mission — Pré-remplissage", () => {
   test("devrait pré-remplir le champ titre avec le titre existant", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id, {
       title: "Titre Original E2E",
     });
@@ -120,8 +120,8 @@ test.describe("Page Modifier Mission — Pré-remplissage", () => {
   test("devrait pré-remplir la description avec la description existante", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -140,8 +140,8 @@ test.describe("Page Modifier Mission — Interface Stepper", () => {
   test("devrait afficher les trois étapes du stepper", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -155,8 +155,8 @@ test.describe("Page Modifier Mission — Interface Stepper", () => {
   test("devrait afficher les boutons Annuler et Suivant sur l'étape 1", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -178,8 +178,8 @@ test.describe("Page Modifier Mission — Navigation", () => {
   test("devrait revenir à la page précédente avec le bouton Annuler", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -209,8 +209,8 @@ test.describe("Page Modifier Mission — Navigation", () => {
   test("devrait passer à l'étape 2 au clic sur Suivant", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -225,8 +225,8 @@ test.describe("Page Modifier Mission — Navigation", () => {
   test("devrait passer à l'étape 3 depuis l'étape 2", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id, { volunteersNeeded: 5 });
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -248,8 +248,8 @@ test.describe("Page Modifier Mission — Soumission", () => {
   test("devrait modifier le titre et afficher le toast de succès", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id, {
       title: "Titre À Modifier",
       volunteersNeeded: 5,
@@ -280,8 +280,8 @@ test.describe("Page Modifier Mission — Soumission", () => {
   test("devrait afficher une erreur de validation si le titre est vidé", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id, {
       title: "Titre Original",
     });
@@ -305,8 +305,8 @@ test.describe("Page Modifier Mission — Soumission", () => {
   test("devrait naviguer vers le détail après une modification réussie", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id, { volunteersNeeded: 5 });
     const isMobile = testInfo.project.name.includes("Mobile");
 

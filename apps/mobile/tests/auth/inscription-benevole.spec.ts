@@ -1,12 +1,12 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../_fixtures";
 import {
-  cleanDatabase,
+  cleanDatabaseForWorker,
   createTestUser,
-  prisma,
+  prisma, getPrisma
 } from "../../../api/test/prisma-test-helper";
 
-test.beforeEach(async () => {
-  await cleanDatabase();
+test.beforeEach(async ({}, testInfo) => {
+  await cleanDatabaseForWorker(testInfo.parallelIndex);
 });
 
 // afterAll(async () => {
@@ -15,7 +15,7 @@ test.beforeEach(async () => {
 
 test.describe("Flux d'inscription bénévole", () => {
   test("devrait créer un compte et afficher l'écran OTP", async ({ page }) => {
-    const uniqueEmail = `benevole.${Date.now()}@test.com`;
+    const uniqueEmail = `benevole.w${test.info().parallelIndex}.${Date.now()}@test.com`;
 
     await test.step("Arrivée sur l'accueil et navigation", async () => {
       await page.goto("/");
@@ -100,7 +100,7 @@ test.describe("Flux d'inscription bénévole", () => {
           let userInDb = null;
           for (let i = 0; i < 5; i++) {
             // Tentatives sur 1 seconde
-            userInDb = await prisma.user.findUnique({
+            userInDb = await getPrisma(test.info().parallelIndex).user.findUnique({
               where: { email: uniqueEmail },
             });
             if (userInDb) break;
@@ -124,7 +124,7 @@ test.describe("Flux d'inscription - Cas d'erreur", () => {
   test("devrait afficher une erreur si l'email est déjà utilisé", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
 
     await test.step("Tentative d'inscription avec le même email", async () => {
       await page.goto("/");

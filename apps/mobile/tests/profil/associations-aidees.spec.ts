@@ -1,13 +1,13 @@
-import { test, expect, Page } from "@playwright/test";
+import { test, expect, Page } from "../_fixtures";
 import {
-  cleanDatabase,
+  cleanDatabaseForWorker,
   createTestUser,
 } from "../../../api/test/prisma-test-helper";
 
 const VALID_PASSWORD = "Password123!";
 
-test.beforeEach(async () => {
-  await cleanDatabase();
+test.beforeEach(async ({}, testInfo) => {
+  await cleanDatabaseForWorker(testInfo.parallelIndex);
 });
 
 // ===========================================================================
@@ -58,7 +58,7 @@ test.describe("Page Associations aidées — État vide", () => {
   test("devrait afficher 'Aucune participation' pour un utilisateur sans historique", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToAssociationsAidees(page, user, isMobile);
@@ -69,7 +69,7 @@ test.describe("Page Associations aidées — État vide", () => {
   test("devrait afficher le message d'aide invitant à participer à des missions", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToAssociationsAidees(page, user, isMobile);
@@ -87,7 +87,7 @@ test.describe("Page Associations aidées — Filtres", () => {
   test("devrait afficher la section 'Filtres'", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToAssociationsAidees(page, user, isMobile);
@@ -98,7 +98,7 @@ test.describe("Page Associations aidées — Filtres", () => {
   test("devrait afficher le bouton de filtre 'Tous' (filter-type-ALL)", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToAssociationsAidees(page, user, isMobile);
@@ -109,7 +109,7 @@ test.describe("Page Associations aidées — Filtres", () => {
   test("devrait afficher le bouton de filtre 'Mission' (filter-type-MISSION)", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToAssociationsAidees(page, user, isMobile);
@@ -120,7 +120,7 @@ test.describe("Page Associations aidées — Filtres", () => {
   test("devrait afficher le bouton de filtre 'Événement' (filter-type-EVENT)", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToAssociationsAidees(page, user, isMobile);
@@ -131,7 +131,7 @@ test.describe("Page Associations aidées — Filtres", () => {
   test("ne devrait pas afficher le bouton Réinitialiser si aucun filtre n'est actif", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToAssociationsAidees(page, user, isMobile);
@@ -145,7 +145,7 @@ test.describe("Page Associations aidées — Filtres", () => {
   test("devrait afficher le bouton Réinitialiser après sélection d'un filtre type", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToAssociationsAidees(page, user, isMobile);
@@ -167,7 +167,7 @@ test.describe("Page Associations aidées — Navigation web", () => {
   test("devrait afficher le bouton Retour sur web", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     // Ce test est pertinent uniquement sur web

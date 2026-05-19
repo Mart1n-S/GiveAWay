@@ -1,13 +1,13 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../_fixtures";
 import {
-  cleanDatabase,
+  cleanDatabaseForWorker,
   createTestUser,
   createTestAssociation,
   createTestMission,
 } from "../../../api/test/prisma-test-helper";
 
-test.beforeEach(async () => {
-  await cleanDatabase();
+test.beforeEach(async ({}, testInfo) => {
+  await cleanDatabaseForWorker(testInfo.parallelIndex);
 });
 
 // ===========================================================================
@@ -15,7 +15,7 @@ test.beforeEach(async () => {
 // ===========================================================================
 async function seedAssociation(workerIndex: number) {
   const user = await createTestUser(workerIndex);
-  const assoc = await createTestAssociation(user.id);
+  const assoc = await createTestAssociation(user.id, workerIndex);
   return { user, assoc };
 }
 
@@ -42,7 +42,7 @@ test.describe("Page Liste des Associations — Accès", () => {
     await page.goto("/associations");
 
     await expect(
-      page.getByText(/Découvrez les associations/i),
+      page.getByText(/Découvrez les associations/i).first(),
     ).toBeVisible();
   });
 });
@@ -63,7 +63,7 @@ test.describe("Page Liste des Associations — Compteur et grille", () => {
   test("devrait afficher le compteur au singulier avec une association", async ({
     page,
   }, testInfo) => {
-    await seedAssociation(testInfo.workerIndex);
+    await seedAssociation(testInfo.parallelIndex);
 
     await page.goto("/associations");
 
@@ -74,12 +74,12 @@ test.describe("Page Liste des Associations — Compteur et grille", () => {
   test("devrait afficher le compteur au pluriel avec plusieurs associations", async ({
     page,
   }, testInfo) => {
-    const user1 = await createTestUser(testInfo.workerIndex);
-    const user2 = await createTestUser(testInfo.workerIndex + 10);
-    const user3 = await createTestUser(testInfo.workerIndex + 20);
-    await createTestAssociation(user1.id);
-    await createTestAssociation(user2.id);
-    await createTestAssociation(user3.id);
+    const user1 = await createTestUser(testInfo.parallelIndex);
+    const user2 = await createTestUser(testInfo.parallelIndex, 'user2');
+    const user3 = await createTestUser(testInfo.parallelIndex, 'user3');
+    await createTestAssociation(user1.id, testInfo.parallelIndex);
+    await createTestAssociation(user2.id, testInfo.parallelIndex);
+    await createTestAssociation(user3.id, testInfo.parallelIndex);
 
     await page.goto("/associations");
 
@@ -90,7 +90,7 @@ test.describe("Page Liste des Associations — Compteur et grille", () => {
   test("devrait afficher une carte pour chaque association validée", async ({
     page,
   }, testInfo) => {
-    const { assoc } = await seedAssociation(testInfo.workerIndex);
+    const { assoc } = await seedAssociation(testInfo.parallelIndex);
 
     await page.goto("/associations");
 
@@ -102,7 +102,7 @@ test.describe("Page Liste des Associations — Compteur et grille", () => {
   test("devrait afficher le nom de l'association dans la carte", async ({
     page,
   }, testInfo) => {
-    const { assoc } = await seedAssociation(testInfo.workerIndex);
+    const { assoc } = await seedAssociation(testInfo.parallelIndex);
 
     await page.goto("/associations");
 
@@ -156,7 +156,7 @@ test.describe("Page Liste des Associations — Recherche", () => {
   test("devrait afficher 'Aucune association trouvée' si la recherche ne correspond à rien", async ({
     page,
   }, testInfo) => {
-    await seedAssociation(testInfo.workerIndex);
+    await seedAssociation(testInfo.parallelIndex);
 
     await page.goto("/associations");
 
@@ -172,7 +172,7 @@ test.describe("Page Liste des Associations — Recherche", () => {
   test("devrait trouver l'association si le nom correspond à la recherche", async ({
     page,
   }, testInfo) => {
-    const { assoc } = await seedAssociation(testInfo.workerIndex);
+    const { assoc } = await seedAssociation(testInfo.parallelIndex);
 
     await page.goto("/associations");
 
@@ -195,7 +195,7 @@ test.describe("Page Liste des Associations — Navigation", () => {
   test("devrait naviguer vers le détail de l'association au clic sur la carte", async ({
     page,
   }, testInfo) => {
-    const { assoc } = await seedAssociation(testInfo.workerIndex);
+    const { assoc } = await seedAssociation(testInfo.parallelIndex);
 
     await page.goto("/associations");
 
@@ -214,7 +214,7 @@ test.describe("Page Liste des Associations — Missions actives", () => {
   test("devrait afficher le nombre de missions actives dans la carte", async ({
     page,
   }, testInfo) => {
-    const { assoc } = await seedAssociation(testInfo.workerIndex);
+    const { assoc } = await seedAssociation(testInfo.parallelIndex);
     await createTestMission(assoc.id, { title: "Mission 1" });
     await createTestMission(assoc.id, { title: "Mission 2" });
 
@@ -227,7 +227,7 @@ test.describe("Page Liste des Associations — Missions actives", () => {
   test("devrait afficher 'Pas de mission active' si l'association n'a aucune mission", async ({
     page,
   }, testInfo) => {
-    const { assoc } = await seedAssociation(testInfo.workerIndex);
+    const { assoc } = await seedAssociation(testInfo.parallelIndex);
 
     await page.goto("/associations");
 

@@ -125,10 +125,10 @@ describe('AssociationMissions Module (E2E)', () => {
     );
 
     // Tokens
-    ownerToken = await loginUser('e2e.0@test.com', 'Password123!');
-    adminToken = await loginUser('e2e.1@test.com', 'Password123!');
-    editorToken = await loginUser('e2e.2@test.com', 'Password123!');
-    outsiderToken = await loginUser('e2e.3@test.com', 'Password123!');
+    ownerToken = await loginUser('e2e.w0@test.com', 'Password123!');
+    adminToken = await loginUser('e2e.w1@test.com', 'Password123!');
+    editorToken = await loginUser('e2e.w2@test.com', 'Password123!');
+    outsiderToken = await loginUser('e2e.w3@test.com', 'Password123!');
   });
 
   afterAll(async () => {
@@ -296,7 +296,7 @@ describe('AssociationMissions Module (E2E)', () => {
           },
         },
       });
-      const otherToken = await loginUser(`e2e.4@test.com`, 'Password123!');
+      const otherToken = await loginUser(`e2e.w4@test.com`, 'Password123!');
 
       await request(httpServer)
         .post(`/associations/${pendingAssoc.id}/missions`)

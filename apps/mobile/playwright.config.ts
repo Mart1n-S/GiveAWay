@@ -28,9 +28,9 @@ export default defineConfig({
   expect: { timeout: 8000 },
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: 2,
+  retries: process.env.CI ? 2 : 0,
   workers: 1,
-  reporter: "html",
+  reporter: process.env.CI ? "html" : [["list"], ["html", { open: "never" }]],
   globalSetup: require.resolve("./tests/global-setup"),
   globalTeardown: require.resolve("./tests/global-teardown"),
 

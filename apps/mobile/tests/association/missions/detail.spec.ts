@@ -1,6 +1,6 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "../../_fixtures";
 import {
-  cleanDatabase,
+  cleanDatabaseForWorker,
   createTestUser,
   createTestAssociation,
   createTestMission,
@@ -12,8 +12,8 @@ import {
 
 const VALID_PASSWORD = "Password123!";
 
-test.beforeEach(async () => {
-  await cleanDatabase();
+test.beforeEach(async ({}, testInfo) => {
+  await cleanDatabaseForWorker(testInfo.parallelIndex);
 });
 
 // ===========================================================================
@@ -62,8 +62,8 @@ test.describe("Détail Mission — Affichage", () => {
   test("devrait afficher le titre de la mission", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id, {
       title: "Mission Détail E2E",
     });
@@ -77,8 +77,8 @@ test.describe("Détail Mission — Affichage", () => {
   test("devrait afficher le badge de statut 'Active'", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -90,8 +90,8 @@ test.describe("Détail Mission — Affichage", () => {
   test("devrait afficher le badge de statut 'Archivée' pour une mission archivée", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id, {
       status: MissionStatus.ARCHIVED,
     });
@@ -112,8 +112,8 @@ test.describe("Détail Mission — Affichage", () => {
   test("devrait afficher la description de la mission", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -127,8 +127,8 @@ test.describe("Détail Mission — Affichage", () => {
   test("devrait afficher le type d'activité dans la card d'en-tête", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id, {
       type: ActivityType.EVENT,
     });
@@ -142,8 +142,8 @@ test.describe("Détail Mission — Affichage", () => {
   test("devrait afficher la section Informations pour une mission non-INFO", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -160,8 +160,8 @@ test.describe("Détail Mission — Barre d'actions (ACTIVE)", () => {
   test("devrait afficher les boutons Modifier, Archiver et Supprimer", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -181,8 +181,8 @@ test.describe("Détail Mission — Barre d'actions (ACTIVE)", () => {
   test("devrait naviguer vers la page de modification au clic sur Modifier", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -203,8 +203,8 @@ test.describe("Détail Mission — Barre d'actions (ARCHIVÉE)", () => {
   test("devrait afficher uniquement le bouton Désarchiver pour une mission archivée", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id, {
       status: MissionStatus.ARCHIVED,
     });
@@ -235,8 +235,8 @@ test.describe("Détail Mission — Action Archiver", () => {
   test("devrait ouvrir la modale de confirmation d'archivage", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -255,8 +255,8 @@ test.describe("Détail Mission — Action Archiver", () => {
   test("devrait annuler l'archivage et rester sur la page de détail", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -275,8 +275,8 @@ test.describe("Détail Mission — Action Archiver", () => {
   test("devrait archiver la mission et mettre à jour le badge de statut", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -299,8 +299,8 @@ test.describe("Détail Mission — Action Désarchiver", () => {
   test("devrait ouvrir la modale de confirmation de désarchivage", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id, {
       status: MissionStatus.ARCHIVED,
     });
@@ -322,8 +322,8 @@ test.describe("Détail Mission — Action Désarchiver", () => {
   test("devrait désarchiver la mission et afficher le badge 'Active'", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id, {
       status: MissionStatus.ARCHIVED,
     });
@@ -352,8 +352,8 @@ test.describe("Détail Mission — Action Supprimer", () => {
   test("devrait ouvrir la modale de confirmation de suppression", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -372,8 +372,8 @@ test.describe("Détail Mission — Action Supprimer", () => {
   test("devrait annuler la suppression et rester sur la page de détail", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -393,8 +393,8 @@ test.describe("Détail Mission — Action Supprimer", () => {
   test("devrait supprimer la mission et rediriger vers le dashboard", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
     const isMobile = testInfo.project.name.includes("Mobile");
 

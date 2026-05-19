@@ -1,6 +1,6 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "../_fixtures";
 import {
-  cleanDatabase,
+  cleanDatabaseForWorker,
   createTestUser,
   createTestAssociation,
   createTestMission,
@@ -13,8 +13,8 @@ import {
 
 const VALID_PASSWORD = "Password123!";
 
-test.beforeEach(async () => {
-  await cleanDatabase();
+test.beforeEach(async ({}, testInfo) => {
+  await cleanDatabaseForWorker(testInfo.parallelIndex);
 });
 
 // ===========================================================================
@@ -69,8 +69,8 @@ test.describe("Page Statistiques — État vide", () => {
   test("devrait afficher 'Aucune donnée disponible' si l'association n'a pas de mission", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToStats(page, user, isMobile);
@@ -81,8 +81,8 @@ test.describe("Page Statistiques — État vide", () => {
   test("devrait afficher les KPI cards avec la valeur 0", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToStats(page, user, isMobile);
@@ -100,8 +100,8 @@ test.describe("Page Statistiques — Avec missions", () => {
   test("devrait afficher les KPI cards avec les bonnes valeurs", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     await createTestMission(assoc.id, { type: ActivityType.MISSION });
     await createTestMission(assoc.id, { type: ActivityType.EVENT });
     const isMobile = testInfo.project.name.includes("Mobile");
@@ -117,8 +117,8 @@ test.describe("Page Statistiques — Avec missions", () => {
   test("devrait afficher la section top missions", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     await createTestMission(assoc.id, { title: "Mission populaire" });
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -133,8 +133,8 @@ test.describe("Page Statistiques — Avec missions", () => {
   test("devrait afficher la section répartition par type", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     await createTestMission(assoc.id, { type: ActivityType.MISSION });
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -146,8 +146,8 @@ test.describe("Page Statistiques — Avec missions", () => {
   test("devrait afficher le graphique missions par mois", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     await createTestMission(assoc.id);
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -165,8 +165,8 @@ test.describe("Page Statistiques — Navigation depuis association", () => {
   test("devrait naviguer vers /association/statistiques via le bouton 'Statistiques'", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginUser(page, user, isMobile);
@@ -183,8 +183,8 @@ test.describe("Page Statistiques — Navigation depuis association", () => {
   }, testInfo) => {
     if (testInfo.project.name.includes("Mobile")) return;
 
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
 
     await loginUser(page, user, false);
     await page.goto("/association");
@@ -199,9 +199,9 @@ test.describe("Page Statistiques — Navigation depuis association", () => {
   test("ne devrait pas afficher le bouton Statistiques pour un EDITOR", async ({
     page,
   }, testInfo) => {
-    const owner = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(owner.id);
-    const editor = await createTestUser(testInfo.workerIndex + 10);
+    const owner = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(owner.id, testInfo.parallelIndex);
+    const editor = await createTestUser(testInfo.parallelIndex, 'editor');
     await addAssociationMember(assoc.id, editor.id, AssociationRole.EDITOR);
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -220,8 +220,8 @@ test.describe("Page Statistiques — Filtres", () => {
   test("devrait afficher le panneau de filtres", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToStats(page, user, isMobile);
@@ -232,8 +232,8 @@ test.describe("Page Statistiques — Filtres", () => {
   test("devrait afficher les boutons de filtre par type", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToStats(page, user, isMobile);
@@ -248,8 +248,8 @@ test.describe("Page Statistiques — Filtres", () => {
   test("devrait afficher le bouton Réinitialiser après sélection d'un filtre type", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToStats(page, user, isMobile);
@@ -262,8 +262,8 @@ test.describe("Page Statistiques — Filtres", () => {
   test("devrait masquer le bouton Réinitialiser si aucun filtre actif", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToStats(page, user, isMobile);
@@ -280,8 +280,8 @@ test.describe("Page Statistiques — Export PDF", () => {
   test("devrait afficher le bouton Exporter PDF", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToStats(page, user, isMobile);
@@ -294,8 +294,8 @@ test.describe("Page Statistiques — Export PDF", () => {
   test("le bouton Exporter PDF est désactivé pendant le chargement", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginUser(page, user, isMobile);

@@ -1,13 +1,13 @@
-import { test, expect, Page } from "@playwright/test";
+import { test, expect, Page } from "../_fixtures";
 import {
-  cleanDatabase,
+  cleanDatabaseForWorker,
   createTestUser,
 } from "../../../api/test/prisma-test-helper";
 
 const VALID_PASSWORD = "Password123!";
 
-test.beforeEach(async () => {
-  await cleanDatabase();
+test.beforeEach(async ({}, testInfo) => {
+  await cleanDatabaseForWorker(testInfo.parallelIndex);
 });
 
 // ===========================================================================
@@ -68,7 +68,7 @@ test.describe("Page Notifications - Navigation", () => {
   test("devrait naviguer vers la page notifications depuis le profil", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToProfile(page, user, isMobile);
@@ -87,7 +87,7 @@ test.describe("Page Notifications - Affichage", () => {
   test("devrait afficher la bulle d'info et le toggle e-mail", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToNotifications(page, user, isMobile);
@@ -111,7 +111,7 @@ test.describe("Page Notifications - Affichage", () => {
   test("devrait afficher le toggle e-mail désactivé par défaut", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToNotifications(page, user, isMobile);
@@ -129,7 +129,7 @@ test.describe("Page Notifications - Interactions", () => {
   test("devrait activer les notifications e-mail au clic", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToNotifications(page, user, isMobile);
@@ -144,7 +144,7 @@ test.describe("Page Notifications - Interactions", () => {
   test("devrait désactiver un toggle précédemment activé", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToNotifications(page, user, isMobile);
@@ -162,7 +162,7 @@ test.describe("Page Notifications - Interactions", () => {
   test("devrait persister l'état après rechargement de la page", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToNotifications(page, user, isMobile);
@@ -195,7 +195,7 @@ test.describe("Page Notifications - Pas d'erreurs initiales", () => {
   test("ne devrait pas afficher de bandeau d'erreur au chargement", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToNotifications(page, user, isMobile);

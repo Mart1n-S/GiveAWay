@@ -1,13 +1,13 @@
-import { test, expect, Page } from "@playwright/test";
+import { test, expect, Page } from "../_fixtures";
 import {
-  cleanDatabase,
+  cleanDatabaseForWorker,
   createTestUser,
 } from "../../../api/test/prisma-test-helper";
 
 const VALID_PASSWORD = "Password123!";
 
-test.beforeEach(async () => {
-  await cleanDatabase();
+test.beforeEach(async ({}, testInfo) => {
+  await cleanDatabaseForWorker(testInfo.parallelIndex);
 });
 
 // ===========================================================================
@@ -60,7 +60,7 @@ test.describe("Page Abonnements — État vide", () => {
   test("devrait afficher le message 'Vous ne suivez aucune association' pour un utilisateur sans abonnements", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToAbonnements(page, user, isMobile);
@@ -78,7 +78,7 @@ test.describe("Page Abonnements — Navigation web", () => {
   test("devrait afficher le bouton Retour sur web", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     // Ce test est pertinent uniquement sur web
@@ -102,7 +102,7 @@ test.describe("Page Abonnements — Composants", () => {
   test("devrait afficher le champ de recherche", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToAbonnements(page, user, isMobile);
@@ -116,7 +116,7 @@ test.describe("Page Abonnements — Composants", () => {
   test("devrait afficher le titre 'Abonnements'", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToAbonnements(page, user, isMobile);

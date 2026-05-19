@@ -1,6 +1,6 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "../../_fixtures";
 import {
-  cleanDatabase,
+  cleanDatabaseForWorker,
   createTestUser,
   createTestAssociation,
   createTestMission,
@@ -10,8 +10,8 @@ import { MissionStatus } from "../../../../api/src/generated/prisma/client";
 
 const VALID_PASSWORD = "Password123!";
 
-test.beforeEach(async () => {
-  await cleanDatabase();
+test.beforeEach(async ({}, testInfo) => {
+  await cleanDatabaseForWorker(testInfo.parallelIndex);
 });
 
 // ===========================================================================
@@ -61,8 +61,8 @@ test.describe("Participants Mission — Affichage", () => {
   test("devrait afficher la section Participants avec le compteur à zéro", async ({
     page,
   }, testInfo) => {
-    const owner = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(owner.id);
+    const owner = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(owner.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id, {
       title: "Mission avec inscrits",
     });
@@ -79,12 +79,12 @@ test.describe("Participants Mission — Affichage", () => {
   test("devrait afficher la carte du participant inscrit avec son nom", async ({
     page,
   }, testInfo) => {
-    const owner = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(owner.id);
+    const owner = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(owner.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
 
     // Créer un second utilisateur et l'inscrire
-    const volunteer = await createTestUser(testInfo.workerIndex + 100);
+    const volunteer = await createTestUser(testInfo.parallelIndex, 'volunteer');
     await createTestMissionParticipant(mission.id, volunteer.id);
 
     const isMobile = testInfo.project.name.includes("Mobile");
@@ -99,10 +99,10 @@ test.describe("Participants Mission — Affichage", () => {
   test("devrait afficher le bouton 'Voir le profil' pour un participant", async ({
     page,
   }, testInfo) => {
-    const owner = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(owner.id);
+    const owner = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(owner.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
-    const volunteer = await createTestUser(testInfo.workerIndex + 100);
+    const volunteer = await createTestUser(testInfo.parallelIndex, 'volunteer');
     await createTestMissionParticipant(mission.id, volunteer.id);
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -116,10 +116,10 @@ test.describe("Participants Mission — Affichage", () => {
   test("devrait afficher le bouton 'Retirer' pour une mission active", async ({
     page,
   }, testInfo) => {
-    const owner = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(owner.id);
+    const owner = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(owner.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
-    const volunteer = await createTestUser(testInfo.workerIndex + 100);
+    const volunteer = await createTestUser(testInfo.parallelIndex, 'volunteer');
     await createTestMissionParticipant(mission.id, volunteer.id);
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -133,12 +133,12 @@ test.describe("Participants Mission — Affichage", () => {
   test("ne devrait PAS afficher le bouton 'Retirer' pour une mission archivée", async ({
     page,
   }, testInfo) => {
-    const owner = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(owner.id);
+    const owner = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(owner.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id, {
       status: MissionStatus.ARCHIVED,
     });
-    const volunteer = await createTestUser(testInfo.workerIndex + 100);
+    const volunteer = await createTestUser(testInfo.parallelIndex, 'volunteer');
     await createTestMissionParticipant(mission.id, volunteer.id);
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -156,12 +156,12 @@ test.describe("Participants Mission — Affichage", () => {
   test("devrait afficher le badge 'Lecture seule' pour une mission archivée avec participants", async ({
     page,
   }, testInfo) => {
-    const owner = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(owner.id);
+    const owner = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(owner.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id, {
       status: MissionStatus.ARCHIVED,
     });
-    const volunteer = await createTestUser(testInfo.workerIndex + 100);
+    const volunteer = await createTestUser(testInfo.parallelIndex, 'volunteer');
     await createTestMissionParticipant(mission.id, volunteer.id);
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -183,10 +183,10 @@ test.describe("Participants Mission — Profil modal", () => {
   test("devrait ouvrir le modal de profil au clic sur 'Voir le profil'", async ({
     page,
   }, testInfo) => {
-    const owner = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(owner.id);
+    const owner = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(owner.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
-    const volunteer = await createTestUser(testInfo.workerIndex + 100);
+    const volunteer = await createTestUser(testInfo.parallelIndex, 'volunteer');
     await createTestMissionParticipant(mission.id, volunteer.id);
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -205,10 +205,10 @@ test.describe("Participants Mission — Profil modal", () => {
   test("devrait afficher le nom complet du bénévole dans le modal", async ({
     page,
   }, testInfo) => {
-    const owner = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(owner.id);
+    const owner = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(owner.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
-    const volunteer = await createTestUser(testInfo.workerIndex + 100);
+    const volunteer = await createTestUser(testInfo.parallelIndex, 'volunteer');
     await createTestMissionParticipant(mission.id, volunteer.id);
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -231,10 +231,10 @@ test.describe("Participants Mission — Profil modal", () => {
   test("devrait fermer le modal au clic sur le bouton Fermer", async ({
     page,
   }, testInfo) => {
-    const owner = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(owner.id);
+    const owner = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(owner.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
-    const volunteer = await createTestUser(testInfo.workerIndex + 100);
+    const volunteer = await createTestUser(testInfo.parallelIndex, 'volunteer');
     await createTestMissionParticipant(mission.id, volunteer.id);
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -257,10 +257,10 @@ test.describe("Participants Mission — Profil modal", () => {
   test("devrait afficher 'Retirer de la mission' dans le modal pour une mission active", async ({
     page,
   }, testInfo) => {
-    const owner = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(owner.id);
+    const owner = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(owner.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
-    const volunteer = await createTestUser(testInfo.workerIndex + 100);
+    const volunteer = await createTestUser(testInfo.parallelIndex, 'volunteer');
     await createTestMissionParticipant(mission.id, volunteer.id);
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -285,10 +285,10 @@ test.describe("Participants Mission — Retrait", () => {
   test("devrait ouvrir la modale de confirmation au clic sur 'Retirer'", async ({
     page,
   }, testInfo) => {
-    const owner = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(owner.id);
+    const owner = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(owner.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
-    const volunteer = await createTestUser(testInfo.workerIndex + 100);
+    const volunteer = await createTestUser(testInfo.parallelIndex, 'volunteer');
     await createTestMissionParticipant(mission.id, volunteer.id);
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -307,10 +307,10 @@ test.describe("Participants Mission — Retrait", () => {
   test("devrait annuler le retrait et garder le participant dans la liste", async ({
     page,
   }, testInfo) => {
-    const owner = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(owner.id);
+    const owner = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(owner.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
-    const volunteer = await createTestUser(testInfo.workerIndex + 100);
+    const volunteer = await createTestUser(testInfo.parallelIndex, 'volunteer');
     await createTestMissionParticipant(mission.id, volunteer.id);
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -328,10 +328,10 @@ test.describe("Participants Mission — Retrait", () => {
   test("devrait retirer le participant et mettre à jour le compteur", async ({
     page,
   }, testInfo) => {
-    const owner = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(owner.id);
+    const owner = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(owner.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
-    const volunteer = await createTestUser(testInfo.workerIndex + 100);
+    const volunteer = await createTestUser(testInfo.parallelIndex, 'volunteer');
     await createTestMissionParticipant(mission.id, volunteer.id);
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -355,10 +355,10 @@ test.describe("Participants Mission — Retrait", () => {
   test("devrait afficher un toast de succès après le retrait", async ({
     page,
   }, testInfo) => {
-    const owner = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(owner.id);
+    const owner = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(owner.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
-    const volunteer = await createTestUser(testInfo.workerIndex + 100);
+    const volunteer = await createTestUser(testInfo.parallelIndex, 'volunteer');
     await createTestMissionParticipant(mission.id, volunteer.id);
     const isMobile = testInfo.project.name.includes("Mobile");
 
@@ -375,10 +375,10 @@ test.describe("Participants Mission — Retrait", () => {
   test("devrait pouvoir retirer depuis le modal de profil", async ({
     page,
   }, testInfo) => {
-    const owner = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(owner.id);
+    const owner = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(owner.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
-    const volunteer = await createTestUser(testInfo.workerIndex + 100);
+    const volunteer = await createTestUser(testInfo.parallelIndex, 'volunteer');
     await createTestMissionParticipant(mission.id, volunteer.id);
     const isMobile = testInfo.project.name.includes("Mobile");
 

@@ -172,9 +172,9 @@ describe('Messaging Module (E2E)', () => {
       })
     ).id;
 
-    volunteerToken = await loginUser('e2e.0@test.com', 'Password123!');
-    memberToken = await loginUser('e2e.1@test.com', 'Password123!');
-    outsiderToken = await loginUser('e2e.2@test.com', 'Password123!');
+    volunteerToken = await loginUser('e2e.w0@test.com', 'Password123!');
+    memberToken = await loginUser('e2e.w1@test.com', 'Password123!');
+    outsiderToken = await loginUser('e2e.w2@test.com', 'Password123!');
   });
 
   afterAll(async () => {
@@ -186,12 +186,11 @@ describe('Messaging Module (E2E)', () => {
   // POST /conversations
   // ============================================================
   describe('POST /conversations', () => {
-    it('✅ 201 — bénévole crée une conv avec un membre, message initial inclus', async () => {
+    it('✅ 201 — crée une conv 1-1 avec message initial inclus', async () => {
       const res = await request(httpServer)
         .post('/conversations')
         .set('Authorization', `Bearer ${volunteerToken}`)
         .send({
-          associationId,
           recipientId: memberId,
           initialMessage: 'Bonjour, je voudrais aider',
         })
@@ -201,44 +200,49 @@ describe('Messaging Module (E2E)', () => {
         conversation: {
           id: number;
           otherUser: { id: number };
-          currentUserSide: string;
+          otherUserAssociation: { id: number; name: string } | null;
         };
         firstMessage: { id: number; content: string };
       };
       expect(body.conversation.otherUser.id).toBe(memberId);
-      expect(body.conversation.currentUserSide).toBe('volunteer');
+      // L'asso primaire de l'autre user (le membre) est bien rattachée
+      expect(body.conversation.otherUserAssociation?.id).toBe(associationId);
       expect(body.firstMessage.content).toBe('Bonjour, je voudrais aider');
     });
 
-    it('✅ 201 — membre crée une conv avec un bénévole', async () => {
+    it('✅ 201 — sens inverse (le membre initie vers un bénévole)', async () => {
       const res = await request(httpServer)
         .post('/conversations')
         .set('Authorization', `Bearer ${memberToken}`)
         .send({
-          associationId,
           recipientId: volunteerId,
         })
         .expect(201);
 
       const body = res.body as {
-        conversation: { currentUserSide: string; otherUser: { id: number } };
+        conversation: {
+          otherUser: { id: number };
+          otherUserAssociation: { id: number; name: string } | null;
+        };
         firstMessage: null;
       };
-      expect(body.conversation.currentUserSide).toBe('associationMember');
       expect(body.conversation.otherUser.id).toBe(volunteerId);
+      // Le bénévole n'est membre d'aucune asso → null côté membre
+      expect(body.conversation.otherUserAssociation).toBeNull();
       expect(body.firstMessage).toBeNull();
     });
 
-    it('✅ 201 — idempotent : retourne la conv existante (même id)', async () => {
+    it('✅ 201 — idempotent : retourne la conv existante (même id, peu importe qui initie)', async () => {
       const r1 = await request(httpServer)
         .post('/conversations')
         .set('Authorization', `Bearer ${volunteerToken}`)
-        .send({ associationId, recipientId: memberId })
+        .send({ recipientId: memberId })
         .expect(201);
+      // Le sens inverse retombe sur la MÊME conv (paire user1/user2 canonique)
       const r2 = await request(httpServer)
         .post('/conversations')
-        .set('Authorization', `Bearer ${volunteerToken}`)
-        .send({ associationId, recipientId: memberId })
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send({ recipientId: volunteerId })
         .expect(201);
 
       expect(
@@ -249,7 +253,7 @@ describe('Messaging Module (E2E)', () => {
     it('❌ 401 — sans token', async () => {
       await request(httpServer)
         .post('/conversations')
-        .send({ associationId, recipientId: memberId })
+        .send({ recipientId: memberId })
         .expect(401);
     });
 
@@ -257,20 +261,23 @@ describe('Messaging Module (E2E)', () => {
       await request(httpServer)
         .post('/conversations')
         .set('Authorization', `Bearer ${volunteerToken}`)
-        .send({ associationId, recipientId: volunteerId })
+        .send({ recipientId: volunteerId })
         .expect(400);
     });
 
-    it('❌ 403 — bénévole ↔ bénévole (aucun membre)', async () => {
+    it('✅ 201 — bénévole ↔ bénévole (modèle 1-1 : plus de restriction asso)', async () => {
+      // Avec le nouveau modèle, toute paire d'utilisateurs peut discuter.
       await request(httpServer)
         .post('/conversations')
         .set('Authorization', `Bearer ${volunteerToken}`)
-        .send({ associationId, recipientId: outsiderId })
-        .expect(403);
+        .send({ recipientId: outsiderId })
+        .expect(201);
     });
 
-    it('❌ 403 — membre ↔ membre interdit', async () => {
-      // On ajoute outsider comme membre EDITOR
+    it("✅ 201 — deux membres d'une même asso peuvent désormais se contacter", async () => {
+      // L'ancienne règle "deux membres d'une même asso ne peuvent pas se
+      // contacter" n'existe plus : la conv est strictement 1-1, indépendante
+      // de toute association.
       await addAssociationMember(
         associationId,
         outsiderId,
@@ -279,8 +286,8 @@ describe('Messaging Module (E2E)', () => {
       await request(httpServer)
         .post('/conversations')
         .set('Authorization', `Bearer ${memberToken}`)
-        .send({ associationId, recipientId: outsiderId })
-        .expect(403);
+        .send({ recipientId: outsiderId })
+        .expect(201);
     });
 
     it('❌ 400 — message initial avec balises HTML', async () => {
@@ -288,7 +295,6 @@ describe('Messaging Module (E2E)', () => {
         .post('/conversations')
         .set('Authorization', `Bearer ${volunteerToken}`)
         .send({
-          associationId,
           recipientId: memberId,
           initialMessage: '<script>xss</script>',
         })
@@ -543,7 +549,7 @@ describe('Messaging Module (E2E)', () => {
       });
       expect(convCountBefore).toBe(1);
 
-      const ownerToken = await loginUser('e2e.5@test.com', 'Password123!');
+      const ownerToken = await loginUser('e2e.w5@test.com', 'Password123!');
       await request(httpServer)
         .delete(`/associations/${associationId}/members/${memberAssocId}`)
         .set('Authorization', `Bearer ${ownerToken}`)

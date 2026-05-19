@@ -1,8 +1,8 @@
-import { test, expect } from "@playwright/test";
-import { cleanDatabase, prisma } from "../../../api/test/prisma-test-helper";
+import { test, expect } from "../_fixtures";
+import { cleanDatabaseForWorker, prisma, getPrisma } from "../../../api/test/prisma-test-helper";
 
-test.beforeEach(async () => {
-  await cleanDatabase();
+test.beforeEach(async ({}, testInfo) => {
+  await cleanDatabaseForWorker(testInfo.parallelIndex);
 });
 
 // afterAll(async () => {
@@ -13,7 +13,7 @@ test.describe("Flux d'activation de compte (Interface & OTP)", () => {
   test("devrait inscrire un utilisateur et permettre son activation avec le code dynamique", async ({
     page,
   }) => {
-    const email = `test.activation.${Date.now()}@example.com`;
+    const email = `test.activation.w${test.info().parallelIndex}.${Date.now()}@example.com`;
 
     // --- ÉTAPE 1 : INSCRIPTION (PRÉPARATION) ---
     await test.step("Inscription initiale du bénévole", async () => {
@@ -109,7 +109,7 @@ test.describe("Flux d'activation de compte (Interface & OTP)", () => {
           let userInDb = null;
           for (let i = 0; i < 5; i++) {
             // Tentatives sur 1 seconde
-            userInDb = await prisma.user.findUnique({
+            userInDb = await getPrisma(test.info().parallelIndex).user.findUnique({
               where: { email: email },
             });
             if (userInDb) break;
