@@ -24,6 +24,7 @@ export class MessagingPushService {
     recipientId: number,
     sender: { firstName: string; lastName: string },
     message: MessageDto,
+    unreadCount?: number,
   ): Promise<void> {
     try {
       const inRoom = await this.events.isUserInConversationRoom(
@@ -38,17 +39,22 @@ export class MessagingPushService {
       });
       if (!recipient?.pushToken) return;
 
-      const title =
+      const senderName =
         `${sender.firstName} ${sender.lastName}`.trim() || 'Nouveau message';
+      // Emoji 💬 en préfixe pour identifier visuellement les notifs de messagerie
+      // (vs notifications de missions/match). Universel Android + iOS.
+      const title = `💬 ${senderName}`;
       const body = message.content.slice(0, 120);
 
       await this.notifications.sendPushNotifications([
         {
           to: recipient.pushToken,
           title,
+          subtitle: 'Nouveau message',
           body,
           sound: 'default',
           data: { type: 'message', conversationId },
+          ...(typeof unreadCount === 'number' ? { badge: unreadCount } : {}),
         },
       ]);
     } catch (err) {

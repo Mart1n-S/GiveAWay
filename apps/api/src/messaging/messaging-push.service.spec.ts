@@ -59,12 +59,33 @@ describe('MessagingPushService', () => {
     expect(mockNotifs.sendPushNotifications).toHaveBeenCalledWith([
       expect.objectContaining({
         to: 'ExponentPushToken[xxx]',
-        title: 'Alice Dupont',
+        title: '💬 Alice Dupont',
+        subtitle: 'Nouveau message',
         body: 'hello world',
         sound: 'default',
         data: { type: 'message', conversationId: 10 },
       }),
     ]);
+  });
+
+  it('inclut le badge si unreadCount est fourni', async () => {
+    mockEvents.isUserInConversationRoom.mockResolvedValue(false);
+    mockPrisma.user.findUnique.mockResolvedValue({
+      pushToken: 'ExponentPushToken[xxx]',
+    });
+    await service.notifyIfOffline(10, 99, sender, msg, 7);
+    const payload = mockNotifs.sendPushNotifications.mock.calls[0][0][0];
+    expect(payload.badge).toBe(7);
+  });
+
+  it("n'inclut pas le badge si unreadCount n'est pas fourni", async () => {
+    mockEvents.isUserInConversationRoom.mockResolvedValue(false);
+    mockPrisma.user.findUnique.mockResolvedValue({
+      pushToken: 'ExponentPushToken[xxx]',
+    });
+    await service.notifyIfOffline(10, 99, sender, msg);
+    const payload = mockNotifs.sendPushNotifications.mock.calls[0][0][0];
+    expect(payload.badge).toBeUndefined();
   });
 
   it('tronque le contenu à 120 caractères', async () => {

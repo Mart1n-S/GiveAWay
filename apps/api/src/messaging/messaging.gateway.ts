@@ -180,11 +180,13 @@ export class MessagingGateway
     );
 
     // Notification push si le destinataire ne lit pas activement la conv
+    // (on passe le compteur global pour synchroniser le badge OS iOS/Android)
     await this.pushService.notifyIfOffline(
       dto.conversationId,
       recipientId,
       user,
       message,
+      count,
     );
 
     return { ok: true, messageId: message.id };

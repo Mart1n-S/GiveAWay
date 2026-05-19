@@ -30,6 +30,7 @@ Notifications.setNotificationHandler({
 
 // Import du store
 import { useAuthStore } from "../src/stores/auth.store";
+import { useMessageStore } from "../src/stores/message.store";
 
 // 1. Empêcher l'écran de splash natif de disparaître automatiquement
 SplashScreen.preventAutoHideAsync();
@@ -57,6 +58,7 @@ async function registerPushToken(): Promise<void> {
   }
 }
 
+
 export default function RootLayout() {
   // 2. Récupérer l'état d'hydratation depuis le store
   const isHydrated = useAuthStore((state) => state.isHydrated);
@@ -78,6 +80,15 @@ export default function RootLayout() {
       void registerPushToken();
     }
   }, [isAuthenticated]);
+
+  // Synchronisation du badge OS (iOS auto + Android via API) avec le compteur
+  // global de messages non lus du store. Couvre tous les cas : message reçu
+  // en foreground via WS, lecture marquée, refresh au login, etc.
+  const unreadCount = useMessageStore((s) => s.unreadCount);
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    void Notifications.setBadgeCountAsync(unreadCount);
+  }, [unreadCount]);
 
   // Deep link : navigation vers la mission ou la conversation au tap sur une notification
   useEffect(() => {

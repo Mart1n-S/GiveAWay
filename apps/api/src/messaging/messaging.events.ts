@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Server } from 'socket.io';
+import { Namespace, Server } from 'socket.io';
 import type { MessageDto } from '@repo/shared';
 import { WsEvents } from '@repo/shared';
 
@@ -7,13 +7,17 @@ import { WsEvents } from '@repo/shared';
  * Service-pont qui permet au controller REST de pousser des événements WS
  * sans dépendance circulaire avec le gateway.
  * Le gateway s'enregistre via setServer() à son init.
+ *
+ * Note : NestJS injecte un `Namespace` (et non un `Server`) quand le gateway
+ * a un `namespace` défini, malgré le type annoncé. On accepte les deux et
+ * normalise en `Namespace` pour accéder à `.adapter` et `.sockets` (la Map).
  */
 @Injectable()
 export class MessagingEvents {
-  private server: Server | null = null;
+  private server: Namespace | null = null;
 
-  setServer(server: Server): void {
-    this.server = server;
+  setServer(server: Server | Namespace): void {
+    this.server = server as Namespace;
   }
 
   // ----------------------------------------------------------------
@@ -121,12 +125,15 @@ export class MessagingEvents {
     userId: number,
   ): Promise<boolean> {
     if (!this.server) return false;
-    const room = this.server.sockets.adapter.rooms.get(
+    // NestJS injecte un Namespace (et non un Server) quand le gateway a un
+    // namespace défini. Sur un Namespace : `.adapter` est direct, et `.sockets`
+    // est la Map<SocketId, Socket> — pas un sous-namespace.
+    const room = this.server.adapter.rooms.get(
       this.conversationRoom(conversationId),
     );
     if (!room) return false;
     for (const sid of room) {
-      const s = this.server.sockets.sockets.get(sid);
+      const s = this.server.sockets.get(sid);
       const u = s?.data?.user as { id?: number } | undefined;
       if (u?.id === userId) return true;
     }

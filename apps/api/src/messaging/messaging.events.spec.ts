@@ -135,9 +135,11 @@ describe('MessagingEvents', () => {
     sockets.set('sid-1', { data: { user: { id: 42 } } });
     const rooms = new Map<string, Set<string>>();
     rooms.set('conv:1', new Set(['sid-1']));
+    // Namespace shape : adapter direct, sockets = Map<SocketId, Socket>
     const fakeServer = {
       to: chain.to,
-      sockets: { adapter: { rooms }, sockets },
+      adapter: { rooms },
+      sockets,
     } as unknown as import('socket.io').Server;
     events.setServer(fakeServer);
     const res = await events.isUserInConversationRoom(1, 42);
@@ -151,7 +153,8 @@ describe('MessagingEvents', () => {
     rooms.set('conv:1', new Set(['sid-1']));
     const fakeServer = {
       to: chain.to,
-      sockets: { adapter: { rooms }, sockets },
+      adapter: { rooms },
+      sockets,
     } as unknown as import('socket.io').Server;
     events.setServer(fakeServer);
     const res = await events.isUserInConversationRoom(1, 42);
