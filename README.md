@@ -23,6 +23,7 @@ L'application repose sur un **algorithme de matching intelligent** qui propose d
 - 📱 **Expérience Mobile First :** Application fluide et intuitive (Expo / React Native).
 - 🏢 **Espace Association :** Publication de missions et vérification d'identité (RNA).
 - 💬 **Messagerie temps réel :** Conversations 1-à-1 entre bénévoles et membres d'associations, avec compteur de messages non lus et accusés de lecture (WebSocket).
+- 🔔 **Notifications :** E-mails transactionnels (compte, missions inscrites) + opt-in (rappels J-1, nouvelles missions, suggestions personnalisées), push mobile via Expo.
 - 🔒 **Architecture Sécurisée :** Séparation stricte Client/Serveur et base de données isolée.
 
 ---
@@ -429,6 +430,30 @@ Pour lancer un fichier de test spécifique :
 npm run test:e2e --workspace=apps/mobile -- tests/profil/profil.spec.ts
 npm run test:e2e --workspace=apps/admin -- tests/login.spec.ts
 ```
+
+---
+
+## 🔔 Tester le cron de rappels J-1
+
+Le système envoie un rappel par e-mail (si `emailNotifications=true`) et un push mobile (si `pushToken` présent) **la veille à 9h Europe/Paris** pour chaque mission à laquelle l'utilisateur est inscrit. Plutôt que d'attendre l'heure du cron, un script CLI permet de déclencher manuellement le job :
+
+```bash
+# Depuis apps/api/ — utilise la date du jour (envoie les rappels pour demain)
+npm run reminders:test --workspace=apps/api
+
+# Simuler un déclenchement à une date précise (utile pour cibler une mission existante :
+# passer la veille de sa startDate)
+npm run reminders:test --workspace=apps/api -- --date=2026-05-19
+```
+
+> [!NOTE]
+> Le script boot un `NestFactory.createApplicationContext` (pas de serveur HTTP) et appelle `MissionReminderService.sendReminders(date)`. Les e-mails partent réellement sur Brevo et les push sur Expo **sauf** si `NODE_ENV=test` ou `USE_DETERMINISTIC_OTP=true` → tout est alors juste loggé en console.
+
+**Pour tester rapidement en local :**
+1. `docker-compose up -d` puis `npm run dev`
+2. Avec le compte de seed, activer `emailNotifications` dans le profil (`/profil/notifications`)
+3. S'inscrire à une mission ayant `startDate` au lendemain
+4. Lance `npm run reminders:test --workspace=apps/api`
 
 ---
 

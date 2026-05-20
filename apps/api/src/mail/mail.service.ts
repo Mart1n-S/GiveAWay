@@ -693,6 +693,87 @@ export class MailService {
     return this.sendApiEmail(email, 'Bienvenue sur GiveAWay 🧡', html);
   }
 
+  private getMissionReminderTemplate(
+    userName: string,
+    missions: Array<{
+      title: string;
+      startDate: Date;
+      associationName: string;
+    }>,
+  ): string {
+    const formatter = new Intl.DateTimeFormat('fr-FR', {
+      weekday: 'long',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Europe/Paris',
+    });
+
+    const items = missions
+      .map((m) => {
+        const when = formatter.format(m.startDate);
+        return `
+          <li style="margin: 0 0 16px 0; padding: 12px 16px; background-color: #fff7ed; border-left: 4px solid #cc460f; border-radius: 8px; list-style: none;">
+            <p style="margin: 0 0 4px 0; font-size: 16px; font-weight: 700; color: #1e293b;">${m.title}</p>
+            <p style="margin: 0; font-size: 14px; color: #64748b;">${m.associationName} &ndash; ${when}</p>
+          </li>
+        `;
+      })
+      .join('');
+
+    const intro =
+      missions.length === 1
+        ? "N'oubliez pas, vous avez une mission demain :"
+        : `N'oubliez pas, vous avez ${missions.length} missions demain :`;
+
+    const content = `
+      <h1 style="margin: 0 0 16px 0; color: #1e293b; font-size: 22px; font-weight: 700; text-align: center;">Rappel de mission 🔔</h1>
+      <p style="text-align: center; margin-bottom: 24px;">Bonjour <b>${userName}</b>,</p>
+      <p style="text-align: center; margin-bottom: 24px;">${intro}</p>
+      <ul style="margin: 0 0 32px 0; padding: 0;">${items}</ul>
+      <p style="text-align: center; margin-bottom: 24px; color: #64748b;">
+        Merci pour votre engagement bénévole !
+      </p>
+      <div style="border-top: 1px solid #f1f5f9; padding-top: 24px; font-size: 13px; color: #94a3b8; text-align: center;">
+        Vous recevez ce rappel car vous avez activé les notifications par e-mail.<br/>
+        Vous pouvez gérer vos préférences dans votre profil GiveAWay.
+      </div>
+    `;
+    return this.getEmailWrapper(content);
+  }
+
+  async sendMissionReminderEmail(
+    email: string,
+    userName: string,
+    missions: Array<{
+      title: string;
+      startDate: Date;
+      associationName: string;
+    }>,
+  ) {
+    if (missions.length === 0) return;
+
+    if (this.isLogMode()) {
+      console.log(
+        `\n📨 [MAIL SERVICE] Rappel J-1 pour : ${email} (${missions.length} mission(s))`,
+      );
+      for (const m of missions) {
+        console.log(
+          `   • ${m.title} – ${m.associationName} – ${m.startDate.toISOString()}`,
+        );
+      }
+      console.log('');
+      return;
+    }
+
+    const subject =
+      missions.length === 1
+        ? `Rappel : ${missions[0].title} demain`
+        : `Rappel : vous avez ${missions.length} missions demain`;
+
+    const html = this.getMissionReminderTemplate(userName, missions);
+    return this.sendApiEmail(email, subject, html);
+  }
+
   async sendPasswordResetEmail(email: string, token: string) {
     if (
       this.config.get('NODE_ENV') === 'test' ||

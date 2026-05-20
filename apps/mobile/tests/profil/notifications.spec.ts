@@ -92,7 +92,7 @@ test.describe("Page Notifications - Affichage", () => {
 
     await loginAndGoToNotifications(page, user, isMobile);
 
-    // Bulle d'information
+    // Bulle d'information (sauvegarde auto)
     await expect(
       page.getByText(/sauvegardées automatiquement/i),
     ).toBeVisible();
@@ -105,6 +105,33 @@ test.describe("Page Notifications - Affichage", () => {
     // Toggle e-mail
     await expect(
       page.getByTestId("toggle-email-notifications"),
+    ).toBeVisible();
+  });
+
+  test("devrait afficher le bandeau e-mails transactionnels (toujours envoyés)", async ({
+    page,
+  }, testInfo) => {
+    const user = await createTestUser(testInfo.parallelIndex);
+    const isMobile = testInfo.project.name.includes("Mobile");
+
+    await loginAndGoToNotifications(page, user, isMobile);
+
+    // Le bandeau informant que les emails de compte/mission restent envoyés
+    await expect(
+      page.getByText(/ne peuvent pas être désactivés/i),
+    ).toBeVisible();
+  });
+
+  test("devrait afficher le nouveau label du toggle e-mail (Rappels et nouvelles missions)", async ({
+    page,
+  }, testInfo) => {
+    const user = await createTestUser(testInfo.parallelIndex);
+    const isMobile = testInfo.project.name.includes("Mobile");
+
+    await loginAndGoToNotifications(page, user, isMobile);
+
+    await expect(
+      page.getByText(/rappels et nouvelles missions/i),
     ).toBeVisible();
   });
 

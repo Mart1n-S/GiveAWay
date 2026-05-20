@@ -307,6 +307,54 @@ AvailabilityType:      REMOTE | ON_SITE | HYBRID
 
 ---
 
+## 11 bis. Système de notifications
+
+### Préférences utilisateur (`User`)
+- `emailNotifications: Boolean @default(false)` → opt-in pour les emails marketing/engagement
+- `matchNotifications: Boolean @default(false)` → opt-in pour suggestions de missions matchant le profil
+- `pushToken: String?` → token Expo (mobile uniquement, jamais sur web)
+
+### Trois catégories d'envois
+
+**1. Transactionnels — toujours envoyés, aucun toggle**
+- Vérification email, reset password
+- Mission modifiée / annulée à laquelle l'utilisateur est inscrit
+- Participant retiré par l'association
+- Validation / refus / suspension d'association
+
+**2. `emailNotifications` (opt-in) — UI : "Rappels et nouvelles missions"**
+- Nouvelle mission d'une asso suivie (`AssociationMissionsService.notifyFollowers`)
+- **Rappel J-1** des missions inscrites (cron @nestjs/schedule à `0 9 * * *` Europe/Paris)
+
+**3. `matchNotifications` (opt-in) — UI : "Missions personnalisées"**
+- Mission matchant causes / compétences / disponibilités (`AssociationMissionsService.notifyMatchingUsers`)
+- Email envoyé si `emailNotifications=true` ET `matchNotifications=true` (les deux requis)
+- Push mobile envoyé si `pushToken` présent
+
+### Push notifications
+- **Mobile uniquement** : token Expo enregistré au login via [_layout.tsx](apps/mobile/app/_layout.tsx), envoi via API Expo (`exp.host/--/api/v2/push/send`) dans [NotificationService](apps/api/src/notification/notification.service.ts).
+- **Pas de push web** : choix produit, sur web tout passe par email. `setNotificationHandler` et `addNotificationResponseReceivedListener` sont conditionnés à `Platform.OS !== "web"` pour éviter les warnings.
+- Nettoyage automatique des tokens invalides (`DeviceNotRegistered`) en BDD.
+- Pour les rappels J-1 : email si `emailNotifications=true`, push toujours si `pushToken` présent (rappel = utile même sans email opt-in).
+
+### Module rappels J-1 (`apps/api/src/reminders/`)
+- `MissionReminderService.handleDailyReminders()` : décoré `@Cron('0 9 * * *', { timeZone: 'Europe/Paris' })`
+- `MissionReminderService.sendReminders(now: Date)` : méthode publique testable, prend une date de référence et envoie les rappels pour les missions du **lendemain** (00:00 → 24:00 locale serveur)
+- Groupement par utilisateur : **1 seul email** listant toutes les missions du lendemain (template `sendMissionReminderEmail`), **1 push par mission** pour permettre le deep-link individuel
+- Tests : `mission-reminder.service.spec.ts` (12 tests : fenêtre temporelle, opt-in, groupement, robustesse)
+
+### Tester le cron manuellement
+```bash
+# Depuis apps/api/, déclenche maintenant (rappels pour les missions de demain)
+npm run reminders:test
+
+# Simuler un déclenchement à une date donnée (utile pour cibler une mission précise)
+npm run reminders:test -- --date=2026-05-19
+```
+Le script boot un `NestFactory.createApplicationContext` (pas de serveur HTTP), résout le service et appelle `sendReminders(date)`. Les emails partent réellement sur Brevo sauf si `NODE_ENV=test` ou `USE_DETERMINISTIC_OTP=true` → mode log console.
+
+---
+
 ## 12. SonarCloud
 
 - Clé projet : `Mart1n-S_GiveAWay`, organisation : `mart1n-s`
@@ -355,5 +403,6 @@ GET `/profile` → PATCH `/profile` (FormData) → transaction Prisma (infos + p
 - Design system complet
 - Messagerie temps réel 1-à-1 (Socket.IO : conversations, accusés de lecture, compteur de messages non lus, picker de membre pour contacter une association)
 - Panel admin (Vite + React sur port 5173, gestion des admins/associations/logs)
+- Système de notifications (email transactionnels + opt-in `emailNotifications` / `matchNotifications`, push mobile via Expo, rappel J-1 via cron @nestjs/schedule — voir section 11 bis)
 - Tests unitaires + E2E backend + E2E frontend (Playwright)
 

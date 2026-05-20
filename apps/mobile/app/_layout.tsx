@@ -17,16 +17,20 @@ import * as Notifications from "expo-notifications";
 import { ProfileService } from "@/services/profile.service";
 import "../global.css";
 
-// Affiche les notifications même quand l'app est au premier plan
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// Affiche les notifications même quand l'app est au premier plan.
+// expo-notifications n'est pas supporté sur web : on évite le warning console
+// "Listening to push token changes is not yet fully supported on web".
+if (Platform.OS !== "web") {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 // Import du store
 import { useAuthStore } from "../src/stores/auth.store";
@@ -92,6 +96,8 @@ export default function RootLayout() {
 
   // Deep link : navigation vers la mission ou la conversation au tap sur une notification
   useEffect(() => {
+    if (Platform.OS === "web") return;
+
     responseListener.current = Notifications.addNotificationResponseReceivedListener(
       (response) => {
         const data = response.notification.request.content.data ?? {};
