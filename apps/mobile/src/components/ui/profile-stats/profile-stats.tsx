@@ -4,33 +4,48 @@ import clsx from "clsx";
 import { Text } from "../text/text";
 import { ProfileStatsProps } from "./profile-stats.types";
 
+// Plafond d'affichage des compteurs profil — au-delà on affiche "100+"
+// pour éviter les libellés trop larges sur mobile.
+const STATS_DISPLAY_CAP = 100;
+const formatCount = (n: number): string =>
+  n >= STATS_DISPLAY_CAP ? `${STATS_DISPLAY_CAP}+` : n.toString();
+
 export function ProfileStats({ user, className, onFollowsPress, onHelpedPress }: ProfileStatsProps) {
-  const missionCount = user.participations?.length ?? 0;
   const followsCount = user.followsCount ?? 0;
 
+  // Backend renseigne participationsCount / helpedAssociationsCount sur toutes
+  // les participations. Fallback sur user.participations.length pour compat
+  // (mais cette liste est capée à 5 par l'aperçu historique, d'où l'écart
+  // précédent entre profil et page "Associations aidées").
+  const missionCount = useMemo(() => {
+    if (typeof user.participationsCount === "number") return user.participationsCount;
+    return user.participations?.length ?? 0;
+  }, [user.participationsCount, user.participations]);
+
   const helpedAssociationsCount = useMemo(() => {
+    if (typeof user.helpedAssociationsCount === "number") return user.helpedAssociationsCount;
     if (!user.participations?.length) return 0;
     return new Set(user.participations.map((p) => p.mission.association.id)).size;
-  }, [user.participations]);
+  }, [user.helpedAssociationsCount, user.participations]);
 
   return (
     <View className={clsx("flex-col gap-3 md:flex-row md:gap-4", className)}>
       <StatCard
         label="Missions"
-        value={missionCount.toString()}
+        value={formatCount(missionCount)}
         className="w-full md:flex-1"
       />
 
       <StatCard
         label="Associations aidées"
-        value={helpedAssociationsCount.toString()}
+        value={formatCount(helpedAssociationsCount)}
         className="w-full md:flex-1"
         onPress={onHelpedPress}
       />
 
       <StatCard
         label="Abonnements"
-        value={followsCount.toString()}
+        value={formatCount(followsCount)}
         className="w-full md:flex-1"
         onPress={onFollowsPress}
       />

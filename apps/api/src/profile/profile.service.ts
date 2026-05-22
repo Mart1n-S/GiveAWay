@@ -55,30 +55,33 @@ export class ProfileService {
   async getProfile(userId: number): Promise<User> {
     const { prisma } = this.authService;
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        address: true,
-        associations: { include: { association: true } },
-        skills: { include: { skill: true } },
-        causes: { include: { cause: true } },
-        availability: true,
-        participations: {
-          where: { mission: { status: { not: MissionStatus.DELETED } } },
-          include: {
-            mission: {
-              include: {
-                association: true,
-                causes: { include: { cause: true } },
+    const [user, participationCounts] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+          address: true,
+          associations: { include: { association: true } },
+          skills: { include: { skill: true } },
+          causes: { include: { cause: true } },
+          availability: true,
+          participations: {
+            where: { mission: { status: { not: MissionStatus.DELETED } } },
+            include: {
+              mission: {
+                include: {
+                  association: true,
+                  causes: { include: { cause: true } },
+                },
               },
             },
+            orderBy: { createdAt: 'desc' },
+            take: 5,
           },
-          orderBy: { createdAt: 'desc' },
-          take: 5,
+          _count: { select: { follows: true } },
         },
-        _count: { select: { follows: true } },
-      },
-    });
+      }),
+      this.computeParticipationCounts(userId),
+    ]);
 
     if (!user) {
       throw new UnauthorizedException('Utilisateur introuvable');
@@ -91,7 +94,36 @@ export class ProfileService {
       throw new BadRequestException('Votre compte a été supprimé ou suspendu.');
     }
 
-    return this.authService.mapUserToResponse(user);
+    return {
+      ...this.authService.mapUserToResponse(user),
+      participationsCount: participationCounts.participationsCount,
+      helpedAssociationsCount: participationCounts.helpedAssociationsCount,
+    };
+  }
+
+  /**
+   * Compte le total de participations et d'associations distinctes pour un
+   * utilisateur. Calculé séparément du `getProfile` car le `participations`
+   * principal est limité à 5 entrées (aperçu historique) — utiliser
+   * `participations.length` côté front sous-estime les vrais totaux.
+   */
+  private async computeParticipationCounts(
+    userId: number,
+  ): Promise<{ participationsCount: number; helpedAssociationsCount: number }> {
+    const { prisma } = this.authService;
+    const rows = await prisma.missionParticipant.findMany({
+      where: {
+        userId,
+        mission: { status: { not: MissionStatus.DELETED } },
+      },
+      select: { mission: { select: { associationId: true } } },
+    });
+
+    return {
+      participationsCount: rows.length,
+      helpedAssociationsCount: new Set(rows.map((r) => r.mission.associationId))
+        .size,
+    };
   }
 
   /**

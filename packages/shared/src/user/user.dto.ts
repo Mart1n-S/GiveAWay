@@ -22,6 +22,19 @@ export interface User {
   matchNotifications: boolean;
   followsCount: number;
 
+  /**
+   * Nombre total de participations (toutes missions non DELETED confondues).
+   * Calculé côté backend dans getProfile / updateProfile pour éviter le bug
+   * où le front comptait `participations.length` (capé à 5 par l'aperçu).
+   */
+  participationsCount?: number;
+
+  /**
+   * Nombre d'associations distinctes aidées (basé sur toutes les
+   * participations, pas seulement les 5 dernières chargées).
+   */
+  helpedAssociationsCount?: number;
+
   createdAt: Date | string;
   updatedAt: Date | string;
 

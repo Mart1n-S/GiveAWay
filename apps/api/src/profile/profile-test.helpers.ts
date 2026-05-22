@@ -55,6 +55,8 @@ export const mockMappedUser = {
   },
   participations: [],
   followsCount: 0,
+  participationsCount: 0,
+  helpedAssociationsCount: 0,
   createdAt: new Date().toISOString(),
 };
 
@@ -80,7 +82,10 @@ export const createMockAuthService = () => ({
       findUnique: jest.fn(),
     },
     missionParticipant: {
-      findMany: jest.fn(),
+      // Default vide pour computeParticipationCounts (getProfile). Les tests
+      // qui veulent tester participationsCount / helpedAssociationsCount
+      // peuvent surcharger via mockResolvedValueOnce.
+      findMany: jest.fn().mockResolvedValue([]),
       findFirst: jest.fn(),
       upsert: jest.fn(),
       deleteMany: jest.fn(),
