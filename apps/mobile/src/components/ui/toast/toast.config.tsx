@@ -1,5 +1,5 @@
 import React from "react";
-import { Platform, ViewStyle, Dimensions, TextStyle, View } from "react-native";
+import { Platform, Dimensions, View } from "react-native";
 import {
   BaseToast,
   BaseToastProps,
@@ -9,6 +9,16 @@ import {
 import { colors, radius } from "../theme/tokens";
 import CloseIconSource from "@assets/icons/ic_close.svg";
 import { cssInterop } from "nativewind";
+
+// Note : le monorepo a deux instances de react-native (apps/mobile/node_modules
+// en 0.81.5 + node_modules racine en 0.83.1 — attendue par les peerDeps Expo).
+// Leur type ViewStyle / TextStyle diverge sur `experimental_backgroundImage`,
+// ce qui fait échouer le passage de nos styles à <BaseToast /> (importé de
+// react-native-toast-message, qui voit la 0.83.1).
+//
+// Workaround : on type les constantes locales en `any` au lieu de ViewStyle /
+// TextStyle pour neutraliser le conflit de variance. À retirer dès que les
+// versions seront alignées (passer apps/mobile/package.json à 0.83.1).
 
 // Configuration de l'icône de fermeture
 const CloseIcon = cssInterop(CloseIconSource, {
@@ -25,12 +35,12 @@ const isSmallWeb = Platform.OS === "web" && windowWidth < 768;
  * Style de base pour les Toasts sur le Web (Top-Right)
  * Sur Mobile, on laisse le centrage natif.
  */
-const webContainerStyle: ViewStyle = Platform.select({
+const webContainerStyle: any = Platform.select({
   web: {
-    position: "fixed" as any,
+    position: "fixed",
     right: isSmallWeb ? "2.5%" : 12,
     top: 32,
-    left: "auto" as any,
+    left: "auto",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -47,7 +57,7 @@ const webContainerStyle: ViewStyle = Platform.select({
 /**
  * Style commun des conteneurs
  */
-const commonStyle: ViewStyle = {
+const commonStyle: any = {
   height: "auto",
   minHeight: 64,
   paddingVertical: 10,
@@ -63,14 +73,14 @@ const renderCloseIcon = (color: string) => (
   </View>
 );
 
-const getTextStyle = (color: string): TextStyle => ({
+const getTextStyle = (color: string): any => ({
   fontSize: 15,
   fontWeight: "700",
   color: color,
   flexWrap: "wrap",
 });
 
-const getSubTextStyle = (color: string): TextStyle => ({
+const getSubTextStyle = (color: string): any => ({
   fontSize: 13,
   color: color,
   marginTop: 2,
