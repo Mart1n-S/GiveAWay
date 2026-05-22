@@ -163,8 +163,15 @@ test.describe("Messagerie — discussion", () => {
     await composerInput.fill("Mon premier message E2E");
     await page.getByTestId("composer-send").click();
 
-    // Bulle visible
-    await expect(page.getByText("Mon premier message E2E")).toBeVisible();
+    // Bulle visible — on cible spécifiquement la bulle du message (testID
+    // commence par "msg-") pour ignorer la preview dans la liste des
+    // conversations ("conv-*") et le textarea du composer ("composer-input")
+    // qui peut ne pas être vidé immédiatement après l'envoi (race condition).
+    await expect(
+      page
+        .locator('[data-testid^="msg-"]')
+        .filter({ hasText: "Mon premier message E2E" }),
+    ).toBeVisible();
 
     // Persisté en BDD
     await expect
