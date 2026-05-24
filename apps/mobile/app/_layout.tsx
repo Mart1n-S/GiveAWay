@@ -17,19 +17,24 @@ import * as Notifications from "expo-notifications";
 import { ProfileService } from "@/services/profile.service";
 import "../global.css";
 
-// Affiche les notifications même quand l'app est au premier plan
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// Affiche les notifications même quand l'app est au premier plan.
+// expo-notifications n'est pas supporté sur web : on évite le warning console
+// "Listening to push token changes is not yet fully supported on web".
+if (Platform.OS !== "web") {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 // Import du store
 import { useAuthStore } from "../src/stores/auth.store";
+import { useMessageStore } from "../src/stores/message.store";
 
 // 1. Empêcher l'écran de splash natif de disparaître automatiquement
 SplashScreen.preventAutoHideAsync();
@@ -57,6 +62,7 @@ async function registerPushToken(): Promise<void> {
   }
 }
 
+
 export default function RootLayout() {
   // 2. Récupérer l'état d'hydratation depuis le store
   const isHydrated = useAuthStore((state) => state.isHydrated);
@@ -79,11 +85,32 @@ export default function RootLayout() {
     }
   }, [isAuthenticated]);
 
-  // Deep link : navigation vers la mission au tap sur une notification
+  // Synchronisation du badge OS (iOS auto + Android via API) avec le compteur
+  // global de messages non lus du store. Couvre tous les cas : message reçu
+  // en foreground via WS, lecture marquée, refresh au login, etc.
+  const unreadCount = useMessageStore((s) => s.unreadCount);
   useEffect(() => {
+    if (Platform.OS === "web") return;
+    Notifications.setBadgeCountAsync(unreadCount).catch(() => {
+      // Non-bloquant : badge OS best-effort
+    });
+  }, [unreadCount]);
+
+  // Deep link : navigation vers la mission ou la conversation au tap sur une notification
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+
     responseListener.current = Notifications.addNotificationResponseReceivedListener(
       (response) => {
-        const missionId = response.notification.request.content.data?.missionId;
+        const data = response.notification.request.content.data ?? {};
+        const missionId = (data as { missionId?: unknown }).missionId;
+        const type = (data as { type?: unknown }).type;
+        const conversationId = (data as { conversationId?: unknown }).conversationId;
+
+        if (type === "message" && typeof conversationId === "number") {
+          router.push(`/messages/${conversationId}`);
+          return;
+        }
         if (typeof missionId === "number") {
           router.push(`/missions/${missionId}`);
         }

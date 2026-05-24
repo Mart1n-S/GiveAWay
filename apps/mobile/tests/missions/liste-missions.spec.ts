@@ -1,13 +1,13 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../_fixtures";
 import {
-  cleanDatabase,
+  cleanDatabaseForWorker,
   createTestUser,
   createTestAssociation,
   createTestMission,
 } from "../../../api/test/prisma-test-helper";
 
-test.beforeEach(async () => {
-  await cleanDatabase();
+test.beforeEach(async ({}, testInfo) => {
+  await cleanDatabaseForWorker(testInfo.parallelIndex);
 });
 
 // ===========================================================================
@@ -18,7 +18,7 @@ async function seedOneMission(
   options: Parameters<typeof createTestMission>[1] = {},
 ) {
   const user = await createTestUser(workerIndex);
-  const assoc = await createTestAssociation(user.id);
+  const assoc = await createTestAssociation(user.id, workerIndex);
   const mission = await createTestMission(assoc.id, options);
   return { user, assoc, mission };
 }
@@ -52,7 +52,7 @@ test.describe("Page Liste des Missions — Compteur et grille", () => {
   test("devrait afficher le compteur avec le bon nombre de missions", async ({
     page,
   }, testInfo) => {
-    await seedOneMission(testInfo.workerIndex);
+    await seedOneMission(testInfo.parallelIndex);
 
     await page.goto("/missions");
 
@@ -65,8 +65,8 @@ test.describe("Page Liste des Missions — Compteur et grille", () => {
   test("devrait afficher le compteur au pluriel avec plusieurs missions", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     await createTestMission(assoc.id, { title: "Mission A" });
     await createTestMission(assoc.id, { title: "Mission B" });
     await createTestMission(assoc.id, { title: "Mission C" });
@@ -81,7 +81,7 @@ test.describe("Page Liste des Missions — Compteur et grille", () => {
   test("devrait afficher la grille de missions", async ({
     page,
   }, testInfo) => {
-    await seedOneMission(testInfo.workerIndex);
+    await seedOneMission(testInfo.parallelIndex);
 
     await page.goto("/missions");
 
@@ -91,7 +91,7 @@ test.describe("Page Liste des Missions — Compteur et grille", () => {
   test("devrait afficher une card par mission créée", async ({
     page,
   }, testInfo) => {
-    const { mission } = await seedOneMission(testInfo.workerIndex);
+    const { mission } = await seedOneMission(testInfo.parallelIndex);
 
     await page.goto("/missions");
 
@@ -103,7 +103,7 @@ test.describe("Page Liste des Missions — Compteur et grille", () => {
   test("devrait afficher le titre de la mission dans la card", async ({
     page,
   }, testInfo) => {
-    await seedOneMission(testInfo.workerIndex, { title: "Mission Titre Visible" });
+    await seedOneMission(testInfo.parallelIndex, { title: "Mission Titre Visible" });
 
     await page.goto("/missions");
 
@@ -144,7 +144,7 @@ test.describe("Page Liste des Missions — Navigation", () => {
   test("devrait naviguer vers le détail de la mission au clic sur une card", async ({
     page,
   }, testInfo) => {
-    const { mission } = await seedOneMission(testInfo.workerIndex, {
+    const { mission } = await seedOneMission(testInfo.parallelIndex, {
       title: "Mission Cliquable E2E",
     });
 
@@ -160,7 +160,7 @@ test.describe("Page Liste des Missions — Navigation", () => {
   test("devrait afficher le titre de la mission sur la page de détail après navigation", async ({
     page,
   }, testInfo) => {
-    const { mission } = await seedOneMission(testInfo.workerIndex, {
+    const { mission } = await seedOneMission(testInfo.parallelIndex, {
       title: "Mission Navigation Test",
     });
 
@@ -181,8 +181,8 @@ test.describe("Page Liste des Missions — Recherche", () => {
   test("devrait filtrer les missions par texte de recherche", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     await createTestMission(assoc.id, { title: "Maraude Paris Centre" });
     await createTestMission(assoc.id, { title: "Distribution alimentaire" });
 
@@ -206,7 +206,7 @@ test.describe("Page Liste des Missions — Recherche", () => {
   test("devrait afficher l'état vide si la recherche ne donne aucun résultat", async ({
     page,
   }, testInfo) => {
-    await seedOneMission(testInfo.workerIndex, { title: "Mission Existante" });
+    await seedOneMission(testInfo.parallelIndex, { title: "Mission Existante" });
 
     await page.goto("/missions");
 
@@ -227,8 +227,8 @@ test.describe("Page Liste des Missions — Charger plus", () => {
     page,
   }, testInfo) => {
     // PAGE_SIZE = 12 ; on en crée 13
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
 
     for (let i = 1; i <= 13; i++) {
       await createTestMission(assoc.id, { title: `Mission ${i}` });
@@ -242,7 +242,7 @@ test.describe("Page Liste des Missions — Charger plus", () => {
   test("ne devrait pas afficher le bouton Voir plus si toutes les missions tiennent sur une page", async ({
     page,
   }, testInfo) => {
-    await seedOneMission(testInfo.workerIndex);
+    await seedOneMission(testInfo.parallelIndex);
 
     await page.goto("/missions");
 

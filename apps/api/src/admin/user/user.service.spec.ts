@@ -8,6 +8,7 @@ import * as argon2 from 'argon2';
 import { AdminUserService } from './user.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MailService } from '../../mail/mail.service';
+import { ConversationService } from '../../messaging/conversation.service';
 import { UserStatus } from '../../generated/prisma/client';
 
 const mockPrisma = {
@@ -33,6 +34,12 @@ const mockMail = {
   sendPasswordResetEmail: jest.fn().mockResolvedValue(undefined),
 };
 
+const mockConversationService = {
+  deleteConversationsAndNotify: jest
+    .fn()
+    .mockResolvedValue({ deletedCount: 0, notifiedUserIds: [] }),
+};
+
 describe('AdminUserService', () => {
   let service: AdminUserService;
 
@@ -43,6 +50,7 @@ describe('AdminUserService', () => {
         AdminUserService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: MailService, useValue: mockMail },
+        { provide: ConversationService, useValue: mockConversationService },
       ],
     }).compile();
     service = module.get(AdminUserService);

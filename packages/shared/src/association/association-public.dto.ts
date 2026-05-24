@@ -1,3 +1,5 @@
+import { AssociationRole } from "../user/user.enums";
+
 export interface AssociationPublicItem {
   id: number;
   name: string;
@@ -37,4 +39,17 @@ export interface AssociationPublicListResponse {
   total: number;
   page: number;
   pageSize: number;
+}
+
+/**
+ * Membre d'une association exposé aux bénévoles via la modale "Contacter".
+ * Volontairement minimaliste : pas d'email ni d'identifiants techniques
+ * autres que `userId`, qui sert de destinataire à `POST /conversations`.
+ */
+export interface ContactableMemberDto {
+  userId: number;
+  firstName: string;
+  lastName: string;
+  profilePicture: string | null;
+  role: AssociationRole;
 }

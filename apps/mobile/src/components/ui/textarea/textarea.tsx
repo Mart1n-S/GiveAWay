@@ -24,6 +24,7 @@ export function TextArea({
   required = false,
   maxLength,
   showCharacterCount = true,
+  minHeight: minHeightProp,
   containerClassName,
   className,
   onFocus,
@@ -56,8 +57,8 @@ export function TextArea({
   const errorTextId = `${inputId}-error`;
   const charCountId = `${inputId}-count`;
 
-  // CONSTANTE : Hauteur minimale partagée
-  const MIN_HEIGHT = 120;
+  // Hauteur minimale (override possible via prop pour usage compact)
+  const MIN_HEIGHT = minHeightProp ?? 120;
 
   useEffect(() => {
     if (value !== undefined) {

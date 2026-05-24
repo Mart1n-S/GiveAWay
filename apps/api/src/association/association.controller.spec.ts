@@ -32,6 +32,7 @@ const mockAssociationService = {
   updateAssociation: jest.fn(),
   getDocumentForDownload: jest.fn(),
   getMembers: jest.fn(),
+  getContactableMembers: jest.fn(),
   getAssociationMissions: jest.fn(),
   addMember: jest.fn(),
   updateMemberRole: jest.fn(),
@@ -478,6 +479,37 @@ describe('AssociationController', () => {
       const result = await controller.getMembers(1);
 
       expect(result).toEqual([]);
+    });
+  });
+
+  // =========================================================================
+  // getContactableMembers
+  // =========================================================================
+  describe('getContactableMembers', () => {
+    it('✅ Délègue au service avec associationId et user.id du requêteur', async () => {
+      const fakeMembers = [
+        {
+          userId: 7,
+          firstName: 'Alice',
+          lastName: 'Dupont',
+          profilePicture: null,
+          role: 'OWNER' as const,
+        },
+      ];
+      mockAssociationService.getContactableMembers.mockResolvedValue(
+        fakeMembers,
+      );
+      const req = { user: { id: 42 } } as unknown as Parameters<
+        typeof controller.getContactableMembers
+      >[0];
+
+      const result = await controller.getContactableMembers(req, 1);
+
+      expect(mockAssociationService.getContactableMembers).toHaveBeenCalledWith(
+        1,
+        42,
+      );
+      expect(result).toEqual(fakeMembers);
     });
   });
 

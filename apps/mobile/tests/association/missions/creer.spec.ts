@@ -1,14 +1,14 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "../../_fixtures";
 import {
-  cleanDatabase,
+  cleanDatabaseForWorker,
   createTestUser,
   createTestAssociation,
 } from "../../../../api/test/prisma-test-helper";
 
 const VALID_PASSWORD = "Password123!";
 
-test.beforeEach(async () => {
-  await cleanDatabase();
+test.beforeEach(async ({}, testInfo) => {
+  await cleanDatabaseForWorker(testInfo.parallelIndex);
 });
 
 // ===========================================================================
@@ -61,7 +61,7 @@ test.describe("Page Créer Mission — Accès", () => {
   test("devrait afficher un message si l'utilisateur n'est pas membre d'une association", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginUser(page, user, isMobile);
@@ -80,8 +80,8 @@ test.describe("Page Créer Mission — Interface Stepper", () => {
   test("devrait afficher les trois étapes du stepper", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToCreer(page, user, isMobile);
@@ -94,8 +94,8 @@ test.describe("Page Créer Mission — Interface Stepper", () => {
   test("devrait afficher les boutons Annuler et Suivant sur l'étape 1", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToCreer(page, user, isMobile);
@@ -111,8 +111,8 @@ test.describe("Page Créer Mission — Interface Stepper", () => {
   test("devrait afficher le champ titre avec le placeholder approprié", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToCreer(page, user, isMobile);
@@ -125,8 +125,8 @@ test.describe("Page Créer Mission — Interface Stepper", () => {
   test("devrait afficher les radio pills de type d'activité", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToCreer(page, user, isMobile);
@@ -147,8 +147,8 @@ test.describe("Page Créer Mission — Navigation entre étapes", () => {
   test("devrait afficher une erreur si le titre est vide au clic sur Suivant", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToCreer(page, user, isMobile);
@@ -165,8 +165,8 @@ test.describe("Page Créer Mission — Navigation entre étapes", () => {
   test("devrait passer à l'étape 2 après avoir rempli l'étape 1 (type INFO)", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToCreer(page, user, isMobile);
@@ -190,8 +190,8 @@ test.describe("Page Créer Mission — Navigation entre étapes", () => {
   test("devrait revenir à l'étape 1 avec le bouton Retour depuis l'étape 2", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToCreer(page, user, isMobile);
@@ -222,8 +222,8 @@ test.describe("Page Créer Mission — Navigation entre étapes", () => {
   test("devrait passer à l'étape 3 depuis l'étape 2 (INFO — aucun champ requis)", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToCreer(page, user, isMobile);
@@ -255,8 +255,8 @@ test.describe("Page Créer Mission — Soumission", () => {
   test("devrait créer une mission de type INFO et rediriger vers le dashboard", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToCreer(page, user, isMobile);
@@ -293,8 +293,8 @@ test.describe("Page Créer Mission — Soumission", () => {
   test("devrait créer une mission de type MISSION À distance et rediriger", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToCreer(page, user, isMobile);
@@ -336,8 +336,8 @@ test.describe("Page Créer Mission — Validation startDate", () => {
   test("devrait bloquer l'étape 2 si startDate manquante pour une MISSION", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToCreer(page, user, isMobile);
@@ -369,8 +369,8 @@ test.describe("Page Créer Mission — Validation startDate", () => {
   test("ne doit PAS bloquer si le type est INFO (pas de startDate requise)", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToCreer(page, user, isMobile);

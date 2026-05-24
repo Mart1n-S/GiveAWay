@@ -97,7 +97,7 @@ describe('Profile Module (E2E)', () => {
 
     it('✅ 200 — retourne un tableau vide pour un utilisateur sans abonnements', async () => {
       await createTestUser(0);
-      const token = await loginUser('e2e.0@test.com', 'Password123!');
+      const token = await loginUser('e2e.w0@test.com', 'Password123!');
 
       const res = await request(httpServer)
         .get('/profile/follows')
@@ -117,7 +117,7 @@ describe('Profile Module (E2E)', () => {
         data: { userId: user.id, associationId: association.id },
       });
 
-      const token = await loginUser('e2e.0@test.com', 'Password123!');
+      const token = await loginUser('e2e.w0@test.com', 'Password123!');
 
       const res = await request(httpServer)
         .get('/profile/follows')
@@ -152,7 +152,7 @@ describe('Profile Module (E2E)', () => {
       });
 
       // user ne suit aucune association
-      const token = await loginUser('e2e.0@test.com', 'Password123!');
+      const token = await loginUser('e2e.w0@test.com', 'Password123!');
 
       const res = await request(httpServer)
         .get('/profile/follows')
@@ -179,7 +179,7 @@ describe('Profile Module (E2E)', () => {
 
     it('✅ 200 — retourne des stats vides pour un user sans participation', async () => {
       await createTestUser(0);
-      const token = await loginUser('e2e.0@test.com', 'Password123!');
+      const token = await loginUser('e2e.w0@test.com', 'Password123!');
 
       const res = await request(httpServer)
         .get('/profile/participations/stats')
@@ -215,7 +215,7 @@ describe('Profile Module (E2E)', () => {
       const mission = await createTestMission(association.id);
       await createTestMissionParticipant(mission.id, user.id);
 
-      const token = await loginUser('e2e.0@test.com', 'Password123!');
+      const token = await loginUser('e2e.w0@test.com', 'Password123!');
 
       const res = await request(httpServer)
         .get('/profile/participations/stats')
@@ -246,7 +246,7 @@ describe('Profile Module (E2E)', () => {
       });
       await createTestMissionParticipant(mission.id, user.id);
 
-      const token = await loginUser('e2e.0@test.com', 'Password123!');
+      const token = await loginUser('e2e.w0@test.com', 'Password123!');
 
       const res = await request(httpServer)
         .get('/profile/participations/stats?type=EVENT')
@@ -272,7 +272,7 @@ describe('Profile Module (E2E)', () => {
       });
       await createTestMissionParticipant(mission.id, user.id);
 
-      const token = await loginUser('e2e.0@test.com', 'Password123!');
+      const token = await loginUser('e2e.w0@test.com', 'Password123!');
 
       const res = await request(httpServer)
         .get('/profile/participations/stats')

@@ -161,7 +161,7 @@ export default function NotificationsScreen() {
             </Button>
           )}
 
-          {/* Bulle d'information */}
+          {/* Bulle d'information : sauvegarde auto */}
           <View className="flex-row gap-3 p-4 border border-blue-200 rounded-lg bg-blue-50">
             <InfoIcon className="w-5 h-5 mt-0.5 text-blue-600 shrink-0" />
             <Text className="flex-1 text-sm text-blue-600">
@@ -182,7 +182,17 @@ export default function NotificationsScreen() {
             </View>
           )}
 
-          {/* Notifications e-mail */}
+          {/* Bandeau : emails transactionnels toujours envoyés */}
+          <View className="flex-row gap-3 p-4 border rounded-lg border-grey-200 bg-grey-50">
+            <InfoIcon className="w-5 h-5 mt-0.5 text-grey-600 shrink-0" />
+            <Text className="flex-1 text-sm text-grey-700">
+              Les e-mails liés à votre compte (vérification, mot de passe) et à
+              vos missions inscrites (modification, annulation, retrait) vous
+              sont toujours envoyés. Ces e-mails ne peuvent pas être désactivés.
+            </Text>
+          </View>
+
+          {/* Notifications e-mail (opt-in) */}
           <View className="overflow-hidden bg-white border rounded-lg border-grey-100">
             <View className="px-5 pt-4 pb-2">
               <Text className="text-base font-bold text-grey-900">
@@ -194,8 +204,8 @@ export default function NotificationsScreen() {
 
             <ToggleRow
               testID="toggle-email-notifications"
-              label="E-mails de la plateforme"
-              description="Missions suggérées, rappels et mises à jour de votre compte"
+              label="Rappels et nouvelles missions"
+              description="Rappel la veille de vos missions inscrites, et nouvelles missions des associations que vous suivez."
               value={emailNotifications}
               onValueChange={handleEmailToggle}
               errorMessage={emailError}
@@ -213,7 +223,7 @@ export default function NotificationsScreen() {
             <View className="h-[1px] mx-5 bg-grey-100" />
 
             {/* Bulle d'info ambre */}
-            <View className="flex-row gap-3 mx-5 mt-4 p-3 border border-amber-200 rounded-lg bg-amber-50">
+            <View className="flex-row gap-3 p-3 mx-5 mt-4 border rounded-lg border-amber-200 bg-amber-50">
               <InfoIcon className="w-5 h-5 mt-0.5 text-amber-600 shrink-0" />
               <Text className="flex-1 text-xs text-amber-700">
                 Même sans suivre une association, si une nouvelle mission

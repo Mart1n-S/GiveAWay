@@ -24,24 +24,70 @@ const adapter = new PrismaPg({
 // 3. On crée le client avec l'adapter
 export const prisma = new PrismaClient({ adapter });
 
+/**
+ * Helper de compatibilité — accepté pour ne pas casser les .spec.ts qui
+ * passent `testInfo.parallelIndex`. Retourne toujours le même client
+ * puisqu'on n'a qu'une seule BDD de test.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function getPrisma(_workerIndex: number = 0): PrismaClient {
+  return prisma;
+}
+
 export async function cleanDatabase() {
   // L'ordre suppression : Enfants (Tokens, AssociationUser via cascade) puis Parents (Users, Associations).
   // Les Associations ne sont pas FK'd vers User : il faut les supprimer explicitement
   // pour éviter les rangées orphelines entre tests (notamment d'inscription d'association).
+  const deleteMessages = prisma.message.deleteMany();
+  const deleteConversations = prisma.conversation.deleteMany();
   const deleteTokens = prisma.token.deleteMany();
   const deleteAssociations = prisma.association.deleteMany();
   const deleteUsers = prisma.user.deleteMany();
 
-  await prisma.$transaction([deleteTokens, deleteAssociations, deleteUsers]);
+  await prisma.$transaction([
+    deleteMessages,
+    deleteConversations,
+    deleteTokens,
+    deleteAssociations,
+    deleteUsers,
+  ]);
+}
+
+/**
+ * Tag inséré dans les emails et noms d'associations pour isoler les données
+ * de chaque worker Playwright. Permet à plusieurs workers de tourner en
+ * parallèle sur la même BDD de test sans se piétiner.
+ */
+export const workerTag = (workerIndex: number) => `w${workerIndex}`;
+
+/**
+ * Nettoie la BDD du worker donné. Chaque worker ayant sa propre instance
+ * Postgres, un wipe complet suffit — pas besoin de filtrer par tag.
+ * Les cascades onDelete s'occupent des enfants (tokens, missions, etc.).
+ */
+export async function cleanDatabaseForWorker(workerIndex: number) {
+  const db = getPrisma(workerIndex);
+  await db.$transaction([
+    db.message.deleteMany(),
+    db.conversation.deleteMany(),
+    db.token.deleteMany(),
+    db.association.deleteMany(),
+    db.user.deleteMany(),
+  ]);
 }
 
 /**
  * Crée une association de test avec son OWNER.
+ * `workerIndex` insère le tag worker dans le nom pour permettre le cleanup parallèle.
  */
-export async function createTestAssociation(ownerId: number) {
-  return prisma.association.create({
+export async function createTestAssociation(
+  ownerId: number,
+  workerIndex: number = 0,
+) {
+  const tag = workerTag(workerIndex);
+  return getPrisma(workerIndex).association.create({
     data: {
-      name: 'Association E2E Test',
+      name: `Association E2E Test [${tag}]`,
       object: 'Objet de test E2E',
       legalStatus: 'Association loi 1901',
       rna: 'W999999999',
@@ -64,10 +110,12 @@ export async function createTestAssociationWithAddress(
   ownerId: number,
   lat: number,
   lng: number,
+  workerIndex: number = 0,
 ) {
-  return prisma.association.create({
+  const tag = workerTag(workerIndex);
+  return getPrisma(workerIndex).association.create({
     data: {
-      name: 'Association Géolocalisée E2E',
+      name: `Association Géolocalisée E2E [${tag}]`,
       object: 'Test de proximité E2E',
       legalStatus: 'Association loi 1901',
       rna: 'W888888888',
@@ -98,8 +146,9 @@ export async function addAssociationMember(
   associationId: number,
   userId: number,
   role: AssociationRole,
+  workerIndex: number = 0,
 ) {
-  return prisma.associationUser.create({
+  return getPrisma(workerIndex).associationUser.create({
     data: { associationId, userId, role },
   });
 }
@@ -120,6 +169,7 @@ export async function createTestMission(
     lat?: number;
     lng?: number;
     volunteersNeeded?: number;
+    workerIndex?: number;
   } = {},
 ) {
   const {
@@ -131,9 +181,10 @@ export async function createTestMission(
     lat = 48.85,
     lng = 2.35,
     volunteersNeeded,
+    workerIndex = 0,
   } = options;
 
-  return prisma.mission.create({
+  return getPrisma(workerIndex).mission.create({
     data: {
       title,
       description:
@@ -165,8 +216,9 @@ export async function createTestMission(
 export async function createTestMissionParticipant(
   missionId: number,
   userId: number,
+  workerIndex: number = 0,
 ) {
-  return prisma.missionParticipant.create({
+  return getPrisma(workerIndex).missionParticipant.create({
     data: { missionId, userId },
   });
 }
@@ -191,13 +243,15 @@ const userDto = {
   },
 };
 
-export async function createTestUser(workerIndex: number = 0) {
+export async function createTestUser(workerIndex: number = 0, suffix?: string) {
   const argon2 = await import('argon2');
   const hashedPassword = await argon2.hash(userDto.password);
 
-  const uniqueEmail = `e2e.${workerIndex}@test.com`;
+  const uniqueEmail = suffix
+    ? `e2e.${workerTag(workerIndex)}.${suffix}@test.com`
+    : `e2e.${workerTag(workerIndex)}@test.com`;
 
-  return await prisma.user.upsert({
+  return await getPrisma(workerIndex).user.upsert({
     where: { email: uniqueEmail },
     update: {
       password: hashedPassword,

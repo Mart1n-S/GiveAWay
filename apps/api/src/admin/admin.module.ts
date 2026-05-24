@@ -5,6 +5,7 @@ import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '../prisma/prisma.module';
 import { MailModule } from '../mail/mail.module';
 import { FilesModule } from '../common/files/files.module';
+import { MessagingModule } from '../messaging/messaging.module';
 import { AdminAuthController } from './auth/auth.controller';
 import { AdminAuthService } from './auth/auth.service';
 import { AdminCookieService } from './auth/cookie.service';
@@ -27,6 +28,7 @@ import { AdminStatsService } from './stats/stats.service';
     PrismaModule,
     MailModule,
     FilesModule,
+    MessagingModule,
   ],
   controllers: [
     AdminAuthController,

@@ -1,14 +1,14 @@
-import { test, expect, Page } from "@playwright/test";
+import { test, expect, Page } from "../_fixtures";
 import {
-  cleanDatabase,
+  cleanDatabaseForWorker,
   createTestUser,
   createTestAssociation,
   createTestMission,
   createTestMissionParticipant,
 } from "../../../api/test/prisma-test-helper";
 
-test.beforeEach(async () => {
-  await cleanDatabase();
+test.beforeEach(async ({}, testInfo) => {
+  await cleanDatabaseForWorker(testInfo.parallelIndex);
 });
 
 // ===========================================================================
@@ -60,7 +60,7 @@ test.describe("Page Historique — État vide", () => {
   test("devrait afficher l'état vide si aucune participation", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToHistorique(page, user, isMobile);
@@ -79,8 +79,8 @@ test.describe("Page Historique — Affichage avec participations", () => {
   test("devrait afficher le toggle Liste / Planning", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id, { title: "Mission test" });
     await createTestMissionParticipant(mission.id, user.id);
 
@@ -94,8 +94,8 @@ test.describe("Page Historique — Affichage avec participations", () => {
   test("devrait afficher la mission dans la vue Liste", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id, { title: "Mission test E2E" });
     await createTestMissionParticipant(mission.id, user.id);
 
@@ -108,8 +108,8 @@ test.describe("Page Historique — Affichage avec participations", () => {
   test("devrait afficher les filtres de type", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
     await createTestMissionParticipant(mission.id, user.id);
 
@@ -123,8 +123,8 @@ test.describe("Page Historique — Affichage avec participations", () => {
   test("devrait filtrer par type de mission", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const missionA = await createTestMission(assoc.id, { title: "Ma mission" });
     const missionB = await createTestMission(assoc.id, {
       title: "Mon événement",
@@ -155,8 +155,8 @@ test.describe("Page Historique — Vue Planning", () => {
   test("devrait basculer vers la vue Planning", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
     await createTestMissionParticipant(mission.id, user.id);
 
@@ -172,8 +172,8 @@ test.describe("Page Historique — Vue Planning", () => {
   test("devrait afficher la légende du calendrier", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
     await createTestMissionParticipant(mission.id, user.id);
 
@@ -191,8 +191,8 @@ test.describe("Page Historique — Vue Planning", () => {
   test("devrait afficher le message de sélection d'un jour", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id);
     await createTestMissionParticipant(mission.id, user.id);
 
@@ -213,8 +213,8 @@ test.describe("Page Historique — Navigation", () => {
   test("devrait naviguer vers le détail d'une mission au clic", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id, { title: "Mission cliquable" });
     await createTestMissionParticipant(mission.id, user.id);
 

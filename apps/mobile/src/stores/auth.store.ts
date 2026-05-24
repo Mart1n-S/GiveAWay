@@ -51,6 +51,12 @@ export const useAuthStore = create<AuthState>()(
         void import("./association.store").then(({ useAssociationStore }) => {
           useAssociationStore.getState().clearAssociation();
         });
+        void import("./message.store").then(({ useMessageStore }) => {
+          useMessageStore.getState().reset();
+        });
+        void import("../lib/socket").then(({ disconnectSocket }) => {
+          disconnectSocket();
+        });
         set({
           user: null,
           accessToken: null,

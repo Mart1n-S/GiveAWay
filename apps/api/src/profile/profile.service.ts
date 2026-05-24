@@ -29,6 +29,7 @@ import {
   IFileService,
   FILE_SERVICE,
 } from '../common/files/interfaces/file-service.interface';
+import { ConversationService } from '../messaging/conversation.service';
 import * as ExcelJS from 'exceljs';
 
 @Injectable()
@@ -37,6 +38,7 @@ export class ProfileService {
     private readonly authService: AuthService,
     private readonly cookieService: CookieService,
     @Inject(FILE_SERVICE) private readonly fileService: IFileService,
+    private readonly conversationService: ConversationService,
   ) {}
 
   /**
@@ -53,30 +55,33 @@ export class ProfileService {
   async getProfile(userId: number): Promise<User> {
     const { prisma } = this.authService;
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        address: true,
-        associations: { include: { association: true } },
-        skills: { include: { skill: true } },
-        causes: { include: { cause: true } },
-        availability: true,
-        participations: {
-          where: { mission: { status: { not: MissionStatus.DELETED } } },
-          include: {
-            mission: {
-              include: {
-                association: true,
-                causes: { include: { cause: true } },
+    const [user, participationCounts] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+          address: true,
+          associations: { include: { association: true } },
+          skills: { include: { skill: true } },
+          causes: { include: { cause: true } },
+          availability: true,
+          participations: {
+            where: { mission: { status: { not: MissionStatus.DELETED } } },
+            include: {
+              mission: {
+                include: {
+                  association: true,
+                  causes: { include: { cause: true } },
+                },
               },
             },
+            orderBy: { createdAt: 'desc' },
+            take: 5,
           },
-          orderBy: { createdAt: 'desc' },
-          take: 5,
+          _count: { select: { follows: true } },
         },
-        _count: { select: { follows: true } },
-      },
-    });
+      }),
+      this.computeParticipationCounts(userId),
+    ]);
 
     if (!user) {
       throw new UnauthorizedException('Utilisateur introuvable');
@@ -89,7 +94,36 @@ export class ProfileService {
       throw new BadRequestException('Votre compte a été supprimé ou suspendu.');
     }
 
-    return this.authService.mapUserToResponse(user);
+    return {
+      ...this.authService.mapUserToResponse(user),
+      participationsCount: participationCounts.participationsCount,
+      helpedAssociationsCount: participationCounts.helpedAssociationsCount,
+    };
+  }
+
+  /**
+   * Compte le total de participations et d'associations distinctes pour un
+   * utilisateur. Calculé séparément du `getProfile` car le `participations`
+   * principal est limité à 5 entrées (aperçu historique) — utiliser
+   * `participations.length` côté front sous-estime les vrais totaux.
+   */
+  private async computeParticipationCounts(
+    userId: number,
+  ): Promise<{ participationsCount: number; helpedAssociationsCount: number }> {
+    const { prisma } = this.authService;
+    const rows = await prisma.missionParticipant.findMany({
+      where: {
+        userId,
+        mission: { status: { not: MissionStatus.DELETED } },
+      },
+      select: { mission: { select: { associationId: true } } },
+    });
+
+    return {
+      participationsCount: rows.length,
+      helpedAssociationsCount: new Set(rows.map((r) => r.mission.associationId))
+        .size,
+    };
   }
 
   /**
@@ -594,10 +628,22 @@ export class ProfileService {
         .catch((e) => logger.error('Erreur suppression photo profil', e));
     }
 
-    // 4. Invalider les cookies de session
+    // 4. Notifier WS les autres participants des conversations qui vont
+    //    être supprimées en cascade par Prisma (et resync leur compteur).
+    //    skipDelete=true : on laisse la cascade Prisma faire la suppression.
+    await this.conversationService.deleteConversationsAndNotify({
+      where: {
+        OR: [{ user1Id: userId }, { user2Id: userId }],
+      },
+      reason: 'user_deleted',
+      excludedUserId: userId,
+      skipDelete: true,
+    });
+
+    // 5. Invalider les cookies de session
     this.cookieService.clearAuthCookies(res);
 
-    // 5. Hard delete — les relations en cascade sont gérées par Prisma
+    // 6. Hard delete — les relations en cascade sont gérées par Prisma
     await prisma.user.delete({ where: { id: userId } });
   }
 
@@ -845,6 +891,9 @@ export class ProfileService {
       autoWidth(sheet);
     }
 
+    // NOSONAR — double cast nécessaire : Node.js 22 a typé Buffer comme
+    // Buffer<ArrayBufferLike> (générique), incompatible structurellement avec
+    // le Buffer non-générique exposé par ExcelJS.
     return workbook.xlsx.writeBuffer() as unknown as Promise<Buffer>;
   }
 }

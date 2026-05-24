@@ -5,6 +5,7 @@ import { AuthService } from '../auth/auth.service';
 import { UserStatus } from '../generated/prisma/client';
 import { FILE_SERVICE } from '../common/files/interfaces/file-service.interface';
 import { CookieService } from '../auth/shared/cookie.service';
+import { ConversationService } from '../messaging/conversation.service';
 import * as argon2 from 'argon2';
 import { Response } from 'express';
 import {
@@ -12,6 +13,7 @@ import {
   createMockAuthService,
   createMockFileService,
   createMockCookieService,
+  createMockConversationService,
 } from './profile-test.helpers';
 
 const mockResponse = {} as Response;
@@ -33,6 +35,10 @@ describe('ProfileService — deleteProfile', () => {
         { provide: AuthService, useValue: mockAuthService },
         { provide: FILE_SERVICE, useValue: mockFileService },
         { provide: CookieService, useValue: mockCookieService },
+        {
+          provide: ConversationService,
+          useValue: createMockConversationService(),
+        },
       ],
     }).compile();
 

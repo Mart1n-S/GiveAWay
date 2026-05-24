@@ -10,9 +10,10 @@ import { AssociationMemberGuard } from './guards/association-member.guard';
 import { AssociationRoleGuard } from './guards/association-role.guard';
 import { NotificationModule } from '../notification/notification.module';
 import { MatchingModule } from '../matching/matching.module';
+import { MessagingModule } from '../messaging/messaging.module';
 
 @Module({
-  imports: [ConfigModule, NotificationModule, MatchingModule],
+  imports: [ConfigModule, NotificationModule, MatchingModule, MessagingModule],
   controllers: [
     AssociationController,
     AssociationMissionsController,

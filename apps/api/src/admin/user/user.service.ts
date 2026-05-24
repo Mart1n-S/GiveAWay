@@ -9,6 +9,7 @@ import { hash } from 'argon2';
 import { randomBytes } from 'node:crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MailService } from '../../mail/mail.service';
+import { ConversationService } from '../../messaging/conversation.service';
 import { UserStatus } from '../../generated/prisma/client';
 
 @Injectable()
@@ -18,6 +19,7 @@ export class AdminUserService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mail: MailService,
+    private readonly conversationService: ConversationService,
   ) {}
 
   private genTempPassword(): string {
@@ -175,6 +177,16 @@ export class AdminUserService {
     }
     const anonymousEmail = `deleted-${id}@anon.local`;
 
+    // 1. Notifier WS les autres participants des conversations supprimées
+    await this.conversationService.deleteConversationsAndNotify({
+      where: {
+        OR: [{ user1Id: id }, { user2Id: id }],
+      },
+      reason: 'user_deleted',
+      excludedUserId: id,
+    });
+
+    // 2. Anonymisation + nettoyage des relations
     await this.prisma.$transaction([
       this.prisma.userSkill.deleteMany({ where: { userId: id } }),
       this.prisma.userCause.deleteMany({ where: { userId: id } }),

@@ -8,6 +8,7 @@ import {
 import { AssociationService } from './association.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { FILE_SERVICE } from '../common/files/interfaces/file-service.interface';
+import { ConversationService } from '../messaging/conversation.service';
 import { AssociationRole, AssociationStatus } from '../generated/prisma/client';
 
 // ----------------------------------------------------------------
@@ -134,6 +135,9 @@ const mockPrisma = {
     create: jest.fn(),
     deleteMany: jest.fn(),
   },
+  conversation: {
+    deleteMany: jest.fn(),
+  },
   user: {
     findUnique: jest.fn(),
   },
@@ -155,6 +159,12 @@ const mockFileService = {
 // Suite de tests
 // ----------------------------------------------------------------
 
+const mockConversationService = {
+  deleteConversationsAndNotify: jest
+    .fn()
+    .mockResolvedValue({ deletedCount: 0, notifiedUserIds: [] }),
+};
+
 describe('AssociationService', () => {
   let service: AssociationService;
 
@@ -164,6 +174,7 @@ describe('AssociationService', () => {
         AssociationService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: FILE_SERVICE, useValue: mockFileService },
+        { provide: ConversationService, useValue: mockConversationService },
       ],
     }).compile();
 
@@ -544,6 +555,69 @@ describe('AssociationService', () => {
   });
 
   // ===========================================================================
+  // getContactableMembers
+  // ===========================================================================
+  describe('getContactableMembers', () => {
+    it("✅ Retourne les membres mappés sans l'email", async () => {
+      mockPrisma.association.findUnique.mockResolvedValue({
+        status: AssociationStatus.VALIDATED,
+      });
+      mockPrisma.associationUser.findMany.mockResolvedValue([
+        mockOwnerMember,
+        mockAdminMember,
+      ]);
+
+      const result = await service.getContactableMembers(42, 999);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toEqual({
+        userId: mockUser1.id,
+        firstName: mockUser1.firstName,
+        lastName: mockUser1.lastName,
+        profilePicture: mockUser1.profilePicture,
+        role: AssociationRole.OWNER,
+      });
+      // L'email ne doit pas se retrouver dans le payload public
+      expect(result[0]).not.toHaveProperty('email');
+    });
+
+    it('✅ Filtre le user courant et les inactifs côté SQL', async () => {
+      mockPrisma.association.findUnique.mockResolvedValue({
+        status: AssociationStatus.VALIDATED,
+      });
+      mockPrisma.associationUser.findMany.mockResolvedValue([]);
+
+      await service.getContactableMembers(42, mockUser1.id);
+
+      expect(mockPrisma.associationUser.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            associationId: 42,
+            userId: { not: mockUser1.id },
+            user: { status: 'ACTIVE' },
+          }),
+        }),
+      );
+    });
+
+    it("❌ NotFoundException si l'asso n'existe pas", async () => {
+      mockPrisma.association.findUnique.mockResolvedValue(null);
+      await expect(service.getContactableMembers(42, 1)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it("❌ ForbiddenException si l'asso n'est pas VALIDATED", async () => {
+      mockPrisma.association.findUnique.mockResolvedValue({
+        status: AssociationStatus.PENDING,
+      });
+      await expect(service.getContactableMembers(42, 1)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+  });
+
+  // ===========================================================================
   // addMember
   // ===========================================================================
   describe('addMember', () => {
@@ -659,7 +733,7 @@ describe('AssociationService', () => {
   // removeMember
   // ===========================================================================
   describe('removeMember', () => {
-    it('✅ Retire un membre EDITOR avec succès (par un OWNER)', async () => {
+    it('✅ Retire un membre EDITOR avec succès (par un OWNER) sans toucher aux conversations (modèle 1-1)', async () => {
       mockPrisma.associationUser.findFirst
         .mockResolvedValueOnce(mockEditorMember)
         .mockResolvedValueOnce(mockOwnerMember);
@@ -667,6 +741,11 @@ describe('AssociationService', () => {
 
       await service.removeMember(42, 12, mockUser1.id);
 
+      // Les conversations sont 1-1 et indépendantes des assos : leur sort
+      // ne dépend plus du départ d'un membre.
+      expect(
+        mockConversationService.deleteConversationsAndNotify,
+      ).not.toHaveBeenCalled();
       expect(mockPrisma.associationUser.delete).toHaveBeenCalledWith({
         where: { id: 12 },
       });
@@ -730,12 +809,15 @@ describe('AssociationService', () => {
   // leaveAssociation
   // ===========================================================================
   describe('leaveAssociation', () => {
-    it("✅ Permet à un EDITOR de quitter l'association", async () => {
+    it("✅ Permet à un EDITOR de quitter l'association sans toucher aux conversations (modèle 1-1)", async () => {
       mockPrisma.associationUser.findFirst.mockResolvedValue(mockEditorMember);
       mockPrisma.associationUser.delete.mockResolvedValue(mockEditorMember);
 
       await service.leaveAssociation(42, mockEditorUser.id);
 
+      expect(
+        mockConversationService.deleteConversationsAndNotify,
+      ).not.toHaveBeenCalled();
       expect(mockPrisma.associationUser.delete).toHaveBeenCalledWith({
         where: { id: mockEditorMember.id },
       });

@@ -13,6 +13,7 @@ import {
   FILE_SERVICE,
   IFileService,
 } from '../../common/files/interfaces/file-service.interface';
+import { ConversationService } from '../../messaging/conversation.service';
 import {
   AssociationStatus,
   AssociationRole,
@@ -28,6 +29,7 @@ export class AdminAssociationService {
     private readonly mail: MailService,
     private readonly config: ConfigService,
     @Inject(FILE_SERVICE) private readonly fileService: IFileService,
+    private readonly conversationService: ConversationService,
   ) {}
 
   async listPending(page = 1, limit = 20) {
@@ -213,6 +215,9 @@ export class AdminAssociationService {
     const documents = asso.documents;
     const reason = asso.rejectionReason ?? '';
 
+    // Les conversations ne sont plus liées à une association (modèle 1-1
+    // user-à-user). La suppression d'une asso ne supprime donc plus de
+    // conversation et n'a pas besoin d'envoyer de notification WS.
     await this.prisma.association.delete({ where: { id } });
 
     for (const doc of documents) {

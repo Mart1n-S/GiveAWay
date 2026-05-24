@@ -16,6 +16,7 @@ import type {
   TransferOwnerDto,
   AssociationPublicListResponse,
   AssociationPublicProfile,
+  ContactableMemberDto,
   FollowStatusResponse,
 } from "@repo/shared";
 
@@ -57,6 +58,20 @@ export async function getPublicAssociations(
     });
     throw new Error("Impossible de charger les associations.");
   }
+}
+
+/**
+ * GET /associations/:id/contactable-members
+ * Liste des membres actifs qu'on peut contacter via la messagerie.
+ * Requiert d'être authentifié. Le user courant est exclu côté serveur.
+ */
+export async function getContactableMembers(
+  associationId: number,
+): Promise<ContactableMemberDto[]> {
+  const { data } = await api.get<ContactableMemberDto[]>(
+    `/associations/${associationId}/contactable-members`,
+  );
+  return data;
 }
 
 export async function getPublicAssociation(

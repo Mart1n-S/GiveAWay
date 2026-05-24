@@ -4,9 +4,14 @@ import { PrismaService } from '../prisma/prisma.service';
 export interface ExpoPushMessage {
   to: string;
   title: string;
+  /** iOS uniquement : ligne secondaire affichée entre title et body. */
+  subtitle?: string;
   body: string;
   data?: Record<string, unknown>;
   sound?: 'default';
+  /** Compteur affiché sur l'icône de l'app. iOS l'applique automatiquement,
+   *  Android nécessite Notifications.setBadgeCountAsync côté client (cf. _layout.tsx). */
+  badge?: number;
 }
 
 interface ExpoPushTicket {

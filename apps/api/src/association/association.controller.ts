@@ -35,12 +35,14 @@ import {
   NearbyQuerySchema,
   AssociationPublicProfile,
   AssociationPublicListResponse,
+  ContactableMemberDto,
 } from '@repo/shared';
 import { AssociationRole } from '../generated/prisma/client';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { ImageValidationPipe } from '../common/pipes/image-validation.pipe';
 import { DocumentsValidationPipe } from '../common/pipes/documents-validation.pipe';
 import { AssociationService } from './association.service';
+import { AuthenticatedRequest } from '../common/interfaces/authenticated-request.interface';
 import {
   AssociationMemberGuard,
   AssociationAuthenticatedRequest,
@@ -231,6 +233,26 @@ export class AssociationController {
     @Param('associationId', ParseIntPipe) associationId: number,
   ): Promise<AssociationMemberDto[]> {
     return this.associationService.getMembers(associationId);
+  }
+
+  /**
+   * GET /associations/:associationId/contactable-members
+   * Liste publique-authentifiée des membres actifs qu'un bénévole peut
+   * contacter via la messagerie. N'expose pas les emails. Exclut le user
+   * courant. Utilisé par la modale "Choisir le destinataire" sur la fiche
+   * publique d'asso.
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Get(':associationId/contactable-members')
+  @HttpCode(HttpStatus.OK)
+  async getContactableMembers(
+    @Req() req: AuthenticatedRequest,
+    @Param('associationId', ParseIntPipe) associationId: number,
+  ): Promise<ContactableMemberDto[]> {
+    return this.associationService.getContactableMembers(
+      associationId,
+      req.user.id,
+    );
   }
 
   /**

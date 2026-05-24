@@ -22,6 +22,7 @@ import {
   AssociationPublicItem,
   AssociationPublicProfile,
   AssociationPublicListResponse,
+  ContactableMemberDto,
 } from '@repo/shared';
 import {
   AssociationRole as PrismaAssociationRole,
@@ -32,6 +33,7 @@ import {
   FILE_SERVICE,
   IFileService,
 } from '../common/files/interfaces/file-service.interface';
+import { ConversationService } from '../messaging/conversation.service';
 
 // Type Prisma avec relations pour le mapping
 type AssociationWithRelations = Awaited<
@@ -72,6 +74,7 @@ export class AssociationService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(FILE_SERVICE) private readonly fileService: IFileService,
+    private readonly conversationService: ConversationService,
   ) {}
 
   // ----------------------------------------------------------------
@@ -305,6 +308,61 @@ export class AssociationService {
   }
 
   // ----------------------------------------------------------------
+  // GET — liste des membres contactables (route publique-authentifiée)
+  //   - Asso doit être VALIDATED
+  //   - Membres actifs uniquement
+  //   - Exclut le user courant (un user ne se contacte pas lui-même)
+  //   - Tri : OWNER → ADMIN → EDITOR puis ancienneté (premier inscrit en haut)
+  //   - Pas d'email exposé
+  // ----------------------------------------------------------------
+  async getContactableMembers(
+    associationId: number,
+    currentUserId: number,
+  ): Promise<ContactableMemberDto[]> {
+    const association = await this.prisma.association.findUnique({
+      where: { id: associationId },
+      select: { status: true },
+    });
+    if (!association) {
+      throw new NotFoundException('Association introuvable');
+    }
+    if (association.status !== AssociationStatus.VALIDATED) {
+      throw new ForbiddenException(
+        "Cette association n'accepte pas encore les messages",
+      );
+    }
+
+    const members = await this.prisma.associationUser.findMany({
+      where: {
+        associationId,
+        userId: { not: currentUserId },
+        user: { status: 'ACTIVE' },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            profilePicture: true,
+          },
+        },
+      },
+      // OWNER < ADMIN < EDITOR alphabétiquement → on s'appuie sur l'ordre
+      // explicite des rôles pour rester déterministe et compréhensible.
+      orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
+    });
+
+    return members.map((m) => ({
+      userId: m.user.id,
+      firstName: m.user.firstName,
+      lastName: m.user.lastName,
+      profilePicture: m.user.profilePicture,
+      role: m.role as AssociationRole,
+    }));
+  }
+
+  // ----------------------------------------------------------------
   // GET — liste des membres
   // ----------------------------------------------------------------
   async getMembers(associationId: number): Promise<AssociationMemberDto[]> {
@@ -476,6 +534,10 @@ export class AssociationService {
       );
     }
 
+    // Les conversations étant désormais 1-1 entre utilisateurs (indépendantes
+    // de toute asso), le départ d'un membre ne supprime plus les threads
+    // existants. La mention "via Asso" affichée côté autre user se mettra
+    // simplement à jour au prochain listing (asso primaire recalculée).
     await this.prisma.associationUser.delete({ where: { id: memberId } });
   }
 
@@ -500,6 +562,7 @@ export class AssociationService {
       );
     }
 
+    // Conversations préservées : voir commentaire dans removeMember.
     await this.prisma.associationUser.delete({ where: { id: member.id } });
   }
 

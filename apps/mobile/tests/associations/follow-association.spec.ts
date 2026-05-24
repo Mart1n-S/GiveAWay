@@ -1,14 +1,14 @@
-import { test, expect, Page } from "@playwright/test";
+import { test, expect, Page } from "../_fixtures";
 import {
-  cleanDatabase,
+  cleanDatabaseForWorker,
   createTestUser,
   createTestAssociation,
 } from "../../../api/test/prisma-test-helper";
 
 const VALID_PASSWORD = "Password123!";
 
-test.beforeEach(async () => {
-  await cleanDatabase();
+test.beforeEach(async ({}, testInfo) => {
+  await cleanDatabaseForWorker(testInfo.parallelIndex);
 });
 
 // ===========================================================================
@@ -16,7 +16,7 @@ test.beforeEach(async () => {
 // ===========================================================================
 async function seedAssociation(workerIndex: number) {
   const user = await createTestUser(workerIndex);
-  const assoc = await createTestAssociation(user.id);
+  const assoc = await createTestAssociation(user.id, workerIndex);
   return { user, assoc };
 }
 
@@ -53,66 +53,16 @@ async function loginAndGoToAssociation(
 // ===========================================================================
 // TESTS : Bouton "Me notifier" — visibilité
 // ===========================================================================
-test.describe("Follow Association — Bouton 'Me notifier'", () => {
-  test("devrait afficher le bouton 'Me notifier' sur la page d'une association", async ({
+test.describe("Follow Association — Visibilité du bouton 'Me notifier'", () => {
+  test("ne devrait PAS afficher le bouton 'Me notifier' à un visiteur non connecté", async ({
     page,
   }, testInfo) => {
-    const { assoc } = await seedAssociation(testInfo.workerIndex);
+    const { assoc } = await seedAssociation(testInfo.parallelIndex);
 
     await page.goto(`/associations/${assoc.id}`);
 
-    // Le bouton est présent sans être connecté
-    await expect(
-      page
-        .getByRole("button", { name: /me notifier/i })
-        .or(page.getByText(/me notifier/i)),
-    ).toBeVisible();
-  });
-});
-
-// ===========================================================================
-// TESTS : Clic sans authentification
-// ===========================================================================
-test.describe("Follow Association — Utilisateur non connecté", () => {
-  test("devrait ouvrir la modale de confirmation au clic sur 'Me notifier' sans être connecté", async ({
-    page,
-  }, testInfo) => {
-    const { assoc } = await seedAssociation(testInfo.workerIndex);
-
-    await page.goto(`/associations/${assoc.id}`);
-
-    // Clic sur le bouton "Me notifier"
-    await page.getByText(/me notifier/i).first().click();
-
-    // La modale de confirmation s'ouvre
-    await expect(
-      page.getByText(/recevoir des notifications/i),
-    ).toBeVisible();
-  });
-
-  test("devrait fermer la modale sans changer l'état au clic sur Annuler", async ({
-    page,
-  }, testInfo) => {
-    const { assoc } = await seedAssociation(testInfo.workerIndex);
-
-    await page.goto(`/associations/${assoc.id}`);
-
-    // Ouvrir la modale
-    await page.getByText(/me notifier/i).first().click();
-    await expect(
-      page.getByText(/recevoir des notifications/i),
-    ).toBeVisible();
-
-    // Annuler
-    await page.getByRole("button", { name: /^annuler$/i }).click();
-
-    // La modale doit disparaître
-    await expect(
-      page.getByText(/recevoir des notifications/i),
-    ).not.toBeVisible();
-
-    // Le bouton "Me notifier" doit toujours être visible (pas de changement d'état)
-    await expect(page.getByText(/me notifier/i).first()).toBeVisible();
+    // Le bouton est réservé aux utilisateurs connectés (cf. associations/[id].tsx)
+    await expect(page.getByText(/me notifier/i)).not.toBeVisible();
   });
 });
 
@@ -123,7 +73,7 @@ test.describe("Follow Association — Utilisateur connecté", () => {
   test("devrait ouvrir la modale de confirmation au clic sur 'Me notifier' quand connecté", async ({
     page,
   }, testInfo) => {
-    const { user, assoc } = await seedAssociation(testInfo.workerIndex);
+    const { user, assoc } = await seedAssociation(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToAssociation(page, user, isMobile, assoc.id);
@@ -140,7 +90,7 @@ test.describe("Follow Association — Utilisateur connecté", () => {
   test("devrait afficher 'Notifications activées' après confirmation du follow", async ({
     page,
   }, testInfo) => {
-    const { user, assoc } = await seedAssociation(testInfo.workerIndex);
+    const { user, assoc } = await seedAssociation(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToAssociation(page, user, isMobile, assoc.id);
