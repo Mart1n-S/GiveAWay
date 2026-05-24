@@ -5,14 +5,16 @@ import {
   Dimensions,
   type ViewStyle,
 } from "react-native";
+import Toast from "react-native-toast-message";
 import { useRouter } from "expo-router";
 import { cssInterop } from "nativewind";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { Text, Button } from "@/components/ui";
+import { Text, Button, MatchToggle } from "@/components/ui";
 import MapBase from "@/components/ui/map";
 import { MissionFilters } from "@/components/ui/mission-filters";
 import { MissionGrid } from "@/components/ui/mission-grid/mission-grid";
 import { useAuthStore } from "@/stores/auth.store";
+import { usePreferencesStore } from "@/stores/preferences.store";
 import { useReferenceStore } from "@/stores/reference.store";
 import { useFilterReferencesStore } from "@/stores/filter-references.store";
 import { MissionService } from "@/services/mission.service";
@@ -86,7 +88,7 @@ const HOW_IT_WORKS: Step[] = [
   },
 ];
 
-function StepCard({ step }: { step: Step }) {
+function StepCard({ step }: Readonly<{ step: Step }>) {
   const { number, title, description, Icon, bgClass, iconClass } = step;
   return (
     <View className="flex-1 p-6 bg-white border rounded-2xl border-grey-200">
@@ -107,10 +109,10 @@ function StepCard({ step }: { step: Step }) {
 function ValuePill({
   icon: Icon,
   label,
-}: {
+}: Readonly<{
   icon: StepIcon;
   label: string;
-}) {
+}>) {
   return (
     <View className="flex-row items-center gap-2 px-4 py-2 bg-white border rounded-full border-grey-200">
       <Icon className="w-4 h-4 text-primary" />
@@ -119,7 +121,7 @@ function ValuePill({
   );
 }
 
-function StatCard({ value, label }: { value: string; label: string }) {
+function StatCard({ value, label }: Readonly<{ value: string; label: string }>) {
   return (
     <View className="px-6 py-5 border bg-grey-50 border-grey-200 rounded-2xl">
       <Text className="mb-1 text-4xl font-bold text-primary">{value}</Text>
@@ -146,18 +148,18 @@ const MAP_CONTAINER_STYLE: ViewStyle = Platform.select({
 }) ?? { height: Math.max(400, WINDOW_HEIGHT * 0.6) };
 
 interface MapSectionProps {
-  filters: MissionListQuery;
-  onFiltersChange: (f: MissionListQuery) => void;
-  onReset: () => void;
-  showFilters: boolean;
-  causes: { id: number; label: string }[];
-  skills: { id: number; label: string }[];
-  publicTypes: { id: number; label: string }[];
-  volunteerTypes: { id: number; label: string }[];
+  readonly filters: MissionListQuery;
+  readonly onFiltersChange: (f: MissionListQuery) => void;
+  readonly onReset: () => void;
+  readonly showFilters: boolean;
+  readonly causes: { id: number; label: string }[];
+  readonly skills: { id: number; label: string }[];
+  readonly publicTypes: { id: number; label: string }[];
+  readonly volunteerTypes: { id: number; label: string }[];
   /** Centre de carte imposé par le parent (géocodage hors MapSection). */
-  center?: { lat: number; lon: number };
+  readonly center?: { lat: number; lon: number };
   /** Remonte un nouveau centre vers le parent (utilisé quand showFilters=true). */
-  onCenterChange?: (lat: number, lon: number) => void;
+  readonly onCenterChange?: (lat: number, lon: number) => void;
 }
 
 function MapSection({
@@ -227,9 +229,6 @@ function MapSection({
     [listMissions, visibleIds],
   );
 
-  // Callback stable (aucune dépendance) — le Callout/Popup s'ouvre nativement
-  // via react-native-maps / Leaflet, sans déclenchement de re-render parent (bug 3).
-  // TypeScript autorise un callback avec moins de paramètres que le type attendu.
   const handleMissionSelect = useCallback(() => {}, []);
 
   return (
@@ -450,8 +449,32 @@ function DiscoveryView() {
   const { causes, skills, fetchReferences } = useReferenceStore();
   const { publicTypes, volunteerTypes, fetchFilterReferences } = useFilterReferencesStore();
 
+  const highlightMatching = usePreferencesStore((s) => s.highlightMatching);
+  const setHighlightMatching = usePreferencesStore(
+    (s) => s.setHighlightMatching,
+  );
+
   const [filters, setFilters] = useState<MissionListQuery>(EMPTY_FILTERS);
   const [mapCenter, setMapCenter] = useState<{ lat: number; lon: number } | undefined>();
+
+  /** Filtres effectifs envoyés à la carte/grille — inclut withMatching dérivé du store. */
+  const effectiveFilters = useMemo<MissionListQuery>(
+    () => ({ ...filters, withMatching: highlightMatching }),
+    [filters, highlightMatching],
+  );
+
+  const handleToggleMatching = (next: boolean) => {
+    setHighlightMatching(next);
+    if (next) {
+      Toast.show({
+        type: "info",
+        text1: "Mise en avant activée",
+        text2:
+          "Les missions qui correspondent à votre profil sont désormais surlignées.",
+        visibilityTime: 10000,
+      });
+    }
+  };
 
   // Missions mode remote (liste verticale)
   const [remoteMissions, setRemoteMissions] = useState<MissionListItem[]>([]);
@@ -479,9 +502,9 @@ function DiscoveryView() {
 
   useEffect(() => {
     if (isRemote) {
-      fetchRemoteMissions(filters);
+      fetchRemoteMissions(effectiveFilters);
     }
-  }, [filters, isRemote, fetchRemoteMissions]);
+  }, [effectiveFilters, isRemote, fetchRemoteMissions]);
 
   const handleFiltersChange = (newFilters: MissionListQuery) => setFilters(newFilters);
   const handleReset = () => {
@@ -510,9 +533,15 @@ function DiscoveryView() {
           />
 
           <View className="mt-4">
-            <Text className="mb-1 text-lg font-bold text-grey-900">
-              Missions en distanciel
-            </Text>
+            <View className="flex-row items-center justify-between mb-2">
+              <Text className="text-lg font-bold text-grey-900">
+                Missions en distanciel
+              </Text>
+              <MatchToggle
+                value={highlightMatching}
+                onChange={handleToggleMatching}
+              />
+            </View>
             <Text className="mb-4 text-sm text-grey-500">
               Ces missions peuvent être réalisées depuis chez vous.
             </Text>
@@ -543,10 +572,17 @@ function DiscoveryView() {
             onCenterChange={(lat, lon) => setMapCenter({ lat, lon })}
           />
         </View>
+        {/* Toggle "Pour moi" : visible uniquement aux utilisateurs authentifiés. */}
+        <View className="flex-row justify-end px-4 pt-3 md:px-8">
+          <MatchToggle
+            value={highlightMatching}
+            onChange={handleToggleMatching}
+          />
+        </View>
         {/* mt-4 : espace entre les filtres et la carte (bug 1) */}
         <View className="mt-4">
           <MapSection
-            filters={filters}
+            filters={effectiveFilters}
             onFiltersChange={handleFiltersChange}
             onReset={handleReset}
             showFilters={false}

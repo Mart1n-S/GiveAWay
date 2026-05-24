@@ -42,4 +42,7 @@ export interface MissionCardProps {
 
   /** Identifiant de test pour Playwright */
   testID?: string;
+
+  /** Score de matching (0-100). Si présent ET >= MATCH_THRESHOLD, la card est mise en avant. */
+  matchScore?: number;
 }

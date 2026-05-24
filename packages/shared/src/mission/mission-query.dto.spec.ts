@@ -412,6 +412,43 @@ describe('MissionListQuerySchema', () => {
   });
 
   // =========================================================================
+  // associationId
+  // =========================================================================
+  describe('associationId', () => {
+    it('✅ Doit accepter associationId=1 (minimum)', () => {
+      const result = MissionListQuerySchema.safeParse({ associationId: '1' });
+      expect(result.success).toBe(true);
+      if (result.success) expect(result.data.associationId).toBe(1);
+    });
+
+    it('✅ Doit convertir "5" en 5', () => {
+      const result = MissionListQuerySchema.parse({ associationId: '5' });
+      expect(result.associationId).toBe(5);
+      expect(typeof result.associationId).toBe('number');
+    });
+
+    it('❌ Doit rejeter associationId=0 (sous le minimum)', () => {
+      const result = MissionListQuerySchema.safeParse({ associationId: '0' });
+      expect(result.success).toBe(false);
+    });
+
+    it('❌ Doit rejeter associationId=-1', () => {
+      const result = MissionListQuerySchema.safeParse({ associationId: '-1' });
+      expect(result.success).toBe(false);
+    });
+
+    it('✅ Doit retourner undefined si associationId est absent', () => {
+      const result = MissionListQuerySchema.parse({});
+      expect(result.associationId).toBeUndefined();
+    });
+
+    it('✅ Doit traiter associationId="" comme absent (undefined)', () => {
+      const result = MissionListQuerySchema.parse({ associationId: '' });
+      expect(result.associationId).toBeUndefined();
+    });
+  });
+
+  // =========================================================================
   // Combinaisons
   // =========================================================================
   describe('Combinaisons de paramètres', () => {
@@ -457,6 +494,47 @@ describe('MissionListQuerySchema', () => {
       expect(result.startDateTo).toBe('2025-06-30');
       expect(result.hasAvailableSpots).toBe(true);
       expect(result.locationMode).toBe('nearby');
+    });
+  });
+
+  // =========================================================================
+  // withMatching — opt-in pour le scoring de matching
+  // =========================================================================
+  describe('withMatching', () => {
+    it('✅ Doit être undefined si absent', () => {
+      const result = MissionListQuerySchema.parse({});
+      expect(result.withMatching).toBeUndefined();
+    });
+
+    it('✅ Doit accepter le boolean true', () => {
+      const result = MissionListQuerySchema.parse({ withMatching: true });
+      expect(result.withMatching).toBe(true);
+    });
+
+    it('✅ Doit accepter le boolean false', () => {
+      const result = MissionListQuerySchema.parse({ withMatching: false });
+      expect(result.withMatching).toBe(false);
+    });
+
+    it('✅ Doit convertir la string "true" en boolean true (query-string)', () => {
+      const result = MissionListQuerySchema.parse({ withMatching: 'true' });
+      expect(result.withMatching).toBe(true);
+      expect(typeof result.withMatching).toBe('boolean');
+    });
+
+    it('✅ Doit convertir la string "false" en boolean false', () => {
+      const result = MissionListQuerySchema.parse({ withMatching: 'false' });
+      expect(result.withMatching).toBe(false);
+    });
+
+    it('✅ Doit convertir une string vide en undefined', () => {
+      const result = MissionListQuerySchema.parse({ withMatching: '' });
+      expect(result.withMatching).toBeUndefined();
+    });
+
+    it('❌ Doit rejeter une valeur non parsable (string arbitraire → undefined → OK car optional)', () => {
+      const result = MissionListQuerySchema.parse({ withMatching: 'maybe' });
+      expect(result.withMatching).toBeUndefined();
     });
   });
 });

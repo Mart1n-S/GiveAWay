@@ -1,8 +1,8 @@
-import { test, expect } from "@playwright/test";
-import { cleanDatabase } from "../../../api/test/prisma-test-helper";
+import { test, expect } from "../_fixtures";
+import { cleanDatabaseForWorker } from "../../../api/test/prisma-test-helper";
 
-test.beforeEach(async () => {
-  await cleanDatabase();
+test.beforeEach(async ({}, testInfo) => {
+  await cleanDatabaseForWorker(testInfo.parallelIndex);
 });
 
 // ===========================================================================

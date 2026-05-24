@@ -5,12 +5,14 @@ import { AuthService } from '../auth/auth.service';
 import { UserStatus } from '../generated/prisma/client';
 import { FILE_SERVICE } from '../common/files/interfaces/file-service.interface';
 import { CookieService } from '../auth/shared/cookie.service';
+import { ConversationService } from '../messaging/conversation.service';
 import {
   mockUserComplete,
   mockMappedUser,
   createMockAuthService,
   createMockFileService,
   createMockCookieService,
+  createMockConversationService,
 } from './profile-test.helpers';
 
 describe('ProfileService — updateNotifications', () => {
@@ -26,6 +28,10 @@ describe('ProfileService — updateNotifications', () => {
         { provide: AuthService, useValue: mockAuthService },
         { provide: FILE_SERVICE, useValue: createMockFileService() },
         { provide: CookieService, useValue: createMockCookieService() },
+        {
+          provide: ConversationService,
+          useValue: createMockConversationService(),
+        },
       ],
     }).compile();
 
@@ -77,27 +83,28 @@ describe('ProfileService — updateNotifications', () => {
   });
 
   // =========================================================================
-  // ❌ Vérification défensive des types
+  // ✅ matchNotifications
   // =========================================================================
 
-  it("❌ Doit lever BadRequestException si emailNotifications n'est pas un booléen", async () => {
-    await expect(
-      service.updateNotifications(1, {
-        emailNotifications: 'true' as unknown as boolean,
-      }),
-    ).rejects.toThrow(BadRequestException);
+  it('✅ Doit appeler prisma.user.update avec matchNotifications=true', async () => {
+    await service.updateNotifications(1, { matchNotifications: true });
 
-    expect(mockAuthService.prisma.user.update).not.toHaveBeenCalled();
+    expect(mockAuthService.prisma.user.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: { matchNotifications: true },
+    });
   });
 
-  it('❌ Doit lever BadRequestException si emailNotifications est null', async () => {
-    await expect(
-      service.updateNotifications(1, {
-        emailNotifications: null as unknown as boolean,
-      }),
-    ).rejects.toThrow(BadRequestException);
+  it('✅ Doit appeler prisma.user.update avec les deux champs simultanément', async () => {
+    await service.updateNotifications(1, {
+      emailNotifications: false,
+      matchNotifications: true,
+    });
 
-    expect(mockAuthService.prisma.user.update).not.toHaveBeenCalled();
+    expect(mockAuthService.prisma.user.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: { emailNotifications: false, matchNotifications: true },
+    });
   });
 
   // =========================================================================

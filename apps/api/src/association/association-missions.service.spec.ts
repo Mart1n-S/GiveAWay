@@ -1,0 +1,1238 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import {
+  ForbiddenException,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
+import { AssociationMissionsService } from './association-missions.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
+import { NotificationService } from '../notification/notification.service';
+import { MatchingService } from '../matching/matching.service';
+import {
+  AssociationStatus,
+  MissionStatus,
+  ActivityType,
+} from '../generated/prisma/client';
+
+// ── Helpers fixtures ──────────────────────────────────────────────
+
+const makeMission = (overrides: Partial<any> = {}): any => ({
+  id: 1,
+  associationId: 10,
+  title: 'Mission test',
+  description: 'Description de la mission de test.',
+  type: ActivityType.MISSION,
+  availabilityType: 'REMOTE',
+  status: MissionStatus.ACTIVE,
+  hasRegistration: true,
+  volunteersNeeded: null,
+  durationInt: null,
+  frequency: null,
+  startDate: null,
+  endDate: null,
+  addressId: null,
+  address: null,
+  causes: [],
+  skills: [],
+  volunteerTypes: [],
+  publicTypes: [],
+  _count: { participants: 0 },
+  createdAt: new Date('2025-01-01'),
+  updatedAt: new Date('2025-01-01'),
+  ...overrides,
+});
+
+// ── Fixture stats ─────────────────────────────────────────────────
+
+const makeStatsMission = (overrides: Partial<any> = {}): any => ({
+  id: 1,
+  associationId: 10,
+  title: 'Mission stats',
+  type: ActivityType.MISSION,
+  status: MissionStatus.ACTIVE,
+  endDate: null,
+  createdAt: new Date('2025-03-15'),
+  _count: { participants: 0 },
+  ...overrides,
+});
+
+// ── Mock PrismaService ────────────────────────────────────────────
+
+const mockPrisma = {
+  association: { findUnique: jest.fn() },
+  mission: {
+    create: jest.fn(),
+    findMany: jest.fn(),
+    findFirst: jest.fn(),
+    update: jest.fn(),
+  },
+  address: { findFirst: jest.fn(), create: jest.fn() },
+  missionParticipant: {
+    findMany: jest.fn(),
+    findUnique: jest.fn(),
+    groupBy: jest.fn(),
+    delete: jest.fn(),
+  },
+  skill: { findUnique: jest.fn() },
+  cause: { findUnique: jest.fn() },
+  publicType: { findUnique: jest.fn() },
+  volunteerType: { findUnique: jest.fn() },
+  missionSkill: { deleteMany: jest.fn(), createMany: jest.fn() },
+  missionCause: { deleteMany: jest.fn(), createMany: jest.fn() },
+  missionPublicType: { deleteMany: jest.fn(), createMany: jest.fn() },
+  missionVolunteerType: { deleteMany: jest.fn(), createMany: jest.fn() },
+  userAssociationFollow: { findMany: jest.fn().mockResolvedValue([]) },
+  user: { findMany: jest.fn().mockResolvedValue([]) },
+  $transaction: jest.fn(),
+};
+
+// ── Mock MailService ──────────────────────────────────────────────
+
+const mockMail = {
+  sendMissionDeletedEmail: jest.fn().mockResolvedValue(undefined),
+  sendMissionUpdatedEmail: jest.fn().mockResolvedValue(undefined),
+  sendParticipantRemovedEmail: jest.fn().mockResolvedValue(undefined),
+  sendNewMissionEmail: jest.fn().mockResolvedValue(undefined),
+};
+
+// ── Mock NotificationService ──────────────────────────────────────
+
+const mockNotifications = {
+  sendPushNotifications: jest.fn().mockResolvedValue(undefined),
+};
+
+// ── Suite ─────────────────────────────────────────────────────────
+
+describe('AssociationMissionsService', () => {
+  let service: AssociationMissionsService;
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AssociationMissionsService,
+        { provide: PrismaService, useValue: mockPrisma },
+        { provide: MailService, useValue: mockMail },
+        { provide: NotificationService, useValue: mockNotifications },
+        {
+          provide: MatchingService,
+          useValue: {
+            scoreUserMission: jest
+              .fn()
+              .mockReturnValue({ total: 0, isMatch: false }),
+          },
+        },
+      ],
+    }).compile();
+
+    service = module.get<AssociationMissionsService>(
+      AssociationMissionsService,
+    );
+    jest.clearAllMocks();
+  });
+
+  // ── create ──────────────────────────────────────────────────────
+  describe('create', () => {
+    const dto: any = {
+      title: 'Nouvelle mission',
+      description: 'Description suffisamment longue.',
+      type: 'MISSION',
+      availabilityType: 'REMOTE',
+      hasRegistration: true,
+    };
+
+    it('✅ crée une mission avec statut ACTIVE', async () => {
+      mockPrisma.association.findUnique.mockResolvedValue({
+        status: AssociationStatus.VALIDATED,
+      });
+      mockPrisma.mission.create.mockResolvedValue(
+        makeMission({ title: dto.title }),
+      );
+
+      const result = await service.create(10, dto);
+
+      expect(mockPrisma.mission.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            associationId: 10,
+            status: MissionStatus.ACTIVE,
+          }),
+        }),
+      );
+      expect(result.id).toBe(1);
+    });
+
+    it('✅ retourne le DTO mappé avec les champs attendus', async () => {
+      const mission = makeMission({
+        title: 'Ma mission',
+        causes: [],
+        skills: [{ skill: { id: 1, label: 'Jardinage' } }],
+        _count: { participants: 3 },
+      });
+      mockPrisma.association.findUnique.mockResolvedValue({
+        status: AssociationStatus.VALIDATED,
+      });
+      mockPrisma.mission.create.mockResolvedValue(mission);
+
+      const result = await service.create(10, dto);
+
+      expect(result.participantsCount).toBe(3);
+      expect(result.skills).toHaveLength(1);
+      expect(result.skills[0].label).toBe('Jardinage');
+    });
+
+    it("❌ lève NotFoundException si l'association est introuvable", async () => {
+      mockPrisma.association.findUnique.mockResolvedValue(null);
+
+      await expect(service.create(99, dto)).rejects.toThrow(NotFoundException);
+    });
+
+    it("❌ lève ForbiddenException si l'association est PENDING", async () => {
+      mockPrisma.association.findUnique.mockResolvedValue({
+        status: AssociationStatus.PENDING,
+      });
+
+      await expect(service.create(10, dto)).rejects.toThrow(ForbiddenException);
+    });
+
+    it("❌ lève ForbiddenException si l'association est REJECTED", async () => {
+      mockPrisma.association.findUnique.mockResolvedValue({
+        status: AssociationStatus.REJECTED,
+      });
+
+      await expect(service.create(10, dto)).rejects.toThrow(ForbiddenException);
+    });
+
+    it('❌ lève UnprocessableEntityException si un skillId est introuvable', async () => {
+      mockPrisma.association.findUnique.mockResolvedValue({
+        status: AssociationStatus.VALIDATED,
+      });
+      mockPrisma.skill.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.create(10, { ...dto, skillIds: [999] }),
+      ).rejects.toThrow(UnprocessableEntityException);
+    });
+
+    it('❌ lève UnprocessableEntityException si un causeId est introuvable', async () => {
+      mockPrisma.association.findUnique.mockResolvedValue({
+        status: AssociationStatus.VALIDATED,
+      });
+      mockPrisma.cause.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.create(10, { ...dto, causeIds: [999] }),
+      ).rejects.toThrow(UnprocessableEntityException);
+    });
+
+    it("✅ upsert l'adresse si elle est fournie et inexistante en base", async () => {
+      const withAddress = {
+        ...dto,
+        availabilityType: 'ON_SITE',
+        address: { street: '1 rue Test', postalCode: '75001', city: 'Paris' },
+      };
+      mockPrisma.association.findUnique.mockResolvedValue({
+        status: AssociationStatus.VALIDATED,
+      });
+      mockPrisma.address.findFirst.mockResolvedValue(null);
+      mockPrisma.address.create.mockResolvedValue({ id: 5 });
+      mockPrisma.mission.create.mockResolvedValue(
+        makeMission({ addressId: 5 }),
+      );
+
+      await service.create(10, withAddress);
+
+      expect(mockPrisma.address.create).toHaveBeenCalled();
+      expect(mockPrisma.mission.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ addressId: 5 }),
+        }),
+      );
+    });
+
+    it('✅ réutilise une adresse existante sans en créer une nouvelle', async () => {
+      const withAddress = {
+        ...dto,
+        availabilityType: 'ON_SITE',
+        address: { street: '1 rue Test', postalCode: '75001', city: 'Paris' },
+      };
+      mockPrisma.association.findUnique.mockResolvedValue({
+        status: AssociationStatus.VALIDATED,
+      });
+      mockPrisma.address.findFirst.mockResolvedValue({ id: 3 });
+      mockPrisma.mission.create.mockResolvedValue(
+        makeMission({ addressId: 3 }),
+      );
+
+      await service.create(10, withAddress);
+
+      expect(mockPrisma.address.create).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── create — notifyFollowers (fire-and-forget) ───────────────────
+  describe('create — notifyFollowers', () => {
+    const dto: any = {
+      title: 'Nouvelle mission',
+      description: 'Description suffisamment longue.',
+      type: 'MISSION',
+      availabilityType: 'REMOTE',
+      hasRegistration: true,
+    };
+
+    const setupCreate = () => {
+      mockPrisma.association.findUnique.mockResolvedValueOnce({
+        status: AssociationStatus.VALIDATED,
+      });
+      mockPrisma.mission.create.mockResolvedValue(
+        makeMission({ title: dto.title }),
+      );
+    };
+
+    it('✅ envoie une notification push aux abonnés ayant un pushToken', async () => {
+      setupCreate();
+      mockPrisma.userAssociationFollow.findMany.mockResolvedValue([
+        {
+          user: {
+            pushToken: 'ExponentPushToken[abc]',
+            email: 'a@test.com',
+            firstName: 'Alice',
+            emailNotifications: false,
+          },
+        },
+      ]);
+      mockPrisma.association.findUnique.mockResolvedValue({
+        name: 'Asso Test',
+      });
+
+      await service.create(10, dto);
+      // laisser les promises fire-and-forget se résoudre
+      await new Promise((resolve) => {
+        process.nextTick(resolve);
+      });
+
+      expect(mockNotifications.sendPushNotifications).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ to: 'ExponentPushToken[abc]' }),
+        ]),
+      );
+    });
+
+    it("✅ n'envoie pas de push si aucun abonné n'a de pushToken", async () => {
+      setupCreate();
+      mockPrisma.userAssociationFollow.findMany.mockResolvedValue([
+        {
+          user: {
+            pushToken: null,
+            email: 'a@test.com',
+            firstName: 'Alice',
+            emailNotifications: false,
+          },
+        },
+      ]);
+      mockPrisma.association.findUnique.mockResolvedValue({
+        name: 'Asso Test',
+      });
+
+      await service.create(10, dto);
+      await new Promise((resolve) => {
+        process.nextTick(resolve);
+      });
+
+      expect(mockNotifications.sendPushNotifications).not.toHaveBeenCalled();
+    });
+
+    it('✅ envoie un email aux abonnés ayant emailNotifications=true', async () => {
+      setupCreate();
+      mockPrisma.userAssociationFollow.findMany.mockResolvedValue([
+        {
+          user: {
+            pushToken: null,
+            email: 'b@test.com',
+            firstName: 'Bob',
+            emailNotifications: true,
+          },
+        },
+      ]);
+      mockPrisma.association.findUnique.mockResolvedValue({
+        name: 'Asso Test',
+      });
+
+      await service.create(10, dto);
+      await new Promise((resolve) => {
+        process.nextTick(resolve);
+      });
+
+      expect(mockMail.sendNewMissionEmail).toHaveBeenCalledWith(
+        'b@test.com',
+        'Bob',
+        dto.title,
+        'Asso Test',
+      );
+    });
+
+    it("✅ n'envoie pas d'email si emailNotifications=false", async () => {
+      setupCreate();
+      mockPrisma.userAssociationFollow.findMany.mockResolvedValue([
+        {
+          user: {
+            pushToken: null,
+            email: 'c@test.com',
+            firstName: 'Carol',
+            emailNotifications: false,
+          },
+        },
+      ]);
+      mockPrisma.association.findUnique.mockResolvedValue({
+        name: 'Asso Test',
+      });
+
+      await service.create(10, dto);
+      await new Promise((resolve) => {
+        process.nextTick(resolve);
+      });
+
+      expect(mockMail.sendNewMissionEmail).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── getDashboard ─────────────────────────────────────────────────
+  describe('getDashboard', () => {
+    it("✅ place une mission ACTIVE sans dates dans l'onglet active", async () => {
+      const mission = makeMission({ status: MissionStatus.ACTIVE });
+      mockPrisma.mission.findMany.mockResolvedValue([mission]);
+
+      const result = await service.getDashboard(10);
+
+      expect(result.missions.active).toHaveLength(1);
+      expect(result.counts.active).toBe(1);
+      expect(result.missions.upcoming).toHaveLength(0);
+      expect(result.missions.past).toHaveLength(0);
+      expect(result.missions.archived).toHaveLength(0);
+    });
+
+    it("✅ place une mission ARCHIVED dans l'onglet archived", async () => {
+      const mission = makeMission({ status: MissionStatus.ARCHIVED });
+      mockPrisma.mission.findMany.mockResolvedValue([mission]);
+
+      const result = await service.getDashboard(10);
+
+      expect(result.missions.archived).toHaveLength(1);
+      expect(result.counts.archived).toBe(1);
+      expect(result.missions.active).toHaveLength(0);
+    });
+
+    it('✅ place une mission avec startDate future dans upcoming', async () => {
+      const futureDate = new Date(Date.now() + 86400000 * 7);
+      const mission = makeMission({
+        status: MissionStatus.ACTIVE,
+        startDate: futureDate,
+      });
+      mockPrisma.mission.findMany.mockResolvedValue([mission]);
+
+      const result = await service.getDashboard(10);
+
+      expect(result.missions.upcoming).toHaveLength(1);
+      expect(result.counts.upcoming).toBe(1);
+    });
+
+    it('✅ place une mission avec endDate passée dans past', async () => {
+      const pastDate = new Date(Date.now() - 86400000 * 7);
+      const mission = makeMission({
+        status: MissionStatus.ACTIVE,
+        endDate: pastDate,
+      });
+      mockPrisma.mission.findMany.mockResolvedValue([mission]);
+
+      const result = await service.getDashboard(10);
+
+      expect(result.missions.past).toHaveLength(1);
+      expect(result.counts.past).toBe(1);
+    });
+
+    it('✅ retourne un dashboard entièrement vide si aucune mission', async () => {
+      mockPrisma.mission.findMany.mockResolvedValue([]);
+
+      const result = await service.getDashboard(10);
+
+      expect(result.counts).toEqual({
+        active: 0,
+        upcoming: 0,
+        past: 0,
+        archived: 0,
+      });
+      expect(result.missions.active).toHaveLength(0);
+    });
+
+    it('✅ classe correctement plusieurs missions dans des onglets différents', async () => {
+      const futureDate = new Date(Date.now() + 86400000 * 10);
+      const pastDate = new Date(Date.now() - 86400000 * 10);
+      mockPrisma.mission.findMany.mockResolvedValue([
+        makeMission({ id: 1, status: MissionStatus.ACTIVE }),
+        makeMission({
+          id: 2,
+          status: MissionStatus.ACTIVE,
+          startDate: futureDate,
+        }),
+        makeMission({ id: 3, status: MissionStatus.ACTIVE, endDate: pastDate }),
+        makeMission({ id: 4, status: MissionStatus.ARCHIVED }),
+      ]);
+
+      const result = await service.getDashboard(10);
+
+      expect(result.counts.active).toBe(1);
+      expect(result.counts.upcoming).toBe(1);
+      expect(result.counts.past).toBe(1);
+      expect(result.counts.archived).toBe(1);
+    });
+  });
+
+  // ── findOne ──────────────────────────────────────────────────────
+  describe('findOne', () => {
+    it('✅ retourne le DTO mappé pour une mission existante', async () => {
+      mockPrisma.mission.findFirst.mockResolvedValue(makeMission());
+
+      const result = await service.findOne(10, 1);
+
+      expect(result.id).toBe(1);
+      expect(result.participantsCount).toBe(0);
+      expect(result.status).toBe('ACTIVE');
+    });
+
+    it('❌ lève NotFoundException si la mission est introuvable', async () => {
+      mockPrisma.mission.findFirst.mockResolvedValue(null);
+
+      await expect(service.findOne(10, 999)).rejects.toThrow(NotFoundException);
+    });
+
+    it('❌ lève NotFoundException si la mission appartient à une autre association', async () => {
+      // verifyOwnership filtre par associationId → retourne null si mauvaise association
+      mockPrisma.mission.findFirst.mockResolvedValue(null);
+
+      await expect(service.findOne(99, 1)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ── update ───────────────────────────────────────────────────────
+  describe('update', () => {
+    const setupTransaction = () => {
+      mockPrisma.$transaction.mockImplementation((fn: any) => fn(mockPrisma));
+    };
+
+    it('✅ met à jour le titre et retourne le DTO', async () => {
+      const existing = makeMission();
+      const updated = makeMission({ title: 'Titre modifié' });
+      mockPrisma.mission.findFirst.mockResolvedValue(existing);
+      setupTransaction();
+      mockPrisma.mission.update.mockResolvedValue(updated);
+
+      const result = await service.update(10, 1, { title: 'Titre modifié' });
+
+      expect(mockPrisma.mission.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ title: 'Titre modifié' }),
+        }),
+      );
+      expect(result.title).toBe('Titre modifié');
+    });
+
+    it('✅ met à jour les skillIds via delete + createMany dans la transaction', async () => {
+      const existing = makeMission();
+      mockPrisma.mission.findFirst.mockResolvedValue(existing);
+      setupTransaction();
+      mockPrisma.missionSkill.deleteMany.mockResolvedValue({});
+      mockPrisma.missionSkill.createMany.mockResolvedValue({});
+      mockPrisma.skill.findUnique.mockResolvedValue({ id: 1 });
+      mockPrisma.mission.update.mockResolvedValue(existing);
+
+      await service.update(10, 1, { skillIds: [1] });
+
+      expect(mockPrisma.missionSkill.deleteMany).toHaveBeenCalledWith({
+        where: { missionId: 1 },
+      });
+      expect(mockPrisma.missionSkill.createMany).toHaveBeenCalledWith({
+        data: [{ missionId: 1, skillId: 1 }],
+      });
+    });
+
+    it('❌ lève UnprocessableEntityException si la mission est archivée', async () => {
+      mockPrisma.mission.findFirst.mockResolvedValue(
+        makeMission({ status: MissionStatus.ARCHIVED }),
+      );
+
+      await expect(service.update(10, 1, { title: 'Test' })).rejects.toThrow(
+        UnprocessableEntityException,
+      );
+    });
+
+    it('❌ lève UnprocessableEntityException si la mission est DELETED', async () => {
+      mockPrisma.mission.findFirst.mockResolvedValue(
+        makeMission({ status: MissionStatus.DELETED }),
+      );
+
+      await expect(service.update(10, 1, { title: 'Test' })).rejects.toThrow(
+        UnprocessableEntityException,
+      );
+    });
+
+    it("✅ détecte un changement d'adresse et génère un warning si des participants existent", async () => {
+      const existing = makeMission({
+        _count: { participants: 2 },
+        address: {
+          id: 1,
+          street: 'Ancienne rue',
+          postalCode: '75001',
+          city: 'Paris',
+        },
+      });
+      const updated = makeMission({ title: existing.title });
+      mockPrisma.mission.findFirst.mockResolvedValue(existing);
+      mockPrisma.address.findFirst.mockResolvedValue(null);
+      mockPrisma.address.create.mockResolvedValue({ id: 2 });
+      setupTransaction();
+      mockPrisma.mission.update.mockResolvedValue(updated);
+      mockPrisma.association.findUnique.mockResolvedValue({
+        name: 'Asso Test',
+      });
+      mockPrisma.missionParticipant.findMany.mockResolvedValue([
+        { user: { email: 'p@test.com', firstName: 'Jean' } },
+      ]);
+
+      const result = await service.update(10, 1, {
+        address: { street: 'Nouvelle rue', postalCode: '75002', city: 'Lyon' },
+      });
+
+      expect(result.warnings).toBeDefined();
+      expect(result.warnings!.length).toBeGreaterThan(0);
+      expect(result.warnings![0]).toContain('adresse');
+    });
+
+    it('✅ génère un warning de dates si startDate change et des participants existent', async () => {
+      const existing = makeMission({ _count: { participants: 1 } });
+      const updated = makeMission();
+      mockPrisma.mission.findFirst.mockResolvedValue(existing);
+      setupTransaction();
+      mockPrisma.mission.update.mockResolvedValue(updated);
+      mockPrisma.association.findUnique.mockResolvedValue({
+        name: 'Asso Test',
+      });
+      mockPrisma.missionParticipant.findMany.mockResolvedValue([
+        { user: { email: 'p@test.com', firstName: 'Alice' } },
+      ]);
+
+      const result = await service.update(10, 1, {
+        startDate: '2025-08-01T00:00:00.000Z',
+      });
+
+      expect(result.warnings).toBeDefined();
+      expect(
+        result.warnings!.some((w) => w.toLowerCase().includes('date')),
+      ).toBe(true);
+    });
+
+    it("✅ n'envoie pas d'email si aucun participant même si l'adresse change", async () => {
+      const existing = makeMission({
+        _count: { participants: 0 },
+        address: {
+          id: 1,
+          street: 'Ancienne rue',
+          postalCode: '75001',
+          city: 'Paris',
+        },
+      });
+      const updated = makeMission();
+      mockPrisma.mission.findFirst.mockResolvedValue(existing);
+      mockPrisma.address.findFirst.mockResolvedValue(null);
+      mockPrisma.address.create.mockResolvedValue({ id: 2 });
+      setupTransaction();
+      mockPrisma.mission.update.mockResolvedValue(updated);
+
+      await service.update(10, 1, {
+        address: { street: 'Nouvelle rue', postalCode: '75002', city: 'Lyon' },
+      });
+
+      expect(mockMail.sendMissionUpdatedEmail).not.toHaveBeenCalled();
+    });
+
+    it("✅ ne génère aucun warning si l'adresse n'a pas réellement changé", async () => {
+      const addr = {
+        id: 1,
+        street: '1 rue Test',
+        postalCode: '75001',
+        city: 'Paris',
+      };
+      const existing = makeMission({
+        _count: { participants: 5 },
+        address: addr,
+      });
+      const updated = makeMission();
+      mockPrisma.mission.findFirst.mockResolvedValue(existing);
+      mockPrisma.address.findFirst.mockResolvedValue({ id: 1 });
+      setupTransaction();
+      mockPrisma.mission.update.mockResolvedValue(updated);
+
+      const result = await service.update(10, 1, {
+        address: { street: '1 rue Test', postalCode: '75001', city: 'Paris' },
+      });
+
+      expect(result.warnings).toHaveLength(0);
+    });
+  });
+
+  // ── archive ──────────────────────────────────────────────────────
+  describe('archive', () => {
+    it('✅ archive une mission ACTIVE et retourne le DTO mis à jour', async () => {
+      mockPrisma.mission.findFirst.mockResolvedValue(
+        makeMission({ status: MissionStatus.ACTIVE }),
+      );
+      mockPrisma.mission.update.mockResolvedValue(
+        makeMission({ status: MissionStatus.ARCHIVED }),
+      );
+
+      const result = await service.archive(10, 1);
+
+      expect(mockPrisma.mission.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 1 },
+          data: { status: MissionStatus.ARCHIVED },
+        }),
+      );
+      expect(result.status).toBe('ARCHIVED');
+    });
+
+    it('❌ lève UnprocessableEntityException si la mission est déjà archivée', async () => {
+      mockPrisma.mission.findFirst.mockResolvedValue(
+        makeMission({ status: MissionStatus.ARCHIVED }),
+      );
+
+      await expect(service.archive(10, 1)).rejects.toThrow(
+        UnprocessableEntityException,
+      );
+    });
+
+    it('❌ lève NotFoundException si la mission est introuvable', async () => {
+      mockPrisma.mission.findFirst.mockResolvedValue(null);
+
+      await expect(service.archive(10, 999)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ── unarchive ────────────────────────────────────────────────────
+  describe('unarchive', () => {
+    it('✅ désarchive une mission ARCHIVED et la remet en ACTIVE', async () => {
+      mockPrisma.mission.findFirst.mockResolvedValue(
+        makeMission({ status: MissionStatus.ARCHIVED }),
+      );
+      mockPrisma.mission.update.mockResolvedValue(
+        makeMission({ status: MissionStatus.ACTIVE }),
+      );
+
+      const result = await service.unarchive(10, 1);
+
+      expect(mockPrisma.mission.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: { status: MissionStatus.ACTIVE },
+        }),
+      );
+      expect(result.status).toBe('ACTIVE');
+    });
+
+    it('❌ lève UnprocessableEntityException si la mission est ACTIVE', async () => {
+      mockPrisma.mission.findFirst.mockResolvedValue(
+        makeMission({ status: MissionStatus.ACTIVE }),
+      );
+
+      await expect(service.unarchive(10, 1)).rejects.toThrow(
+        UnprocessableEntityException,
+      );
+    });
+
+    it('❌ lève NotFoundException si la mission est introuvable', async () => {
+      mockPrisma.mission.findFirst.mockResolvedValue(null);
+
+      await expect(service.unarchive(10, 999)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  // ── getStats ─────────────────────────────────────────────────────
+  describe('getStats', () => {
+    const setupStats = (
+      missions: any[],
+      participants: { createdAt: Date }[] = [],
+    ) => {
+      mockPrisma.mission.findMany.mockResolvedValue(missions);
+      mockPrisma.missionParticipant.findMany.mockResolvedValue(participants);
+    };
+
+    it('✅ retourne un résumé vide si aucune mission', async () => {
+      setupStats([]);
+
+      const result = await service.getStats(10, {});
+
+      expect(result.summary.totalMissions).toBe(0);
+      expect(result.summary.totalParticipants).toBe(0);
+      expect(result.summary.averageParticipantsPerMission).toBe(0);
+      expect(result.byType).toHaveLength(0);
+      expect(result.byMonth).toHaveLength(0);
+      expect(result.topMissions).toHaveLength(0);
+    });
+
+    it('✅ calcule correctement le total des missions et participants', async () => {
+      setupStats([
+        makeStatsMission({ id: 1, _count: { participants: 3 } }),
+        makeStatsMission({ id: 2, _count: { participants: 5 } }),
+      ]);
+
+      const result = await service.getStats(10, {});
+
+      expect(result.summary.totalMissions).toBe(2);
+      expect(result.summary.totalParticipants).toBe(8);
+      expect(result.summary.averageParticipantsPerMission).toBe(4);
+    });
+
+    it('✅ classe correctement les missions par statut', async () => {
+      const pastDate = new Date(Date.now() - 86400000 * 7);
+      setupStats([
+        makeStatsMission({ id: 1, status: MissionStatus.ACTIVE }),
+        makeStatsMission({ id: 2, status: MissionStatus.ARCHIVED }),
+        makeStatsMission({
+          id: 3,
+          status: MissionStatus.ACTIVE,
+          endDate: pastDate,
+        }),
+      ]);
+
+      const result = await service.getStats(10, {});
+
+      expect(result.summary.activeMissions).toBe(1);
+      expect(result.summary.archivedMissions).toBe(1);
+      expect(result.summary.pastMissions).toBe(1);
+    });
+
+    it('✅ regroupe les missions par type avec le bon label', async () => {
+      setupStats([
+        makeStatsMission({
+          id: 1,
+          type: ActivityType.MISSION,
+          _count: { participants: 2 },
+        }),
+        makeStatsMission({
+          id: 2,
+          type: ActivityType.MISSION,
+          _count: { participants: 1 },
+        }),
+        makeStatsMission({
+          id: 3,
+          type: ActivityType.EVENT,
+          _count: { participants: 0 },
+        }),
+      ]);
+
+      const result = await service.getStats(10, {});
+
+      const missionType = result.byType.find((t) => t.type === 'MISSION');
+      const eventType = result.byType.find((t) => t.type === 'EVENT');
+      expect(missionType?.count).toBe(2);
+      expect(missionType?.participants).toBe(3);
+      expect(missionType?.label).toBe('Mission');
+      expect(eventType?.count).toBe(1);
+      expect(eventType?.label).toBe('Événement');
+    });
+
+    it('✅ regroupe les missions par mois de création', async () => {
+      setupStats([
+        makeStatsMission({ id: 1, createdAt: new Date('2025-01-10') }),
+        makeStatsMission({ id: 2, createdAt: new Date('2025-01-20') }),
+        makeStatsMission({ id: 3, createdAt: new Date('2025-03-05') }),
+      ]);
+
+      const result = await service.getStats(10, {});
+
+      expect(result.byMonth).toHaveLength(2);
+      const jan = result.byMonth.find((m) => m.month === '2025-01');
+      expect(jan?.missions).toBe(2);
+      expect(jan?.label).toBe('Jan 2025');
+      const mar = result.byMonth.find((m) => m.month === '2025-03');
+      expect(mar?.missions).toBe(1);
+    });
+
+    it('✅ calcule la tendance des inscriptions par mois (participationByMonth)', async () => {
+      setupStats(
+        [makeStatsMission({ id: 1 })],
+        [
+          { createdAt: new Date('2025-02-10') },
+          { createdAt: new Date('2025-02-20') },
+          { createdAt: new Date('2025-03-15') },
+        ],
+      );
+
+      const result = await service.getStats(10, {});
+
+      const feb = result.participationByMonth.find(
+        (m) => m.month === '2025-02',
+      );
+      expect(feb?.participants).toBe(2);
+      const mar = result.participationByMonth.find(
+        (m) => m.month === '2025-03',
+      );
+      expect(mar?.participants).toBe(1);
+    });
+
+    it('✅ retourne au maximum 5 missions dans topMissions, triées par participants décroissant', async () => {
+      const missions = Array.from({ length: 7 }, (_, i) =>
+        makeStatsMission({
+          id: i + 1,
+          title: `Mission ${i + 1}`,
+          _count: { participants: 7 - i },
+        }),
+      );
+      setupStats(missions);
+
+      const result = await service.getStats(10, {});
+
+      expect(result.topMissions).toHaveLength(5);
+      expect(result.topMissions[0].participantsCount).toBe(7);
+      expect(result.topMissions[4].participantsCount).toBe(3);
+    });
+
+    it('✅ applique le filtre missionType dans la requête Prisma', async () => {
+      setupStats([makeStatsMission({ type: ActivityType.EVENT })]);
+
+      await service.getStats(10, { missionType: 'EVENT' });
+
+      expect(mockPrisma.mission.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ type: ActivityType.EVENT }),
+        }),
+      );
+    });
+
+    it('✅ applique les filtres startDate et endDate dans la requête Prisma', async () => {
+      setupStats([]);
+
+      await service.getStats(10, {
+        startDate: '2025-01-01',
+        endDate: '2025-06-30',
+      });
+
+      expect(mockPrisma.mission.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            createdAt: expect.objectContaining({
+              gte: expect.any(Date),
+              lte: expect.any(Date),
+            }),
+          }),
+        }),
+      );
+    });
+
+    it('✅ ne filtre pas par date si aucun filtre fourni', async () => {
+      setupStats([]);
+
+      await service.getStats(10, {});
+
+      expect(mockPrisma.mission.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.not.objectContaining({ createdAt: expect.anything() }),
+        }),
+      );
+    });
+
+    it('✅ ne requête pas missionParticipant si aucune mission retournée', async () => {
+      setupStats([]);
+
+      await service.getStats(10, {});
+
+      expect(mockPrisma.missionParticipant.findMany).not.toHaveBeenCalled();
+    });
+
+    it('✅ byMonth est trié chronologiquement', async () => {
+      setupStats([
+        makeStatsMission({ id: 1, createdAt: new Date('2025-03-01') }),
+        makeStatsMission({ id: 2, createdAt: new Date('2025-01-01') }),
+        makeStatsMission({ id: 3, createdAt: new Date('2025-02-01') }),
+      ]);
+
+      const result = await service.getStats(10, {});
+
+      expect(result.byMonth[0].month).toBe('2025-01');
+      expect(result.byMonth[1].month).toBe('2025-02');
+      expect(result.byMonth[2].month).toBe('2025-03');
+    });
+  });
+
+  // ── delete ───────────────────────────────────────────────────────
+  describe('delete', () => {
+    it("✅ supprime (soft) une mission sans participants sans envoyer d'email", async () => {
+      mockPrisma.mission.findFirst.mockResolvedValue(
+        makeMission({ _count: { participants: 0 } }),
+      );
+      mockPrisma.mission.update.mockResolvedValue(undefined);
+
+      await service.delete(10, 1);
+
+      expect(mockPrisma.mission.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 1 },
+          data: { status: MissionStatus.DELETED },
+        }),
+      );
+      expect(mockMail.sendMissionDeletedEmail).not.toHaveBeenCalled();
+    });
+
+    it('✅ supprime avec participants et prépare les emails de notification', async () => {
+      const mission = makeMission({
+        _count: { participants: 2 },
+        title: 'Mission supprimée',
+      });
+      mockPrisma.mission.findFirst.mockResolvedValue(mission);
+      mockPrisma.association.findUnique.mockResolvedValue({
+        name: 'Asso Test',
+      });
+      mockPrisma.missionParticipant.findMany.mockResolvedValue([
+        { user: { email: 'alice@test.com', firstName: 'Alice' } },
+        { user: { email: 'bob@test.com', firstName: 'Bob' } },
+      ]);
+      mockPrisma.mission.update.mockResolvedValue(undefined);
+
+      await service.delete(10, 1);
+
+      expect(mockPrisma.mission.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { status: MissionStatus.DELETED } }),
+      );
+      // Promise.allSettled est fire-and-forget, pas d'attente ici
+    });
+
+    it('❌ lève UnprocessableEntityException si la mission est archivée', async () => {
+      mockPrisma.mission.findFirst.mockResolvedValue(
+        makeMission({ status: MissionStatus.ARCHIVED }),
+      );
+
+      await expect(service.delete(10, 1)).rejects.toThrow(
+        UnprocessableEntityException,
+      );
+    });
+
+    it('❌ lève NotFoundException si la mission est introuvable', async () => {
+      mockPrisma.mission.findFirst.mockResolvedValue(null);
+
+      await expect(service.delete(10, 999)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ── getParticipants ──────────────────────────────────────────────
+  describe('getParticipants', () => {
+    const makeParticipantRow = (overrides: Partial<any> = {}): any => ({
+      userId: 42,
+      createdAt: new Date('2025-03-01'),
+      user: {
+        firstName: 'Alice',
+        lastName: 'Dupont',
+        age: 28,
+        profilePicture: null,
+        skills: [{ skill: { id: 1, label: 'Communication' } }],
+        causes: [{ cause: { id: 2, label: 'Écologie' } }],
+        availability: {
+          frequency: ['HOURS_WEEK'],
+          timeSlot: ['WEEKDAY'],
+          type: 'HYBRID',
+        },
+      },
+      ...overrides,
+    });
+
+    it('✅ retourne la liste des participants avec canRemove=true pour une mission active', async () => {
+      const mission = makeMission({
+        status: MissionStatus.ACTIVE,
+        endDate: null,
+      });
+      mockPrisma.mission.findFirst.mockResolvedValue(mission);
+      mockPrisma.missionParticipant.findMany.mockResolvedValue([
+        makeParticipantRow(),
+      ]);
+      mockPrisma.missionParticipant.groupBy = jest.fn().mockResolvedValue([]);
+
+      const result = await service.getParticipants(10, 1);
+
+      expect(result.total).toBe(1);
+      expect(result.canRemove).toBe(true);
+      expect(result.participants[0].firstName).toBe('Alice');
+      expect(result.participants[0].skills).toEqual([
+        { id: 1, label: 'Communication' },
+      ]);
+      expect(result.participants[0].causes).toEqual([
+        { id: 2, label: 'Écologie' },
+      ]);
+    });
+
+    it('✅ retourne canRemove=false pour une mission archivée', async () => {
+      const mission = makeMission({ status: MissionStatus.ARCHIVED });
+      mockPrisma.mission.findFirst.mockResolvedValue(mission);
+      mockPrisma.missionParticipant.findMany.mockResolvedValue([]);
+      mockPrisma.missionParticipant.groupBy = jest.fn().mockResolvedValue([]);
+
+      const result = await service.getParticipants(10, 1);
+
+      expect(result.canRemove).toBe(false);
+    });
+
+    it('✅ retourne canRemove=false pour une mission terminée (endDate passée)', async () => {
+      const mission = makeMission({
+        status: MissionStatus.ACTIVE,
+        endDate: new Date('2020-01-01'),
+      });
+      mockPrisma.mission.findFirst.mockResolvedValue(mission);
+      mockPrisma.missionParticipant.findMany.mockResolvedValue([]);
+      mockPrisma.missionParticipant.groupBy = jest.fn().mockResolvedValue([]);
+
+      const result = await service.getParticipants(10, 1);
+
+      expect(result.canRemove).toBe(false);
+    });
+
+    it('✅ calcule correctement completedMissionsCount depuis le groupBy', async () => {
+      const mission = makeMission();
+      mockPrisma.mission.findFirst.mockResolvedValue(mission);
+      mockPrisma.missionParticipant.findMany.mockResolvedValue([
+        makeParticipantRow({ userId: 42 }),
+      ]);
+      mockPrisma.missionParticipant.groupBy = jest
+        .fn()
+        .mockResolvedValue([{ userId: 42, _count: { userId: 5 } }]);
+
+      const result = await service.getParticipants(10, 1);
+
+      expect(result.participants[0].completedMissionsCount).toBe(5);
+    });
+
+    it('✅ retourne 0 completedMissionsCount si aucun historique', async () => {
+      const mission = makeMission();
+      mockPrisma.mission.findFirst.mockResolvedValue(mission);
+      mockPrisma.missionParticipant.findMany.mockResolvedValue([
+        makeParticipantRow({ userId: 42 }),
+      ]);
+      mockPrisma.missionParticipant.groupBy = jest.fn().mockResolvedValue([]);
+
+      const result = await service.getParticipants(10, 1);
+
+      expect(result.participants[0].completedMissionsCount).toBe(0);
+    });
+
+    it("✅ retourne availability=null si le participant n'a pas renseigné ses dispos", async () => {
+      const mission = makeMission();
+      mockPrisma.mission.findFirst.mockResolvedValue(mission);
+      mockPrisma.missionParticipant.findMany.mockResolvedValue([
+        makeParticipantRow({
+          user: {
+            firstName: 'Bob',
+            lastName: 'Martin',
+            age: null,
+            profilePicture: null,
+            skills: [],
+            causes: [],
+            availability: null,
+          },
+        }),
+      ]);
+      mockPrisma.missionParticipant.groupBy = jest.fn().mockResolvedValue([]);
+
+      const result = await service.getParticipants(10, 1);
+
+      expect(result.participants[0].availability).toBeNull();
+    });
+
+    it('✅ retourne une liste vide si aucun participant', async () => {
+      mockPrisma.mission.findFirst.mockResolvedValue(makeMission());
+      mockPrisma.missionParticipant.findMany.mockResolvedValue([]);
+      mockPrisma.missionParticipant.groupBy = jest.fn().mockResolvedValue([]);
+
+      const result = await service.getParticipants(10, 1);
+
+      expect(result.total).toBe(0);
+      expect(result.participants).toHaveLength(0);
+    });
+
+    it('❌ lève NotFoundException si la mission est introuvable', async () => {
+      mockPrisma.mission.findFirst.mockResolvedValue(null);
+
+      await expect(service.getParticipants(10, 999)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  // ── removeParticipant ────────────────────────────────────────────
+  describe('removeParticipant', () => {
+    it('✅ supprime le participant et envoie un email de notification', async () => {
+      const mission = makeMission({
+        status: MissionStatus.ACTIVE,
+        endDate: null,
+      });
+      mockPrisma.mission.findFirst.mockResolvedValue(mission);
+      mockPrisma.missionParticipant.findUnique = jest.fn().mockResolvedValue({
+        userId: 42,
+        user: { email: 'alice@test.com', firstName: 'Alice' },
+      });
+      mockPrisma.association.findUnique.mockResolvedValue({
+        name: 'Asso Test',
+      });
+      mockPrisma.missionParticipant.delete = jest
+        .fn()
+        .mockResolvedValue(undefined);
+      mockMail.sendParticipantRemovedEmail = jest
+        .fn()
+        .mockResolvedValue(undefined);
+
+      await service.removeParticipant(10, 1, 42);
+
+      expect(mockPrisma.missionParticipant.delete).toHaveBeenCalledWith({
+        where: { missionId_userId: { missionId: 1, userId: 42 } },
+      });
+    });
+
+    it('❌ lève ForbiddenException si la mission est archivée', async () => {
+      mockPrisma.mission.findFirst.mockResolvedValue(
+        makeMission({ status: MissionStatus.ARCHIVED }),
+      );
+
+      await expect(service.removeParticipant(10, 1, 42)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('❌ lève ForbiddenException si la mission est terminée (endDate passée)', async () => {
+      mockPrisma.mission.findFirst.mockResolvedValue(
+        makeMission({
+          status: MissionStatus.ACTIVE,
+          endDate: new Date('2020-01-01'),
+        }),
+      );
+
+      await expect(service.removeParticipant(10, 1, 42)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it("❌ lève NotFoundException si le participant n'est pas inscrit", async () => {
+      mockPrisma.mission.findFirst.mockResolvedValue(makeMission());
+      mockPrisma.missionParticipant.findUnique = jest
+        .fn()
+        .mockResolvedValue(null);
+
+      await expect(service.removeParticipant(10, 1, 999)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('❌ lève NotFoundException si la mission est introuvable', async () => {
+      mockPrisma.mission.findFirst.mockResolvedValue(null);
+
+      await expect(service.removeParticipant(10, 999, 42)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+});

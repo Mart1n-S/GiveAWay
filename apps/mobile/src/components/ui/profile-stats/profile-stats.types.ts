@@ -1,6 +1,8 @@
 import { User } from "@repo/shared";
 
 export interface ProfileStatsProps {
-  user: User;
-  className?: string;
+  readonly user: User;
+  readonly className?: string;
+  readonly onFollowsPress?: () => void;
+  readonly onHelpedPress?: () => void;
 }

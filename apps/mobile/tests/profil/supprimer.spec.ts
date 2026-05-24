@@ -1,14 +1,14 @@
-import { test, expect, Page } from "@playwright/test";
+import { test, expect, Page } from "../_fixtures";
 import {
-  cleanDatabase,
+  cleanDatabaseForWorker,
   createTestUser,
   createTestAssociation,
 } from "../../../api/test/prisma-test-helper";
 
 const VALID_PASSWORD = "Password123!";
 
-test.beforeEach(async () => {
-  await cleanDatabase();
+test.beforeEach(async ({}, testInfo) => {
+  await cleanDatabaseForWorker(testInfo.parallelIndex);
 });
 
 // ===========================================================================
@@ -69,7 +69,7 @@ test.describe("Page Suppression de compte - Navigation", () => {
   test("devrait naviguer vers la page de suppression depuis le profil", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToProfile(page, user, isMobile);
@@ -83,7 +83,7 @@ test.describe("Page Suppression de compte - Navigation", () => {
   test("devrait retourner à la page profil en cliquant sur Annuler", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToDeleteAccount(page, user, isMobile);
@@ -101,7 +101,7 @@ test.describe("Page Suppression de compte - Affichage", () => {
   test("devrait afficher les avertissements et le formulaire", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToDeleteAccount(page, user, isMobile);
@@ -121,8 +121,8 @@ test.describe("Page Suppression de compte - Affichage", () => {
   test("devrait afficher le bouton de soumission désactivé si l'utilisateur est propriétaire d'une association", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     // L'utilisateur doit se reconnecter pour avoir les associations dans le token
@@ -144,7 +144,7 @@ test.describe("Page Suppression de compte - Erreurs", () => {
   test("devrait afficher une erreur si le mot de passe est incorrect", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToDeleteAccount(page, user, isMobile);
@@ -165,7 +165,7 @@ test.describe("Page Suppression de compte - Erreurs", () => {
   test("devrait rester sur la page si le champ est vide à la soumission", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToDeleteAccount(page, user, isMobile);
@@ -184,7 +184,7 @@ test.describe("Page Suppression de compte - Succès", () => {
   test("devrait supprimer le compte et rediriger vers l'accueil", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToDeleteAccount(page, user, isMobile);

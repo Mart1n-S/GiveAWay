@@ -91,6 +91,7 @@ export function MissionGrid({
             startDate={mission.startDate}
             causes={mission.causes.map((c) => c.label)}
             volunteerTypes={mission.volunteerTypes.map((v) => v.label)}
+            matchScore={mission.matchScore}
             testID={`mission-card-${mission.id}`}
             onPress={
               onMissionPress

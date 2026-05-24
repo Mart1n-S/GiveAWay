@@ -4,7 +4,7 @@ import { cssInterop } from "nativewind";
 import { Text } from "../text/text";
 import { TagBadge } from "../tag-badge/tag-badge";
 import { MissionCardProps } from "./mission-card.types";
-import type { MissionFrequency } from "@repo/shared";
+import { MATCH_THRESHOLD, type MissionFrequency } from "@repo/shared";
 
 import HandHeartIconSource from "@assets/icons/ic_hand_heart.svg";
 import CalendarIconSource from "@assets/icons/ic_calendar.svg";
@@ -103,11 +103,16 @@ export function MissionCard({
   onPress,
   className,
   testID,
+  matchScore,
 }: MissionCardProps) {
   const { label, badgeVariant, bgClass, iconClass, Icon } = typeConfig[type];
 
   // Badge contextuel : "Ouvert à tous" = idéal pour débuter
   const isOpenToAll = volunteerTypes.includes("Ouvert à tous");
+
+  // Mise en avant : score connu ET ≥ seuil
+  const isHighlighted =
+    typeof matchScore === "number" && matchScore >= MATCH_THRESHOLD;
 
   return (
     <Pressable
@@ -117,9 +122,11 @@ export function MissionCard({
       className={clsx(
         // flex-1 : remplit la hauteur du wrapper étiré par la grille (égalise les
         // cards d'une même ligne) ; flex-col pour empiler header + footer.
-        "flex-1 flex-col bg-white border border-grey-200 rounded-2xl overflow-hidden",
+        "flex-1 flex-col bg-white rounded-2xl overflow-hidden border-2",
+        isHighlighted ? "border-amber-400" : "border-grey-200",
         onPress && [
-          "hover:border-primary hover:shadow-md",
+          isHighlighted ? "hover:border-amber-500" : "hover:border-primary",
+          "hover:shadow-md",
           "active:bg-grey-50",
           "web:cursor-pointer",
           "web:outline-none",
@@ -128,6 +135,18 @@ export function MissionCard({
         className,
       )}
     >
+      {isHighlighted && (
+        <View
+          testID={testID ? `${testID}-match-badge` : "mission-card-match-badge"}
+          className="flex-row items-center gap-1 self-start ml-3 mt-3 px-2 py-0.5 bg-amber-100 rounded-full"
+          accessibilityLabel={`Recommandé, score ${matchScore} sur 100`}
+        >
+          <Text className="text-xs leading-none text-amber-600">★</Text>
+          <Text className="text-xs font-semibold text-amber-700">
+            Recommandé · {matchScore}%
+          </Text>
+        </View>
+      )}
       {/* Header avec icône de type — flex-1 pour pousser le footer en bas */}
       <View className="flex-1 p-4 pb-0">
         <View className="flex-row items-center gap-3 mb-3">

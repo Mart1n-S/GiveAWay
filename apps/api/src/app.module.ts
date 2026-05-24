@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { MulterModule } from '@nestjs/platform-express';
+import { ScheduleModule } from '@nestjs/schedule';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { ProfileModule } from './profile/profile.module';
@@ -13,6 +14,10 @@ import { FilesModule } from './common/files/files.module';
 import { ReferenceModule } from './reference/reference.module';
 import { MissionModule } from './mission/mission.module';
 import { AssociationModule } from './association/association.module';
+import { AdminModule } from './admin/admin.module';
+import { MessagingModule } from './messaging/messaging.module';
+import { NotificationModule } from './notification/notification.module';
+import { MissionReminderModule } from './reminders/mission-reminder.module';
 
 @Module({
   imports: [
@@ -32,6 +37,9 @@ import { AssociationModule } from './association/association.module';
       // On utilise le storage mémoire par défaut
       // Chaque FileInterceptor peut override cette config si besoin
     }),
+
+    // Planificateur (cron jobs)
+    ScheduleModule.forRoot(),
 
     // 2. Sécurité Anti-Bot (Rate Limiting)
     // Configuration "Large" pour l'ensemble du site (Navigation normale)
@@ -67,6 +75,10 @@ import { AssociationModule } from './association/association.module';
     ReferenceModule, // Endpoints de référence (compétences, causes, etc.)
     AssociationModule, // Gestion des associations (profil, membres, transfert, recherche par géolocalisation)
     MissionModule, // Listing des missions (route publique)
+    AdminModule, // Back-office d'administration (auth, modération, CRUD, stats)
+    NotificationModule, // Notifications push Expo
+    MessagingModule, // Messagerie temps réel (WebSocket)
+    MissionReminderModule, // Cron quotidien : rappel J-1 des missions inscrites
   ],
   controllers: [],
   providers: [

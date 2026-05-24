@@ -20,6 +20,7 @@ const makeMockResponse = (
 });
 
 const defaultQuery: MissionListQueryDto = { page: 1, pageSize: 12 };
+const anonReq = {} as { user?: { id: number } };
 
 describe('MissionController', () => {
   let controller: MissionController;
@@ -41,9 +42,12 @@ describe('MissionController', () => {
     it('✅ Doit déléguer au service avec les valeurs par défaut', async () => {
       mockMissionService.findAll.mockResolvedValue(makeMockResponse());
 
-      const result = await controller.findAll(defaultQuery);
+      const result = await controller.findAll(defaultQuery, anonReq);
 
-      expect(mockMissionService.findAll).toHaveBeenCalledWith(defaultQuery);
+      expect(mockMissionService.findAll).toHaveBeenCalledWith(
+        defaultQuery,
+        undefined,
+      );
       expect(result.missions).toEqual([]);
     });
 
@@ -60,9 +64,9 @@ describe('MissionController', () => {
         makeMockResponse({ page: 2, pageSize: 6, total: 20 }),
       );
 
-      const result = await controller.findAll(query);
+      const result = await controller.findAll(query, anonReq);
 
-      expect(mockMissionService.findAll).toHaveBeenCalledWith(query);
+      expect(mockMissionService.findAll).toHaveBeenCalledWith(query, undefined);
       expect(result.page).toBe(2);
       expect(result.pageSize).toBe(6);
     });
@@ -75,16 +79,19 @@ describe('MissionController', () => {
       };
       mockMissionService.findAll.mockResolvedValue(makeMockResponse());
 
-      await controller.findAll(query);
+      await controller.findAll(query, anonReq);
 
-      expect(mockMissionService.findAll).toHaveBeenCalledWith(query);
+      expect(mockMissionService.findAll).toHaveBeenCalledWith(query, undefined);
     });
 
     it('✅ Doit retourner la réponse du service telle quelle', async () => {
       const expected = makeMockResponse({ total: 42, page: 3 });
       mockMissionService.findAll.mockResolvedValue(expected);
 
-      const result = await controller.findAll({ page: 3, pageSize: 12 });
+      const result = await controller.findAll(
+        { page: 3, pageSize: 12 },
+        anonReq,
+      );
 
       expect(result).toEqual(expected);
     });
@@ -92,7 +99,7 @@ describe('MissionController', () => {
     it('✅ Doit retourner un résultat vide quand le service ne trouve rien', async () => {
       mockMissionService.findAll.mockResolvedValue(makeMockResponse());
 
-      const result = await controller.findAll(defaultQuery);
+      const result = await controller.findAll(defaultQuery, anonReq);
 
       expect(result.missions).toHaveLength(0);
       expect(result.total).toBe(0);
@@ -103,7 +110,7 @@ describe('MissionController', () => {
         new Error('Database connection failed'),
       );
 
-      await expect(controller.findAll(defaultQuery)).rejects.toThrow(
+      await expect(controller.findAll(defaultQuery, anonReq)).rejects.toThrow(
         'Database connection failed',
       );
     });
@@ -116,9 +123,12 @@ describe('MissionController', () => {
     it('✅ Doit déléguer au service avec le query fourni', async () => {
       mockMissionService.findForMap.mockResolvedValue([]);
 
-      const result = await controller.findForMap(defaultQuery);
+      const result = await controller.findForMap(defaultQuery, anonReq);
 
-      expect(mockMissionService.findForMap).toHaveBeenCalledWith(defaultQuery);
+      expect(mockMissionService.findForMap).toHaveBeenCalledWith(
+        defaultQuery,
+        undefined,
+      );
       expect(result).toEqual([]);
     });
 
@@ -127,9 +137,9 @@ describe('MissionController', () => {
         new Error('Database error'),
       );
 
-      await expect(controller.findForMap(defaultQuery)).rejects.toThrow(
-        'Database error',
-      );
+      await expect(
+        controller.findForMap(defaultQuery, anonReq),
+      ).rejects.toThrow('Database error');
     });
   });
 

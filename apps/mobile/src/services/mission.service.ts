@@ -33,6 +33,9 @@ function buildParams(query: MissionListQuery): Record<string, string> {
   if (query.hasAvailableSpots !== undefined) {
     p.hasAvailableSpots = String(query.hasAvailableSpots);
   }
+  if (query.associationId !== undefined) {
+    p.associationId = String(query.associationId);
+  }
 
   // Préfère les tableaux aux valeurs singulières
   if (query.types?.length) {
@@ -52,6 +55,8 @@ function buildParams(query: MissionListQuery): Record<string, string> {
     p.publicTypeIds = serializeIds(query.publicTypeIds);
   if (query.volunteerTypeIds?.length)
     p.volunteerTypeIds = serializeIds(query.volunteerTypeIds);
+
+  if (query.withMatching) p.withMatching = "true";
 
   return p;
 }
@@ -210,5 +215,22 @@ export const MissionService = {
     } catch {
       return [];
     }
+  },
+
+  checkParticipation: async (
+    missionId: number,
+  ): Promise<{ isParticipating: boolean }> => {
+    const { data } = await api.get<{ isParticipating: boolean }>(
+      `/profile/missions/${missionId}/participation`,
+    );
+    return data;
+  },
+
+  participate: async (missionId: number): Promise<void> => {
+    await api.post(`/profile/missions/${missionId}/participate`);
+  },
+
+  cancelParticipation: async (missionId: number): Promise<void> => {
+    await api.delete(`/profile/missions/${missionId}/participate`);
   },
 };

@@ -36,6 +36,11 @@ export default tseslint.config(
       '**/*.service.ts',
       '**/*.controller.ts',
       '**/*.strategy.ts',
+      '**/*.guard.ts',
+      '**/*.interceptor.ts',
+      '**/*.decorator.ts',
+      '**/*.gateway.ts',
+      '**/*.events.ts',
       '**/*.spec.ts',
       '**/*.e2e-spec.ts',
       '**/prisma-test-helper.ts',
@@ -45,6 +50,14 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-assignment': 'off',
       '@typescript-eslint/no-unsafe-call': 'off',
       '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+      '@typescript-eslint/no-redundant-type-constituents': 'off',
+    },
+  },
+  {
+    files: ['**/*.spec.ts', '**/*.e2e-spec.ts'],
+    rules: {
+      '@typescript-eslint/unbound-method': 'off',
     },
   },
 );

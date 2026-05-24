@@ -151,4 +151,49 @@ describe("MissionMapItem", () => {
       expect(missions).toHaveLength(2);
     });
   });
+
+  // ----------------------------------------------------------------
+  // ✅ Champs de matching (matchScore + matchBreakdown)
+  // ----------------------------------------------------------------
+  describe("Matching (matchScore + matchBreakdown)", () => {
+    it("Doit accepter un MissionMapItem sans matchScore (cas non authentifié)", () => {
+      const item: MissionMapItem = {
+        id: 1,
+        title: "M",
+        description: "D",
+        type: "MISSION",
+        availabilityType: "ON_SITE",
+        latitude: 48.85,
+        longitude: 2.35,
+        city: "Paris",
+        association: { name: "A", logoUrl: null },
+      };
+      expect(item.matchScore).toBeUndefined();
+      expect(item.matchBreakdown).toBeUndefined();
+    });
+
+    it("Doit accepter un MissionMapItem avec matchScore et matchBreakdown", () => {
+      const item: MissionMapItem = {
+        id: 1,
+        title: "M",
+        description: "D",
+        type: "MISSION",
+        availabilityType: "ON_SITE",
+        latitude: 48.85,
+        longitude: 2.35,
+        city: "Paris",
+        association: { name: "A", logoUrl: null },
+        matchScore: 65,
+        matchBreakdown: {
+          causes: 20,
+          skills: 15,
+          availability: 20,
+          distance: 10,
+          history: 0,
+        },
+      };
+      expect(item.matchScore).toBe(65);
+      expect(item.matchBreakdown?.distance).toBe(10);
+    });
+  });
 });

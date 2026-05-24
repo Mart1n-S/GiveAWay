@@ -21,6 +21,7 @@ const mockAuthService = {
   prisma: {
     user: { findUnique: jest.fn(), create: jest.fn() },
     token: { deleteMany: jest.fn(), create: jest.fn() },
+    association: { findFirst: jest.fn() },
     $transaction: jest
       .fn()
       .mockImplementation(async (fn: (tx: typeof mockTx) => Promise<unknown>) =>
@@ -129,6 +130,8 @@ describe('RegisterService', () => {
     mockTx.user.create.mockResolvedValue({ id: 1 });
     mockTx.association.create.mockResolvedValue({ id: 42 });
     mockTx.associationDocument.createMany.mockResolvedValue({ count: 0 });
+    // Par défaut : pas de doublon d'association détecté.
+    mockAuthService.prisma.association.findFirst.mockResolvedValue(null);
   });
 
   // ===========================================================================
@@ -547,6 +550,149 @@ describe('RegisterService', () => {
         ).rejects.toThrow('UPLOAD_FAIL');
 
         expect(mockFileService.deleteFile).toHaveBeenCalledWith('docs/first');
+      });
+    });
+
+    // ----------------------------------------------------------------
+    // Dédoublonnage — bloque si une asso existe déjà en PENDING/VALIDATED
+    // (vérification post checkEmailAvailability, avant l'API gouv)
+    // ----------------------------------------------------------------
+    describe('Dédoublonnage association (assertNoActiveDuplicateAssociation)', () => {
+      it('❌ Doit lever ConflictException si une asso VALIDATED existe avec le même RNA', async () => {
+        mockAuthService.checkEmailAvailability.mockResolvedValue(undefined);
+        mockAuthService.prisma.association.findFirst.mockResolvedValue({
+          name: 'Les Amis du Quartier',
+          status: AssociationStatus.VALIDATED,
+        });
+
+        await expect(service.registerAssociation(assocDto)).rejects.toThrow(
+          ConflictException,
+        );
+        await expect(service.registerAssociation(assocDto)).rejects.toThrow(
+          /déjà validée/,
+        );
+        expect(
+          mockVerificationService.verifyAssociation,
+        ).not.toHaveBeenCalled();
+        expect(mockTx.association.create).not.toHaveBeenCalled();
+      });
+
+      it('❌ Doit lever ConflictException si une asso PENDING existe avec le même RNA', async () => {
+        mockAuthService.checkEmailAvailability.mockResolvedValue(undefined);
+        mockAuthService.prisma.association.findFirst.mockResolvedValue({
+          name: 'Les Amis du Quartier',
+          status: AssociationStatus.PENDING,
+        });
+
+        await expect(service.registerAssociation(assocDto)).rejects.toThrow(
+          /déjà en cours de validation/,
+        );
+      });
+
+      it('✅ Doit interroger Prisma uniquement avec OR=[{rna}] quand seul le RNA est fourni', async () => {
+        mockAuthService.checkEmailAvailability.mockResolvedValue(undefined);
+        mockVerificationService.verifyAssociation.mockResolvedValue(
+          verifiedResult,
+        );
+
+        await service.registerAssociation(assocDto);
+
+        expect(
+          mockAuthService.prisma.association.findFirst,
+        ).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: expect.objectContaining({
+              status: {
+                in: [AssociationStatus.PENDING, AssociationStatus.VALIDATED],
+              },
+              OR: [{ rna: assocDto.rna }],
+            }),
+            select: { name: true, status: true },
+          }),
+        );
+      });
+
+      it('✅ Doit interroger Prisma avec OR=[{siret},{rna}] quand les deux sont fournis', async () => {
+        mockAuthService.checkEmailAvailability.mockResolvedValue(undefined);
+        mockVerificationService.verifyAssociation.mockResolvedValue(
+          verifiedResult,
+        );
+
+        const dtoBoth = { ...assocDto, siret: '12345678901234' };
+        await service.registerAssociation(dtoBoth);
+
+        expect(
+          mockAuthService.prisma.association.findFirst,
+        ).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: expect.objectContaining({
+              OR: [{ siret: '12345678901234' }, { rna: assocDto.rna }],
+            }),
+          }),
+        );
+      });
+
+      it('✅ Fallback sur le nom (insensitive) quand ni SIRET ni RNA ne sont fournis', async () => {
+        mockAuthService.checkEmailAvailability.mockResolvedValue(undefined);
+        mockVerificationService.verifyAssociation.mockResolvedValue(
+          verifiedResult,
+        );
+
+        const dtoNoIds = { ...assocDto, siret: undefined, rna: undefined };
+        await service.registerAssociation(dtoNoIds as RegisterAssociationDto);
+
+        expect(
+          mockAuthService.prisma.association.findFirst,
+        ).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: expect.objectContaining({
+              OR: [{ name: { equals: assocDto.name, mode: 'insensitive' } }],
+            }),
+          }),
+        );
+      });
+
+      it('✅ Ne bloque PAS si la seule asso existante est REJECTED ou SUSPENDED', async () => {
+        mockAuthService.checkEmailAvailability.mockResolvedValue(undefined);
+        mockVerificationService.verifyAssociation.mockResolvedValue(
+          verifiedResult,
+        );
+        // findFirst filtre déjà sur PENDING/VALIDATED côté SQL — on simule
+        // donc "rien trouvé" pour confirmer que le flux poursuit.
+        mockAuthService.prisma.association.findFirst.mockResolvedValue(null);
+
+        const result = await service.registerAssociation(assocDto);
+
+        expect(result.requiresManualReview).toBe(false);
+        expect(mockTx.association.create).toHaveBeenCalled();
+      });
+
+      it('❌ Le dédoublonnage tourne APRÈS le check email (email pris court-circuite)', async () => {
+        mockAuthService.checkEmailAvailability.mockRejectedValue(
+          new ConflictException(),
+        );
+
+        await expect(service.registerAssociation(assocDto)).rejects.toThrow(
+          ConflictException,
+        );
+        expect(
+          mockAuthService.prisma.association.findFirst,
+        ).not.toHaveBeenCalled();
+      });
+
+      it('❌ Le dédoublonnage tourne AVANT la vérification gouvernementale', async () => {
+        mockAuthService.checkEmailAvailability.mockResolvedValue(undefined);
+        mockAuthService.prisma.association.findFirst.mockResolvedValue({
+          name: 'Les Amis du Quartier',
+          status: AssociationStatus.VALIDATED,
+        });
+
+        await expect(service.registerAssociation(assocDto)).rejects.toThrow(
+          ConflictException,
+        );
+        expect(
+          mockVerificationService.verifyAssociation,
+        ).not.toHaveBeenCalled();
       });
     });
   });

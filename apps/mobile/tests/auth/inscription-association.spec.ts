@@ -1,16 +1,16 @@
-import { test, expect, Page } from "@playwright/test";
+import { test, expect, Page } from "../_fixtures";
 import {
-  cleanDatabase,
+  cleanDatabaseForWorker,
   createTestUser,
-  prisma,
+  prisma, getPrisma
 } from "../../../api/test/prisma-test-helper";
 import {
   MOCK_VALID_NAME,
   MOCK_VALID_POSTAL,
 } from "../mock-association-api";
 
-test.beforeEach(async () => {
-  await cleanDatabase();
+test.beforeEach(async ({}, testInfo) => {
+  await cleanDatabaseForWorker(testInfo.parallelIndex);
 });
 
 // ----------------------------------------------------------------
@@ -149,7 +149,7 @@ async function fillAssociationForm(page: Page, overrides: AssociationFormData) {
 async function validateOtp(page: Page, email: string) {
   let userInDb = null;
   for (let i = 0; i < 10; i++) {
-    userInDb = await prisma.user.findUnique({ where: { email } });
+    userInDb = await getPrisma(test.info().parallelIndex).user.findUnique({ where: { email } });
     if (userInDb) break;
     await page.waitForTimeout(200);
   }
@@ -167,7 +167,7 @@ test.describe("Flux d'inscription association — API validée (sans revue manue
   test("devrait créer le compte + l'association, afficher l'écran OTP, valider le code et rediriger", async ({
     page,
   }) => {
-    const uniqueEmail = `asso.ok.${Date.now()}@test.com`;
+    const uniqueEmail = `asso.ok.w${test.info().parallelIndex}.${Date.now()}@test.com`;
 
     await goToAssociationRegister(page);
 
@@ -186,7 +186,7 @@ test.describe("Flux d'inscription association — API validée (sans revue manue
     });
 
     // L'association ne doit PAS être en revue manuelle (mock cohérent)
-    const association = await prisma.association.findFirst({
+    const association = await getPrisma(test.info().parallelIndex).association.findFirst({
       where: { name: MOCK_VALID_NAME, rna: RNA.VALID_CONSISTENT },
     });
     expect(association).not.toBeNull();
@@ -196,7 +196,7 @@ test.describe("Flux d'inscription association — API validée (sans revue manue
     await expect(page).toHaveURL(/.*connexion/);
 
     // L'utilisateur doit être lié à l'association en tant qu'OWNER
-    const user = await prisma.user.findUnique({
+    const user = await getPrisma(test.info().parallelIndex).user.findUnique({
       where: { email: uniqueEmail },
       include: { associations: true },
     });
@@ -212,7 +212,7 @@ test.describe("Flux d'inscription association — API validée mais incohérente
   test("devrait créer l'association avec requiresManualReview=true si le nom diffère de l'API", async ({
     page,
   }) => {
-    const uniqueEmail = `asso.incoherent.${Date.now()}@test.com`;
+    const uniqueEmail = `asso.incoherent.w${test.info().parallelIndex}.${Date.now()}@test.com`;
 
     await goToAssociationRegister(page);
 
@@ -228,7 +228,7 @@ test.describe("Flux d'inscription association — API validée mais incohérente
       timeout: 15000,
     });
 
-    const association = await prisma.association.findFirst({
+    const association = await getPrisma(test.info().parallelIndex).association.findFirst({
       where: { rna: RNA.VALID_INCONSISTENT_NAME },
     });
     expect(association).not.toBeNull();
@@ -243,7 +243,7 @@ test.describe("Flux d'inscription association — identifiant inconnu de l'API",
   test("devrait créer l'association avec requiresManualReview=true si l'API ne renvoie aucun résultat", async ({
     page,
   }) => {
-    const uniqueEmail = `asso.unknown.${Date.now()}@test.com`;
+    const uniqueEmail = `asso.unknown.w${test.info().parallelIndex}.${Date.now()}@test.com`;
 
     await goToAssociationRegister(page);
 
@@ -259,7 +259,7 @@ test.describe("Flux d'inscription association — identifiant inconnu de l'API",
       timeout: 15000,
     });
 
-    const association = await prisma.association.findFirst({
+    const association = await getPrisma(test.info().parallelIndex).association.findFirst({
       where: { rna: RNA.UNKNOWN_IDENTIFIER },
     });
     expect(association?.requiresManualReview).toBe(true);
@@ -273,7 +273,7 @@ test.describe("Flux d'inscription association — entité non-association", () =
   test("devrait basculer en revue manuelle si l'entité trouvée n'est pas une association (est_association=false)", async ({
     page,
   }) => {
-    const uniqueEmail = `asso.notassoc.${Date.now()}@test.com`;
+    const uniqueEmail = `asso.notassoc.w${test.info().parallelIndex}.${Date.now()}@test.com`;
 
     await goToAssociationRegister(page);
 
@@ -289,7 +289,7 @@ test.describe("Flux d'inscription association — entité non-association", () =
       timeout: 15000,
     });
 
-    const association = await prisma.association.findFirst({
+    const association = await getPrisma(test.info().parallelIndex).association.findFirst({
       where: { rna: RNA.NOT_AN_ASSOCIATION },
     });
     expect(association?.requiresManualReview).toBe(true);
@@ -303,7 +303,7 @@ test.describe("Flux d'inscription association — état administratif inconnu", 
   test("devrait basculer en revue manuelle si l'état administratif n'est ni A ni F", async ({
     page,
   }) => {
-    const uniqueEmail = `asso.unknownstate.${Date.now()}@test.com`;
+    const uniqueEmail = `asso.unknownstate.w${test.info().parallelIndex}.${Date.now()}@test.com`;
 
     await goToAssociationRegister(page);
 
@@ -319,7 +319,7 @@ test.describe("Flux d'inscription association — état administratif inconnu", 
       timeout: 15000,
     });
 
-    const association = await prisma.association.findFirst({
+    const association = await getPrisma(test.info().parallelIndex).association.findFirst({
       where: { rna: RNA.UNKNOWN_STATE },
     });
     expect(association?.requiresManualReview).toBe(true);
@@ -333,7 +333,7 @@ test.describe("Flux d'inscription association — association dissoute", () => {
   test("devrait BLOQUER l'inscription si l'association est dissoute", async ({
     page,
   }) => {
-    const uniqueEmail = `asso.dissolved.${Date.now()}@test.com`;
+    const uniqueEmail = `asso.dissolved.w${test.info().parallelIndex}.${Date.now()}@test.com`;
 
     await goToAssociationRegister(page);
 
@@ -352,9 +352,9 @@ test.describe("Flux d'inscription association — association dissoute", () => {
     await expect(page).toHaveURL(/.*inscription\/association/);
 
     // Aucune association ni user ne doivent avoir été créés
-    const user = await prisma.user.findUnique({ where: { email: uniqueEmail } });
+    const user = await getPrisma(test.info().parallelIndex).user.findUnique({ where: { email: uniqueEmail } });
     expect(user).toBeNull();
-    const association = await prisma.association.findFirst({
+    const association = await getPrisma(test.info().parallelIndex).association.findFirst({
       where: { rna: RNA.DISSOLVED },
     });
     expect(association).toBeNull();
@@ -368,7 +368,7 @@ test.describe("Flux d'inscription association — email déjà utilisé", () => 
   test("devrait afficher une erreur si l'email est déjà utilisé", async ({
     page,
   }, testInfo) => {
-    const existingUser = await createTestUser(testInfo.workerIndex);
+    const existingUser = await createTestUser(testInfo.parallelIndex);
 
     await goToAssociationRegister(page);
 
@@ -390,7 +390,7 @@ test.describe("Flux d'inscription association — validation RNA/SIRET", () => {
   test("devrait afficher une erreur si ni RNA ni SIRET ne sont renseignés", async ({
     page,
   }) => {
-    const uniqueEmail = `asso.norna.${Date.now()}@test.com`;
+    const uniqueEmail = `asso.norna.w${test.info().parallelIndex}.${Date.now()}@test.com`;
 
     await goToAssociationRegister(page);
 
@@ -412,7 +412,7 @@ test.describe("Flux d'inscription association — validation RNA/SIRET", () => {
   test("devrait afficher une erreur si le RNA est au mauvais format", async ({
     page,
   }) => {
-    const uniqueEmail = `asso.badrna.${Date.now()}@test.com`;
+    const uniqueEmail = `asso.badrna.w${test.info().parallelIndex}.${Date.now()}@test.com`;
 
     await goToAssociationRegister(page);
 
@@ -439,7 +439,7 @@ test.describe("Flux d'inscription association — mot de passe", () => {
   test("devrait afficher une erreur si la confirmation du mot de passe ne correspond pas", async ({
     page,
   }) => {
-    const uniqueEmail = `asso.pwd.${Date.now()}@test.com`;
+    const uniqueEmail = `asso.pwd.w${test.info().parallelIndex}.${Date.now()}@test.com`;
 
     await goToAssociationRegister(page);
 
@@ -466,7 +466,7 @@ test.describe("Flux d'inscription association — statut juridique", () => {
   test("devrait afficher une erreur si aucun statut juridique n'est sélectionné", async ({
     page,
   }) => {
-    const uniqueEmail = `asso.legal.${Date.now()}@test.com`;
+    const uniqueEmail = `asso.legal.w${test.info().parallelIndex}.${Date.now()}@test.com`;
 
     await goToAssociationRegister(page);
 
@@ -492,7 +492,7 @@ test.describe("Flux d'inscription association — CGU obligatoires", () => {
   test("le bouton de soumission doit rester désactivé tant que les CGU ne sont pas acceptées", async ({
     page,
   }) => {
-    const uniqueEmail = `asso.cgu.${Date.now()}@test.com`;
+    const uniqueEmail = `asso.cgu.w${test.info().parallelIndex}.${Date.now()}@test.com`;
 
     await goToAssociationRegister(page);
 
@@ -501,7 +501,7 @@ test.describe("Flux d'inscription association — CGU obligatoires", () => {
     const submitBtn = page.getByTestId("btn-submit-register-association");
     await expect(submitBtn).toBeDisabled();
 
-    const userInDb = await prisma.user.findUnique({
+    const userInDb = await getPrisma(test.info().parallelIndex).user.findUnique({
       where: { email: uniqueEmail },
     });
     expect(userInDb).toBeNull();

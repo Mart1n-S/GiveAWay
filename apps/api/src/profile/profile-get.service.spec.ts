@@ -5,11 +5,13 @@ import { AuthService } from '../auth/auth.service';
 import { UserStatus } from '../generated/prisma/client';
 import { FILE_SERVICE } from '../common/files/interfaces/file-service.interface';
 import { CookieService } from '../auth/shared/cookie.service';
+import { ConversationService } from '../messaging/conversation.service';
 import {
   mockUserComplete,
   createMockAuthService,
   createMockFileService,
   createMockCookieService,
+  createMockConversationService,
 } from './profile-test.helpers';
 
 describe('ProfileService — getProfile', () => {
@@ -25,6 +27,10 @@ describe('ProfileService — getProfile', () => {
         { provide: AuthService, useValue: mockAuthService },
         { provide: FILE_SERVICE, useValue: createMockFileService() },
         { provide: CookieService, useValue: createMockCookieService() },
+        {
+          provide: ConversationService,
+          useValue: createMockConversationService(),
+        },
       ],
     }).compile();
 
@@ -91,5 +97,49 @@ describe('ProfileService — getProfile', () => {
     });
 
     await expect(service.getProfile(1)).rejects.toThrow(BadRequestException);
+  });
+
+  it('✅ Doit inclure _count: { select: { follows: true } } dans la requête Prisma', async () => {
+    mockAuthService.prisma.user.findUnique.mockResolvedValue(mockUserComplete);
+
+    await service.getProfile(1);
+
+    expect(mockAuthService.prisma.user.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: expect.objectContaining({
+          _count: { select: { follows: true } },
+        }),
+      }),
+    );
+  });
+
+  it('✅ Doit inclure causes: { include: { cause: true } } dans les participations de la requête Prisma', async () => {
+    mockAuthService.prisma.user.findUnique.mockResolvedValue(mockUserComplete);
+
+    await service.getProfile(1);
+
+    expect(mockAuthService.prisma.user.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: expect.objectContaining({
+          participations: expect.objectContaining({
+            include: expect.objectContaining({
+              mission: expect.objectContaining({
+                include: expect.objectContaining({
+                  causes: { include: { cause: true } },
+                }),
+              }),
+            }),
+          }),
+        }),
+      }),
+    );
+  });
+
+  it('✅ getProfile retourne followsCount: 0 dans le résultat mappé', async () => {
+    mockAuthService.prisma.user.findUnique.mockResolvedValue(mockUserComplete);
+
+    const result = await service.getProfile(1);
+
+    expect(result.followsCount).toBe(0);
   });
 });

@@ -7,8 +7,6 @@ import {
 } from "react-native";
 import { useRouter, Stack } from "expo-router";
 import Toast from "react-native-toast-message";
-
-import { Text } from "@/components/ui";
 import {
   ProfileHeader,
   ProfileStats,
@@ -17,6 +15,7 @@ import {
   ProfileCausesSkills,
   ProfileHistory,
   ProfileActions,
+  Text
 } from "@/components/ui";
 
 import { ProfileService } from "@/services/profile.service";
@@ -146,7 +145,11 @@ export default function ProfileScreen() {
         <View className="w-full max-w-2xl gap-6 px-4 pt-4 mx-auto">
           <ProfileHeader user={user} />
 
-          <ProfileStats user={user} />
+          <ProfileStats
+            user={user}
+            onFollowsPress={() => router.push("/profil/abonnements")}
+            onHelpedPress={() => router.push("/profil/associations-aidees")}
+          />
 
           <ProfileBioCard user={user} />
 

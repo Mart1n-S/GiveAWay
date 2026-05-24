@@ -19,6 +19,10 @@ import {
   AssociationStatus,
   AssociationMapItem,
   NearbyQueryDto,
+  AssociationPublicItem,
+  AssociationPublicProfile,
+  AssociationPublicListResponse,
+  ContactableMemberDto,
 } from '@repo/shared';
 import {
   AssociationRole as PrismaAssociationRole,
@@ -29,6 +33,7 @@ import {
   FILE_SERVICE,
   IFileService,
 } from '../common/files/interfaces/file-service.interface';
+import { ConversationService } from '../messaging/conversation.service';
 
 // Type Prisma avec relations pour le mapping
 type AssociationWithRelations = Awaited<
@@ -69,6 +74,7 @@ export class AssociationService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(FILE_SERVICE) private readonly fileService: IFileService,
+    private readonly conversationService: ConversationService,
   ) {}
 
   // ----------------------------------------------------------------
@@ -302,6 +308,61 @@ export class AssociationService {
   }
 
   // ----------------------------------------------------------------
+  // GET — liste des membres contactables (route publique-authentifiée)
+  //   - Asso doit être VALIDATED
+  //   - Membres actifs uniquement
+  //   - Exclut le user courant (un user ne se contacte pas lui-même)
+  //   - Tri : OWNER → ADMIN → EDITOR puis ancienneté (premier inscrit en haut)
+  //   - Pas d'email exposé
+  // ----------------------------------------------------------------
+  async getContactableMembers(
+    associationId: number,
+    currentUserId: number,
+  ): Promise<ContactableMemberDto[]> {
+    const association = await this.prisma.association.findUnique({
+      where: { id: associationId },
+      select: { status: true },
+    });
+    if (!association) {
+      throw new NotFoundException('Association introuvable');
+    }
+    if (association.status !== AssociationStatus.VALIDATED) {
+      throw new ForbiddenException(
+        "Cette association n'accepte pas encore les messages",
+      );
+    }
+
+    const members = await this.prisma.associationUser.findMany({
+      where: {
+        associationId,
+        userId: { not: currentUserId },
+        user: { status: 'ACTIVE' },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            profilePicture: true,
+          },
+        },
+      },
+      // OWNER < ADMIN < EDITOR alphabétiquement → on s'appuie sur l'ordre
+      // explicite des rôles pour rester déterministe et compréhensible.
+      orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
+    });
+
+    return members.map((m) => ({
+      userId: m.user.id,
+      firstName: m.user.firstName,
+      lastName: m.user.lastName,
+      profilePicture: m.user.profilePicture,
+      role: m.role as AssociationRole,
+    }));
+  }
+
+  // ----------------------------------------------------------------
   // GET — liste des membres
   // ----------------------------------------------------------------
   async getMembers(associationId: number): Promise<AssociationMemberDto[]> {
@@ -473,6 +534,10 @@ export class AssociationService {
       );
     }
 
+    // Les conversations étant désormais 1-1 entre utilisateurs (indépendantes
+    // de toute asso), le départ d'un membre ne supprime plus les threads
+    // existants. La mention "via Asso" affichée côté autre user se mettra
+    // simplement à jour au prochain listing (asso primaire recalculée).
     await this.prisma.associationUser.delete({ where: { id: memberId } });
   }
 
@@ -497,6 +562,7 @@ export class AssociationService {
       );
     }
 
+    // Conversations préservées : voir commentaire dans removeMember.
     await this.prisma.associationUser.delete({ where: { id: member.id } });
   }
 
@@ -698,6 +764,139 @@ export class AssociationService {
           createdAt: d.createdAt.toISOString(),
         }),
       ),
+    };
+  }
+
+  // ----------------------------------------------------------------
+  // GET — liste publique des associations (sans auth)
+  // ----------------------------------------------------------------
+  async findPublicList(
+    search?: string,
+    city?: string,
+    lat?: number,
+    lng?: number,
+    radius = 10,
+    page = 1,
+    pageSize = 12,
+  ): Promise<AssociationPublicListResponse> {
+    const skip = (page - 1) * pageSize;
+
+    const where: Prisma.AssociationWhereInput = {
+      status: 'VALIDATED',
+    };
+
+    if (search) {
+      where.name = { contains: search, mode: 'insensitive' };
+    }
+
+    if (city) {
+      where.address = { city: { contains: city, mode: 'insensitive' } };
+    }
+
+    // Si coordonnées fournies : filtre par rayon via sous-requête Haversine
+    let idsInRadius: number[] | undefined;
+    if (lat !== undefined && lng !== undefined) {
+      const rows = await this.prisma.$queryRaw<{ id: number }[]>`
+        SELECT a.id FROM associations a
+        JOIN addresses addr ON a.address_id = addr.id
+        WHERE a.status = 'VALIDATED'
+          AND addr.latitude IS NOT NULL AND addr.longitude IS NOT NULL
+          AND (
+            6371 * acos(
+              LEAST(1.0,
+                cos(radians(${lat}::float)) * cos(radians(addr.latitude::float))
+                * cos(radians(addr.longitude::float) - radians(${lng}::float))
+                + sin(radians(${lat}::float)) * sin(radians(addr.latitude::float))
+              )
+            )
+          ) <= ${radius}
+      `;
+      idsInRadius = rows.map((r) => r.id);
+      where.id = { in: idsInRadius };
+    }
+
+    const [rawList, total] = await this.prisma.$transaction([
+      this.prisma.association.findMany({
+        where,
+        skip,
+        take: pageSize,
+        orderBy: { name: 'asc' },
+        include: {
+          address: { select: { city: true } },
+          category: { select: { name: true } },
+          _count: {
+            select: { missions: { where: { status: 'ACTIVE' } } },
+          },
+        },
+      }),
+      this.prisma.association.count({ where }),
+    ]);
+
+    const associations: AssociationPublicItem[] = rawList.map((a) => ({
+      id: a.id,
+      name: a.name,
+      description: a.description ?? null,
+      logoUrl: a.logoUrl ?? null,
+      website: a.website ?? null,
+      category:
+        (a as { category?: { name: string } | null }).category?.name ?? null,
+      city: (a as { address?: { city: string } | null }).address?.city ?? null,
+      activeMissionsCount: (a as { _count: { missions: number } })._count
+        .missions,
+    }));
+
+    return { associations, total, page, pageSize };
+  }
+
+  // ----------------------------------------------------------------
+  // GET — profil public d'une association (sans auth)
+  // ----------------------------------------------------------------
+  async findPublicProfile(
+    associationId: number,
+  ): Promise<AssociationPublicProfile> {
+    const association = await this.prisma.association.findFirst({
+      where: { id: associationId, status: 'VALIDATED' },
+      include: {
+        address: true,
+        category: { select: { name: true } },
+        _count: {
+          select: { missions: { where: { status: 'ACTIVE' } } },
+        },
+      },
+    });
+
+    if (!association) {
+      throw new NotFoundException('Association introuvable');
+    }
+
+    return {
+      id: association.id,
+      name: association.name,
+      description: association.description ?? null,
+      object: association.object ?? null,
+      legalStatus: association.legalStatus ?? null,
+      logoUrl: association.logoUrl ?? null,
+      website: association.website ?? null,
+      phone: association.phone ?? null,
+      category:
+        (association as { category?: { name: string } | null }).category
+          ?.name ?? null,
+      address: association.address
+        ? {
+            street: association.address.street,
+            postalCode: association.address.postalCode,
+            city: association.address.city,
+            latitude: association.address.latitude
+              ? Number(association.address.latitude)
+              : null,
+            longitude: association.address.longitude
+              ? Number(association.address.longitude)
+              : null,
+          }
+        : null,
+      activeMissionsCount: (association as { _count: { missions: number } })
+        ._count.missions,
+      createdAt: association.createdAt.toISOString(),
     };
   }
 
