@@ -18,7 +18,9 @@ const ArrowLeftIcon = cssInterop(ArrowLeftIconSource, {
  * est rendu dans la page). Si l'historique est vide (deep-link direct
  * depuis fiche asso), retombe sur /messages.
  */
-function MobileBackButton({ tintColor }: { tintColor?: string }) {
+function MobileBackButton({
+  tintColor,
+}: Readonly<{ tintColor?: string }>) {
   return (
     <Pressable
       onPress={() =>
@@ -35,6 +37,13 @@ function MobileBackButton({ tintColor }: { tintColor?: string }) {
       />
     </Pressable>
   );
+}
+
+// Extrait au niveau module pour éviter une définition de composant imbriquée
+// (Sonar S6478 / react/no-unstable-nested-components).
+function renderConversationHeaderLeft(props: { tintColor?: string }) {
+  if (Platform.OS === "web") return null;
+  return <MobileBackButton tintColor={props.tintColor} />;
 }
 
 export default function MessagesLayout() {
@@ -55,10 +64,7 @@ export default function MessagesLayout() {
           // headerLeft défini AU NIVEAU DU LAYOUT : garanti d'être appliqué
           // au Stack messages quelle que soit l'origine de la navigation
           // (push depuis fiche asso, depuis l'index, etc.).
-          headerLeft: (props) =>
-            Platform.OS === "web" ? null : (
-              <MobileBackButton tintColor={props.tintColor} />
-            ),
+          headerLeft: renderConversationHeaderLeft,
         }}
       />
     </ProtectedStack>

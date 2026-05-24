@@ -35,13 +35,11 @@ export class WsJwtGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const client = context.switchToWs().getClient<AuthenticatedSocket>();
 
-    // Si déjà authentifié (handshake), on bypass
-    if (client.data?.user) {
-      return true;
+    // Si déjà authentifié (handshake), on bypass — sinon on authentifie maintenant.
+    // En cas d'échec, this.authenticate() jette une WsException.
+    if (!client.data?.user) {
+      client.data.user = await this.authenticate(client);
     }
-
-    const user = await this.authenticate(client);
-    client.data.user = user;
     return true;
   }
 

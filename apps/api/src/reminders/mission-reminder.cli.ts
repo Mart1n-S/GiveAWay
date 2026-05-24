@@ -26,7 +26,7 @@ function parseDateArg(): Date {
   const value = arg.split('=')[1];
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
-    throw new Error(
+    throw new TypeError(
       `Date invalide: "${value}". Format attendu : YYYY-MM-DD ou ISO 8601.`,
     );
   }

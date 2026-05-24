@@ -33,7 +33,9 @@ export function useConversationsList(): UseConversationsListResult {
   }, []);
 
   useEffect(() => {
-    void refresh();
+    refresh().catch(() => {
+      // L'erreur est déjà capturée et stockée dans `error` par refresh()
+    });
   }, [refresh]);
 
   return { conversations, isLoading, error, refresh };

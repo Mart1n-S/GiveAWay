@@ -91,7 +91,9 @@ export default function RootLayout() {
   const unreadCount = useMessageStore((s) => s.unreadCount);
   useEffect(() => {
     if (Platform.OS === "web") return;
-    void Notifications.setBadgeCountAsync(unreadCount);
+    Notifications.setBadgeCountAsync(unreadCount).catch(() => {
+      // Non-bloquant : badge OS best-effort
+    });
   }, [unreadCount]);
 
   // Deep link : navigation vers la mission ou la conversation au tap sur une notification

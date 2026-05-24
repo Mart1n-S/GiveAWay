@@ -74,7 +74,7 @@ export function ConversationsListPanel({
 
   return (
     <View testID={testID} className="flex-1">
-      {error && (
+      {error !== null && error !== "" && (
         <View
           testID="messages-error"
           className="m-4 p-3 border border-red-200 rounded-md bg-red-50"

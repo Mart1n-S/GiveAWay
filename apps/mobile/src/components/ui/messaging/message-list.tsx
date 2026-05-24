@@ -19,6 +19,22 @@ interface MessageListProps {
   readonly testID?: string;
 }
 
+// Factory au niveau module : crée un renderItem lié à `currentUserId` sans
+// définir de composant imbriqué dans le parent (Sonar S6478).
+function makeRenderItem(
+  currentUserId: number | undefined,
+): ListRenderItem<MessageDto> {
+  return ({ item }) => (
+    <MessageBubble
+      testID={`msg-${item.id}`}
+      content={item.content}
+      isMine={item.senderId === currentUserId}
+      createdAt={item.createdAt}
+      readAt={item.readAt}
+    />
+  );
+}
+
 /**
  * FlatList inversée : les messages récents sont en bas (visibles en premier).
  * onEndReached est déclenché quand on scrolle vers le haut.
@@ -32,17 +48,8 @@ export function MessageList({
   onEndReached,
   testID,
 }: MessageListProps) {
-  const renderItem: ListRenderItem<MessageDto> = useMemo(
-    () =>
-      ({ item }) => (
-        <MessageBubble
-          testID={`msg-${item.id}`}
-          content={item.content}
-          isMine={item.senderId === currentUserId}
-          createdAt={item.createdAt}
-          readAt={item.readAt}
-        />
-      ),
+  const renderItem = useMemo(
+    () => makeRenderItem(currentUserId),
     [currentUserId],
   );
 

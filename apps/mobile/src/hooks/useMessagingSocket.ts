@@ -73,16 +73,14 @@ export function useMessagingSocket(): void {
 
       // Si je suis actuellement dans la conv concernée : auto-mark-read.
       // Le serveur émettra ensuite conversation:unread=0 et unread:count.
+      // Sinon : aucune action locale — le serveur émet conversation:unread
+      // juste après message:new avec la valeur authoritative, ce qui évite
+      // tout risque de divergence (ré-émission, listener double, etc.).
       if (store.activeConversationId === payload.conversationId) {
         socket.emit(WsEvents.CLIENT_MARK_READ, {
           conversationId: payload.conversationId,
         });
-        return;
       }
-
-      // Plus d'increment local : le serveur émet conversation:unread juste
-      // après message:new avec la valeur authoritative, ce qui évite tout
-      // risque de divergence (ré-émission, listener double, etc.).
     };
 
     // ── conversation:unread ─────────────────────────────────

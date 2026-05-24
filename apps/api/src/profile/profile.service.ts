@@ -891,6 +891,9 @@ export class ProfileService {
       autoWidth(sheet);
     }
 
+    // NOSONAR — double cast nécessaire : Node.js 22 a typé Buffer comme
+    // Buffer<ArrayBufferLike> (générique), incompatible structurellement avec
+    // le Buffer non-générique exposé par ExcelJS.
     return workbook.xlsx.writeBuffer() as unknown as Promise<Buffer>;
   }
 }

@@ -50,7 +50,7 @@ export class MessagingGateway
   @WebSocketServer()
   server!: Server;
 
-  private rateLimiter: WsRateLimiter;
+  private readonly rateLimiter: WsRateLimiter;
 
   constructor(
     private readonly wsJwtGuard: WsJwtGuard,

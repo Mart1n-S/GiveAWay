@@ -21,8 +21,12 @@ const PAGE_SIZE = 30;
 // objet à chaque rendu quand la conv n'est pas (encore) dans le store, ce qui
 // déclencherait une boucle infinie (Maximum update depth exceeded).
 const EMPTY_MESSAGES: readonly MessageDto[] = Object.freeze([]);
-const DEFAULT_PAGE_STATE = Object.freeze({
-  nextCursor: null as number | null,
+interface PageState {
+  readonly nextCursor: number | null;
+  readonly hasMore: boolean;
+}
+const DEFAULT_PAGE_STATE: PageState = Object.freeze({
+  nextCursor: null,
   hasMore: false,
 });
 

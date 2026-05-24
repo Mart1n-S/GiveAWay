@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Platform, View } from "react-native";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import Toast from "react-native-toast-message";
@@ -23,6 +23,12 @@ const isWeb = Platform.OS === "web";
 function HeaderRightInfo({ onPress }: { readonly onPress: () => void }) {
   if (isWeb) return null;
   return <InfoButton onPress={onPress} variant="header" />;
+}
+
+// Factory au niveau module : crée le renderer headerRight lié à `openInfo`
+// sans définir de composant imbriqué dans le parent (Sonar S6478).
+function makeHeaderRightRenderer(onPress: () => void) {
+  return () => <HeaderRightInfo onPress={onPress} />;
 }
 
 export default function MessagesIndexScreen() {
@@ -52,15 +58,15 @@ export default function MessagesIndexScreen() {
     router.setParams({ closed: undefined });
   }, [params.closed, router]);
 
-  const openInfo = () => setIsInfoOpen(true);
+  const openInfo = useCallback(() => setIsInfoOpen(true), []);
 
   // Sur mobile : "?" dans le header natif. Sur web : géré inline dans la barre.
   const screenOptions = useMemo(
     () => ({
       headerTitle: "Messages",
-      headerRight: () => <HeaderRightInfo onPress={openInfo} />,
+      headerRight: makeHeaderRightRenderer(openInfo),
     }),
-    [],
+    [openInfo],
   );
 
   // ── Mode split-pane (web, grand écran) ───────────────────────────
