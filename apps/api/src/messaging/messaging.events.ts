@@ -1,0 +1,147 @@
+import { Injectable } from '@nestjs/common';
+import { Namespace, Server } from 'socket.io';
+import type { MessageDto } from '@repo/shared';
+import { WsEvents } from '@repo/shared';
+
+/**
+ * Service-pont qui permet au controller REST de pousser des événements WS
+ * sans dépendance circulaire avec le gateway.
+ * Le gateway s'enregistre via setServer() à son init.
+ *
+ * Note : NestJS injecte un `Namespace` (et non un `Server`) quand le gateway
+ * a un `namespace` défini, malgré le type annoncé. On accepte les deux et
+ * normalise en `Namespace` pour accéder à `.adapter` et `.sockets` (la Map).
+ */
+@Injectable()
+export class MessagingEvents {
+  private server: Namespace | null = null;
+
+  setServer(server: Server | Namespace): void {
+    this.server = server as Namespace;
+  }
+
+  // ----------------------------------------------------------------
+  // Diffusion d'un nouveau message
+  // ----------------------------------------------------------------
+  broadcastNewMessage(
+    conversationId: number,
+    senderId: number,
+    recipientId: number,
+    message: MessageDto,
+  ): void {
+    if (!this.server) return;
+    const payload = { conversationId, message };
+    this.server
+      .to(this.userRoom(senderId))
+      .to(this.userRoom(recipientId))
+      .emit(WsEvents.SERVER_MESSAGE_NEW, payload);
+
+    // Notifie aussi la mise à jour générale (pour la sidebar)
+    this.server
+      .to(this.userRoom(senderId))
+      .to(this.userRoom(recipientId))
+      .emit(WsEvents.SERVER_CONVERSATION_UPDATED, {
+        conversationId,
+        lastMessageAt: message.createdAt,
+      });
+  }
+
+  // ----------------------------------------------------------------
+  // Diffusion d'un accusé de lecture
+  // ----------------------------------------------------------------
+  broadcastMessageRead(
+    conversationId: number,
+    readerId: number,
+    senderIds: number[],
+    messageIds: number[],
+    readAt: Date,
+  ): void {
+    if (!this.server) return;
+    const payload = {
+      conversationId,
+      messageIds,
+      readAt: readAt.toISOString(),
+      readerId,
+    };
+    for (const sid of senderIds) {
+      this.server
+        .to(this.userRoom(sid))
+        .emit(WsEvents.SERVER_MESSAGE_READ, payload);
+    }
+  }
+
+  // ----------------------------------------------------------------
+  // Notifie un user qu'une conversation a été supprimée
+  // ----------------------------------------------------------------
+  broadcastConversationDeleted(
+    userId: number,
+    conversationId: number,
+    reason?: 'user_deleted' | 'member_left' | 'association_deleted',
+  ): void {
+    if (!this.server) return;
+    this.server
+      .to(this.userRoom(userId))
+      .emit(WsEvents.SERVER_CONVERSATION_DELETED, {
+        conversationId,
+        ...(reason ? { reason } : {}),
+      });
+  }
+
+  // ----------------------------------------------------------------
+  // Envoi unitaire du compteur non-lus à un user
+  // ----------------------------------------------------------------
+  sendUnreadCount(userId: number, count: number): void {
+    if (!this.server) return;
+    this.server
+      .to(this.userRoom(userId))
+      .emit(WsEvents.SERVER_UNREAD_COUNT, { count });
+  }
+
+  // ----------------------------------------------------------------
+  // Envoi du compteur non-lus pour UNE conversation à un user. Source
+  // de vérité utilisée par le client pour la pastille de la conv (au
+  // lieu d'un increment local qui peut diverger).
+  // ----------------------------------------------------------------
+  sendConversationUnread(
+    userId: number,
+    conversationId: number,
+    unreadCount: number,
+  ): void {
+    if (!this.server) return;
+    this.server
+      .to(this.userRoom(userId))
+      .emit(WsEvents.SERVER_CONVERSATION_UNREAD, {
+        conversationId,
+        unreadCount,
+      });
+  }
+
+  // ----------------------------------------------------------------
+  // Indique si un destinataire a une socket actuellement dans la conv
+  // (utilisé pour skipper la notif push)
+  // ----------------------------------------------------------------
+  isUserInConversationRoom(conversationId: number, userId: number): boolean {
+    if (!this.server) return false;
+    // NestJS injecte un Namespace (et non un Server) quand le gateway a un
+    // namespace défini. Sur un Namespace : `.adapter` est direct, et `.sockets`
+    // est la Map<SocketId, Socket> — pas un sous-namespace.
+    const room = this.server.adapter.rooms.get(
+      this.conversationRoom(conversationId),
+    );
+    if (!room) return false;
+    for (const sid of room) {
+      const s = this.server.sockets.get(sid);
+      const data = s?.data as { user?: { id?: number } } | undefined;
+      if (data?.user?.id === userId) return true;
+    }
+    return false;
+  }
+
+  userRoom(userId: number): string {
+    return `user:${userId}`;
+  }
+
+  conversationRoom(conversationId: number): string {
+    return `conv:${conversationId}`;
+  }
+}

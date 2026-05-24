@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { MissionService } from './mission.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { MatchingService } from '../matching/matching.service';
 import { MissionListQueryDto } from '@repo/shared';
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -66,6 +67,13 @@ const mockPrismaService = {
     findUnique: jest.fn(),
     count: jest.fn(),
   },
+  user: {
+    findUnique: jest.fn(),
+  },
+};
+
+const mockMatchingService = {
+  scoreUserMission: jest.fn(),
 };
 
 describe('MissionService', () => {
@@ -76,6 +84,7 @@ describe('MissionService', () => {
       providers: [
         MissionService,
         { provide: PrismaService, useValue: mockPrismaService },
+        { provide: MatchingService, useValue: mockMatchingService },
       ],
     }).compile();
 
@@ -377,6 +386,28 @@ describe('MissionService', () => {
       expect(whereArg.startDate.lte).toEqual(new Date('2026-12-31'));
     });
 
+    it('✅ Doit filtrer par associationId quand fourni', async () => {
+      mockPrismaService.mission.findMany.mockResolvedValue([]);
+      mockPrismaService.mission.count.mockResolvedValue(0);
+
+      await service.findAll({ ...defaultQuery, associationId: 5 });
+
+      const whereArg =
+        mockPrismaService.mission.findMany.mock.calls[0][0].where;
+      expect(whereArg.associationId).toBe(5);
+    });
+
+    it('✅ Ne doit pas ajouter de filtre associationId si absent', async () => {
+      mockPrismaService.mission.findMany.mockResolvedValue([]);
+      mockPrismaService.mission.count.mockResolvedValue(0);
+
+      await service.findAll(defaultQuery);
+
+      const whereArg =
+        mockPrismaService.mission.findMany.mock.calls[0][0].where;
+      expect(whereArg.associationId).toBeUndefined();
+    });
+
     it('✅ Doit filtrer en mode REMOTE (locationMode=remote)', async () => {
       mockPrismaService.mission.findMany.mockResolvedValue([]);
       mockPrismaService.mission.count.mockResolvedValue(0);
@@ -593,6 +624,262 @@ describe('MissionService', () => {
       const result = await service.findById(1);
 
       expect(result.address).toBeNull();
+    });
+
+    it('❌ Lève NotFoundException si le statut est DELETED (soft-delete)', async () => {
+      mockPrismaService.mission.findUnique.mockResolvedValue(
+        makePrismaDetailMission({ status: 'DELETED' }),
+      );
+
+      await expect(service.findById(1)).rejects.toThrow(NotFoundException);
+      await expect(service.findById(1)).rejects.toThrow(
+        'Mission #1 introuvable',
+      );
+    });
+
+    it('✅ Retourne la mission si le statut est ARCHIVED (accessible aux membres/participants)', async () => {
+      mockPrismaService.mission.findUnique.mockResolvedValue(
+        makePrismaDetailMission({ status: 'ARCHIVED' }),
+      );
+
+      const result = await service.findById(1);
+
+      expect(result.status).toBe('ARCHIVED');
+    });
+  });
+
+  // =========================================================================
+  // findAll — filtre missions expirées
+  // =========================================================================
+  describe('findAll — exclusion des missions expirées', () => {
+    it('✅ Inclut un filtre OR pour exclure les missions dont endDate est dépassée', async () => {
+      mockPrismaService.mission.findMany.mockResolvedValue([]);
+      mockPrismaService.mission.count.mockResolvedValue(0);
+
+      await service.findAll(defaultQuery);
+
+      const whereArg =
+        mockPrismaService.mission.findMany.mock.calls[0][0].where;
+      expect(Array.isArray(whereArg.OR)).toBe(true);
+      expect(whereArg.OR).toEqual(
+        expect.arrayContaining([
+          { endDate: null },
+          expect.objectContaining({
+            endDate: expect.objectContaining({ gt: expect.any(Date) }),
+          }),
+        ]),
+      );
+    });
+
+    it('✅ Conserve le filtre status ACTIVE en même temps que le filtre endDate', async () => {
+      mockPrismaService.mission.findMany.mockResolvedValue([]);
+      mockPrismaService.mission.count.mockResolvedValue(0);
+
+      await service.findAll(defaultQuery);
+
+      const whereArg =
+        mockPrismaService.mission.findMany.mock.calls[0][0].where;
+      expect(whereArg.status).toBe('ACTIVE');
+      expect(whereArg.OR).toBeDefined();
+    });
+  });
+
+  // =========================================================================
+  // findForMap — filtre missions expirées
+  // =========================================================================
+  describe('findForMap — exclusion des missions expirées', () => {
+    it('✅ Inclut un filtre OR pour exclure les missions dont endDate est dépassée', async () => {
+      mockPrismaService.mission.findMany.mockResolvedValue([]);
+
+      await service.findForMap();
+
+      const whereArg =
+        mockPrismaService.mission.findMany.mock.calls[0][0].where;
+      expect(Array.isArray(whereArg.OR)).toBe(true);
+      expect(whereArg.OR).toEqual(
+        expect.arrayContaining([
+          { endDate: null },
+          expect.objectContaining({
+            endDate: expect.objectContaining({ gt: expect.any(Date) }),
+          }),
+        ]),
+      );
+    });
+
+    it('✅ Conserve le filtre status ACTIVE et la contrainte adresse géolocalisée', async () => {
+      mockPrismaService.mission.findMany.mockResolvedValue([]);
+
+      await service.findForMap();
+
+      const whereArg =
+        mockPrismaService.mission.findMany.mock.calls[0][0].where;
+      expect(whereArg.status).toBe('ACTIVE');
+      expect(whereArg.address).toBeDefined();
+      expect(whereArg.OR).toBeDefined();
+    });
+  });
+
+  // =========================================================================
+  // Matching — enrichissement matchScore / matchBreakdown
+  // =========================================================================
+  describe('matching (withMatching=true)', () => {
+    const userForScoring = {
+      skills: [{ skill: { id: 1 } }],
+      causes: [{ cause: { id: 1 } }],
+      availability: { type: 'ON_SITE', timeSlot: ['ALL_TIME'] },
+      address: { latitude: 43.5, longitude: 5.4 },
+      participations: [],
+    };
+
+    const sampleScore = {
+      total: 75,
+      breakdown: {
+        causes: 30,
+        skills: 25,
+        availability: 20,
+        distance: 0,
+        history: 0,
+      },
+      isMatch: true,
+    };
+
+    describe('findAll', () => {
+      it("✅ N'enrichit PAS si pas de userId, même avec withMatching=true", async () => {
+        mockPrismaService.mission.findMany.mockResolvedValue([
+          makePrismaMission(),
+        ]);
+        mockPrismaService.mission.count.mockResolvedValue(1);
+
+        const result = await service.findAll({
+          ...defaultQuery,
+          withMatching: true,
+        });
+
+        expect(mockPrismaService.user.findUnique).not.toHaveBeenCalled();
+        expect(mockMatchingService.scoreUserMission).not.toHaveBeenCalled();
+        expect(result.missions[0].matchScore).toBeUndefined();
+        expect(result.missions[0].matchBreakdown).toBeUndefined();
+      });
+
+      it("✅ N'enrichit PAS si userId présent mais withMatching absent", async () => {
+        mockPrismaService.mission.findMany.mockResolvedValue([
+          makePrismaMission(),
+        ]);
+        mockPrismaService.mission.count.mockResolvedValue(1);
+
+        const result = await service.findAll(defaultQuery, 42);
+
+        expect(mockPrismaService.user.findUnique).not.toHaveBeenCalled();
+        expect(mockMatchingService.scoreUserMission).not.toHaveBeenCalled();
+        expect(result.missions[0].matchScore).toBeUndefined();
+      });
+
+      it("✅ Charge l'utilisateur UNE SEULE FOIS pour N missions", async () => {
+        mockPrismaService.mission.findMany.mockResolvedValue([
+          makePrismaMission({ id: 1 }),
+          makePrismaMission({ id: 2 }),
+          makePrismaMission({ id: 3 }),
+        ]);
+        mockPrismaService.mission.count.mockResolvedValue(3);
+        mockPrismaService.user.findUnique.mockResolvedValue(userForScoring);
+        mockMatchingService.scoreUserMission.mockReturnValue(sampleScore);
+
+        await service.findAll({ ...defaultQuery, withMatching: true }, 42);
+
+        expect(mockPrismaService.user.findUnique).toHaveBeenCalledTimes(1);
+        expect(mockMatchingService.scoreUserMission).toHaveBeenCalledTimes(3);
+      });
+
+      it('✅ Enrichit chaque mission avec matchScore et matchBreakdown', async () => {
+        mockPrismaService.mission.findMany.mockResolvedValue([
+          makePrismaMission(),
+        ]);
+        mockPrismaService.mission.count.mockResolvedValue(1);
+        mockPrismaService.user.findUnique.mockResolvedValue(userForScoring);
+        mockMatchingService.scoreUserMission.mockReturnValue(sampleScore);
+
+        const result = await service.findAll(
+          { ...defaultQuery, withMatching: true },
+          42,
+        );
+
+        expect(result.missions[0].matchScore).toBe(75);
+        expect(result.missions[0].matchBreakdown).toEqual(
+          sampleScore.breakdown,
+        );
+      });
+
+      it("✅ Si l'utilisateur n'existe plus en BDD, n'enrichit pas", async () => {
+        mockPrismaService.mission.findMany.mockResolvedValue([
+          makePrismaMission(),
+        ]);
+        mockPrismaService.mission.count.mockResolvedValue(1);
+        mockPrismaService.user.findUnique.mockResolvedValue(null);
+
+        const result = await service.findAll(
+          { ...defaultQuery, withMatching: true },
+          999,
+        );
+
+        expect(mockMatchingService.scoreUserMission).not.toHaveBeenCalled();
+        expect(result.missions[0].matchScore).toBeUndefined();
+      });
+    });
+
+    describe('findForMap', () => {
+      it("✅ N'enrichit PAS si pas de userId", async () => {
+        mockPrismaService.mission.findMany.mockResolvedValue([
+          makePrismaMapMission(),
+        ]);
+
+        const result = await service.findForMap({ withMatching: true });
+
+        expect(mockPrismaService.user.findUnique).not.toHaveBeenCalled();
+        expect(result[0].matchScore).toBeUndefined();
+      });
+
+      it('✅ Étend le select Prisma avec causes/skills/startDate quand withMatching+userId', async () => {
+        mockPrismaService.mission.findMany.mockResolvedValue([]);
+        mockPrismaService.user.findUnique.mockResolvedValue(userForScoring);
+
+        await service.findForMap({ withMatching: true }, 42);
+
+        const selectArg =
+          mockPrismaService.mission.findMany.mock.calls[0][0].select;
+        expect(selectArg.causes).toBeDefined();
+        expect(selectArg.skills).toBeDefined();
+        expect(selectArg.startDate).toBe(true);
+      });
+
+      it("✅ N'étend PAS le select sans withMatching", async () => {
+        mockPrismaService.mission.findMany.mockResolvedValue([]);
+
+        await service.findForMap({});
+
+        const selectArg =
+          mockPrismaService.mission.findMany.mock.calls[0][0].select;
+        expect(selectArg.causes).toBeUndefined();
+        expect(selectArg.skills).toBeUndefined();
+        expect(selectArg.startDate).toBeUndefined();
+      });
+
+      it('✅ Enrichit chaque mission avec matchScore et matchBreakdown', async () => {
+        mockPrismaService.mission.findMany.mockResolvedValue([
+          {
+            ...makePrismaMapMission(),
+            startDate: new Date('2026-05-01'),
+            causes: [{ cause: { id: 1 } }],
+            skills: [{ skill: { id: 1 } }],
+          },
+        ]);
+        mockPrismaService.user.findUnique.mockResolvedValue(userForScoring);
+        mockMatchingService.scoreUserMission.mockReturnValue(sampleScore);
+
+        const result = await service.findForMap({ withMatching: true }, 42);
+
+        expect(result[0].matchScore).toBe(75);
+        expect(result[0].matchBreakdown).toEqual(sampleScore.breakdown);
+      });
     });
   });
 });

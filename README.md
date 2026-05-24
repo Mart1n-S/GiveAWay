@@ -22,6 +22,8 @@ L'application repose sur un **algorithme de matching intelligent** qui propose d
 - 🎯 **Matching Intelligent :** Algorithme de pertinence (Géolocalisation + Tags).
 - 📱 **Expérience Mobile First :** Application fluide et intuitive (Expo / React Native).
 - 🏢 **Espace Association :** Publication de missions et vérification d'identité (RNA).
+- 💬 **Messagerie temps réel :** Conversations 1-à-1 entre bénévoles et membres d'associations, avec compteur de messages non lus et accusés de lecture (WebSocket).
+- 🔔 **Notifications :** E-mails transactionnels (compte, missions inscrites) + opt-in (rappels J-1, nouvelles missions, suggestions personnalisées), push mobile via Expo.
 - 🔒 **Architecture Sécurisée :** Séparation stricte Client/Serveur et base de données isolée.
 
 ---
@@ -40,6 +42,7 @@ Ce projet est conçu comme un **Monorepo** orchestré par **Turborepo**, garanti
 | **Forms**        | **React Hook Form**     | Gestion performante des formulaires & validation. |
 | **Backend**      | **NestJS**              | Framework Node.js modulaire et robuste.           |
 | **Data**         | **PostgreSQL + Prisma** | Base de données relationnelle et ORM moderne.     |
+| **Temps réel**   | **Socket.IO**           | WebSocket pour la messagerie (typing, accusés de lecture, badges non lus). |
 | **Infra (Dev)**  | **Docker**              | Conteneurisation de la BDD et outils d'admin.     |
 
 ---
@@ -75,6 +78,7 @@ Nous disposons actuellement de composants fondamentaux déclinés en plusieurs v
 2. **Input :** Champs de saisie avec icônes (gauche/droite), textes d'aide et validation d'erreurs.
 3. **TextArea :** Zones de texte multi-lignes auto-extensibles avec compteurs de caractères.
 4. **AppShell :** Structure globale gérant la navigation responsive (NavBar Web / Tabs Mobile).
+5. **Messagerie :** Panneau de conversation avec bulles et accusés de lecture, liste des discussions, composer de message, picker de membre pour contacter une association.
 
 ### 🕹️ Documentation Interactive (Playground)
 
@@ -120,6 +124,42 @@ cp apps/mobile/.env.example apps/mobile/.env
 ```
 
 Ensuite, complétez les variables nécessaires.
+
+---
+
+## 🛠️ Configuration admin (Vite + React)
+
+Copier le fichier d'exemple de la console d'administration :
+
+```bash
+cp apps/admin/.env.example apps/admin/.env
+```
+
+Variables disponibles dans `apps/admin/.env` :
+
+- `VITE_API_URL` : URL de l'API NestJS (par défaut `http://localhost:3000`).
+
+### Variables admin à ajouter dans le `.env` racine (consommé par l'API)
+
+```env
+JWT_ADMIN_ACCESS_SECRET=<random_long>
+JWT_ADMIN_REFRESH_SECRET=<random_long>
+JWT_ADMIN_ACCESS_EXPIRES_IN=15m
+JWT_ADMIN_REFRESH_EXPIRES_IN=7d
+ADMIN_LOGIN_URL=http://localhost:5173/login
+
+CONTACT_ADMIN_EMAIL="contact.giiveaway@gmail.com"
+CORS_ALLOWED_ORIGINS="https://nom-de-domaine.fr,https://sous-nom-de-domaine.fr"
+ADMIN_BASE_URL="http://localhost:5173"
+```
+
+Pour `JWT_ADMIN_ACCESS_SECRET` et `JWT_ADMIN_REFRESH_SECRET`, générer **deux** secrets différents avec :
+
+```bash
+openssl rand -base64 62
+```
+
+> 👤 **Compte admin de test** (créé par le seed Prisma) : `admin@gmail.com` / `password`. C'est ce compte qui est utilisé par les tests E2E admin (`apps/admin/tests`).
 
 ---
 
@@ -353,13 +393,67 @@ Une fois les services démarrés, lancez les tests depuis la racine :
 
 ---
 
+## 🛠️ Tests Frontend Admin (Playwright)
+
+Même principe que pour le mobile, mais avec la console d'administration **Vite + React** (port `5173`).
+
+> ℹ️ Pas besoin de relancer `db:test:setup` : la commande `test:e2e:admin` exécute automatiquement un reset + seed (`pretest:e2e` du workspace admin) pour garantir la présence du compte admin de test (`admin@gmail.com / password`).
+
+#### 1. Lancement des services
+
+Deux terminaux :
+
+- **Terminal A (API en mode test) :**
+  ```bash
+  npm run start:test --workspace=apps/api
+  ```
+- **Terminal B (Frontend Admin) :**
+  ```bash
+  npm run dev --workspace=apps/admin
+  ```
+
+#### 2. Exécution des tests
+Une fois les services démarrés, lancez les tests depuis la racine :
+
+| Commande                       | Description                                       |
+| ------------------------------ | ------------------------------------------------- |
+| `npm run test:e2e:admin`       | Lance tous les tests admin en headless.           |
+| `npm run test:e2e:admin:ui`    | Ouvre l'interface interactive de Playwright.      |
+
+---
+
 ### 💡 Astuces
 
 Pour lancer un fichier de test spécifique :
 
 ```bash
 npm run test:e2e --workspace=apps/mobile -- tests/profil/profil.spec.ts
+npm run test:e2e --workspace=apps/admin -- tests/login.spec.ts
 ```
+
+---
+
+## 🔔 Tester le cron de rappels J-1
+
+Le système envoie un rappel par e-mail (si `emailNotifications=true`) et un push mobile (si `pushToken` présent) **la veille à 9h Europe/Paris** pour chaque mission à laquelle l'utilisateur est inscrit. Plutôt que d'attendre l'heure du cron, un script CLI permet de déclencher manuellement le job :
+
+```bash
+# Depuis apps/api/ — utilise la date du jour (envoie les rappels pour demain)
+npm run reminders:test --workspace=apps/api
+
+# Simuler un déclenchement à une date précise (utile pour cibler une mission existante :
+# passer la veille de sa startDate)
+npm run reminders:test --workspace=apps/api -- --date=2026-05-19
+```
+
+> [!NOTE]
+> Le script boot un `NestFactory.createApplicationContext` (pas de serveur HTTP) et appelle `MissionReminderService.sendReminders(date)`. Les e-mails partent réellement sur Brevo et les push sur Expo **sauf** si `NODE_ENV=test` ou `USE_DETERMINISTIC_OTP=true` → tout est alors juste loggé en console.
+
+**Pour tester rapidement en local :**
+1. `docker-compose up -d` puis `npm run dev`
+2. Avec le compte de seed, activer `emailNotifications` dans le profil (`/profil/notifications`)
+3. S'inscrire à une mission ayant `startDate` au lendemain
+4. Lance `npm run reminders:test --workspace=apps/api`
 
 ---
 

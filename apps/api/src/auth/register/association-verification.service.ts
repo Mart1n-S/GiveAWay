@@ -59,7 +59,7 @@ export class AssociationVerificationService {
     // Règle 2 : URL absente → impossible d'appeler l'API, revue manuelle
     if (!apiUrl) {
       this.logger.warn(
-        'ASSOCIATION_API_URL absent — vérification API ignorée, revue manuelle requise',
+        'ASSOCIATION_API_URL absent - vérification API ignorée, revue manuelle requise',
       );
       return {
         exists: false,

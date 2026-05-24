@@ -1,14 +1,14 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../_fixtures";
 import {
-  cleanDatabase,
+  cleanDatabaseForWorker,
   createTestUser,
   createTestAssociation,
   createTestMission,
 } from "../../../api/test/prisma-test-helper";
 import { ActivityType } from "../../../api/src/generated/prisma/client";
 
-test.beforeEach(async () => {
-  await cleanDatabase();
+test.beforeEach(async ({}, testInfo) => {
+  await cleanDatabaseForWorker(testInfo.parallelIndex);
 });
 
 // ===========================================================================
@@ -19,7 +19,7 @@ async function seedMission(
   options: Parameters<typeof createTestMission>[1] = {},
 ) {
   const user = await createTestUser(workerIndex);
-  const assoc = await createTestAssociation(user.id);
+  const assoc = await createTestAssociation(user.id, workerIndex);
   const mission = await createTestMission(assoc.id, options);
   return { user, assoc, mission };
 }
@@ -31,7 +31,7 @@ test.describe("Page Détail Mission — Affichage", () => {
   test("devrait afficher le titre de la mission", async ({
     page,
   }, testInfo) => {
-    const { mission } = await seedMission(testInfo.workerIndex, {
+    const { mission } = await seedMission(testInfo.parallelIndex, {
       title: "Ma Mission de Bénévolat E2E",
     });
 
@@ -46,7 +46,7 @@ test.describe("Page Détail Mission — Affichage", () => {
   test("devrait afficher le badge de type de la mission", async ({
     page,
   }, testInfo) => {
-    const { mission } = await seedMission(testInfo.workerIndex);
+    const { mission } = await seedMission(testInfo.parallelIndex);
 
     await page.goto(`/missions/${mission.id}`);
 
@@ -60,7 +60,7 @@ test.describe("Page Détail Mission — Affichage", () => {
   test("devrait afficher le nom de l'association organisatrice", async ({
     page,
   }, testInfo) => {
-    const { mission } = await seedMission(testInfo.workerIndex);
+    const { mission } = await seedMission(testInfo.parallelIndex);
 
     await page.goto(`/missions/${mission.id}`);
 
@@ -74,7 +74,7 @@ test.describe("Page Détail Mission — Affichage", () => {
   test("devrait afficher la section description de la mission", async ({
     page,
   }, testInfo) => {
-    const { mission } = await seedMission(testInfo.workerIndex);
+    const { mission } = await seedMission(testInfo.parallelIndex);
 
     await page.goto(`/missions/${mission.id}`);
 
@@ -88,7 +88,7 @@ test.describe("Page Détail Mission — Affichage", () => {
   test("devrait afficher la section 'À propos de la mission'", async ({
     page,
   }, testInfo) => {
-    const { mission } = await seedMission(testInfo.workerIndex);
+    const { mission } = await seedMission(testInfo.parallelIndex);
 
     await page.goto(`/missions/${mission.id}`);
 
@@ -100,7 +100,7 @@ test.describe("Page Détail Mission — Affichage", () => {
   test("devrait afficher la section 'Informations pratiques'", async ({
     page,
   }, testInfo) => {
-    const { mission } = await seedMission(testInfo.workerIndex);
+    const { mission } = await seedMission(testInfo.parallelIndex);
 
     await page.goto(`/missions/${mission.id}`);
 
@@ -112,7 +112,7 @@ test.describe("Page Détail Mission — Affichage", () => {
   test("devrait afficher la section 'L'association'", async ({
     page,
   }, testInfo) => {
-    const { mission } = await seedMission(testInfo.workerIndex);
+    const { mission } = await seedMission(testInfo.parallelIndex);
 
     await page.goto(`/missions/${mission.id}`);
 
@@ -128,7 +128,7 @@ test.describe("Page Détail Mission — CTA Candidater", () => {
     page,
   }, testInfo) => {
     // createTestMission met hasRegistration: true par défaut
-    const { mission } = await seedMission(testInfo.workerIndex);
+    const { mission } = await seedMission(testInfo.parallelIndex);
 
     await page.goto(`/missions/${mission.id}`);
 
@@ -145,7 +145,7 @@ test.describe("Page Détail Mission — CTA Candidater", () => {
     // volunteersNeeded = 1 et on ne peut pas créer de participants en test,
     // donc on vérifie l'état "complet" en créant une mission avec volunteersNeeded=0
     // → la condition isFull = participantsCount(0) >= volunteersNeeded(0) = true
-    const { mission } = await seedMission(testInfo.workerIndex, {
+    const { mission } = await seedMission(testInfo.parallelIndex, {
       volunteersNeeded: 0,
     });
 
@@ -171,7 +171,7 @@ test.describe("Page Détail Mission — Navigation retour", () => {
       "Le bouton Retour est visible sur web uniquement",
     );
 
-    const { mission } = await seedMission(testInfo.workerIndex);
+    const { mission } = await seedMission(testInfo.parallelIndex);
 
     await page.goto(`/missions/${mission.id}`);
 
@@ -186,7 +186,7 @@ test.describe("Page Détail Mission — Navigation retour", () => {
       "Le bouton Retour est visible sur web uniquement",
     );
 
-    const { mission } = await seedMission(testInfo.workerIndex);
+    const { mission } = await seedMission(testInfo.parallelIndex);
 
     // Naviguer depuis la liste pour que router.canGoBack() soit vrai
     await page.goto("/missions");
@@ -206,7 +206,7 @@ test.describe("Page Détail Mission — Navigation retour", () => {
       "Le bouton Retour est visible sur web uniquement",
     );
 
-    const { mission } = await seedMission(testInfo.workerIndex);
+    const { mission } = await seedMission(testInfo.parallelIndex);
 
     // Accès direct sans historique de navigation
     await page.goto(`/missions/${mission.id}`);
@@ -270,8 +270,8 @@ test.describe("Page Détail Mission — Types", () => {
   test("devrait afficher le badge EVENT pour un événement", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id, {
       title: "Événement Test",
       type: ActivityType.EVENT,
@@ -287,8 +287,8 @@ test.describe("Page Détail Mission — Types", () => {
   test("devrait afficher le badge COLLECT pour une collecte", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(user.id, testInfo.parallelIndex);
     const mission = await createTestMission(assoc.id, {
       title: "Collecte Test",
       type: ActivityType.COLLECT,

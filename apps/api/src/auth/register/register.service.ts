@@ -2,6 +2,7 @@ import {
   Injectable,
   Inject,
   BadRequestException,
+  ConflictException,
   Logger,
 } from '@nestjs/common';
 import { hash } from 'argon2';
@@ -109,6 +110,13 @@ export class RegisterService {
 
     // 1. Vérification de disponibilité de l'email (table users)
     await this.authService.checkEmailAvailability(dto.email);
+
+    // 1.b. Pas de doublon avec une association déjà validée ou en cours de validation
+    await this.assertNoActiveDuplicateAssociation({
+      siret: dto.siret,
+      rna: dto.rna,
+      name: dto.name,
+    });
 
     // 2. Vérification via l'API gouvernementale
     const verification =
@@ -288,6 +296,44 @@ export class RegisterService {
         : 'Inscription soumise ! Veuillez vérifier vos emails pour activer votre compte (Code valide 15 min).',
       requiresManualReview: verification.requiresManualReview,
     };
+  }
+
+  /**
+   * Empêche la création d'une nouvelle association si une autre, identifiée par
+   * le même SIRET ou RNA (ou à défaut par le même nom), est déjà VALIDATED ou
+   * en cours de validation (PENDING). Les associations REJECTED/SUSPENDED ne
+   * bloquent pas une nouvelle soumission.
+   */
+  private async assertNoActiveDuplicateAssociation(data: {
+    siret?: string | null;
+    rna?: string | null;
+    name: string;
+  }): Promise<void> {
+    const { prisma } = this.authService;
+    const orConditions: Array<Record<string, unknown>> = [];
+    if (data.siret) orConditions.push({ siret: data.siret });
+    if (data.rna) orConditions.push({ rna: data.rna });
+    if (orConditions.length === 0) {
+      orConditions.push({ name: { equals: data.name, mode: 'insensitive' } });
+    }
+    const existing = await prisma.association.findFirst({
+      where: {
+        status: {
+          in: [AssociationStatus.PENDING, AssociationStatus.VALIDATED],
+        },
+        OR: orConditions,
+      },
+      select: { name: true, status: true },
+    });
+    if (existing) {
+      const label =
+        existing.status === AssociationStatus.VALIDATED
+          ? 'déjà validée'
+          : 'déjà en cours de validation';
+      throw new ConflictException(
+        `Une association ${label} existe déjà avec ces informations (${existing.name}).`,
+      );
+    }
   }
 
   private async rollbackUploads(

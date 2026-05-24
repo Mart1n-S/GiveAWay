@@ -15,6 +15,17 @@ export interface MenuLink {
   disabled?: boolean;
   onPress?: () => void;
   testID?: string;
+  /**
+   * Compteur affiché en badge à droite du libellé.
+   * Si > 10, affiché "10+". Caché si 0 ou undefined.
+   */
+  badgeCount?: number;
+  /**
+   * Si vrai, le lien est masqué dans la nav inline desktop (rendu par
+   * WebNavBar) mais reste disponible dans le burger drawer pour les
+   * écrans étroits / mobile web.
+   */
+  hideInWebNav?: boolean;
 }
 
 /**

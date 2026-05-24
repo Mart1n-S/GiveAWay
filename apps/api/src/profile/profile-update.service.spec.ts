@@ -5,11 +5,13 @@ import { AuthService } from '../auth/auth.service';
 import { UserStatus } from '../generated/prisma/client';
 import { FILE_SERVICE } from '../common/files/interfaces/file-service.interface';
 import { CookieService } from '../auth/shared/cookie.service';
+import { ConversationService } from '../messaging/conversation.service';
 import {
   mockUserComplete,
   createMockAuthService,
   createMockFileService,
   createMockCookieService,
+  createMockConversationService,
 } from './profile-test.helpers';
 
 describe('ProfileService — updateProfile', () => {
@@ -35,6 +37,10 @@ describe('ProfileService — updateProfile', () => {
         { provide: AuthService, useValue: mockAuthService },
         { provide: FILE_SERVICE, useValue: mockFileService },
         { provide: CookieService, useValue: createMockCookieService() },
+        {
+          provide: ConversationService,
+          useValue: createMockConversationService(),
+        },
       ],
     }).compile();
 

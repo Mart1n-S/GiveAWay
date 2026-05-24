@@ -327,7 +327,7 @@ export default function RegisterAssociationScreen() {
           ? "Inscription enregistrée"
           : "Inscription réussie",
         text2: response.requiresManualReview
-          ? "Votre inscription est bien enregistrée. Un email de vérification vous a été envoyé. Votre association nécessite également une vérification manuelle par notre équipe — vous pourrez accéder aux services GiveAWay en attendant, mais la gestion de votre association sera disponible après validation."
+          ? "Votre inscription est bien enregistrée. Un email de vérification vous a été envoyé. Votre association nécessite également une vérification manuelle par notre équipe - vous pourrez accéder aux services GiveAWay en attendant, mais la gestion de votre association sera disponible après validation."
           : `Un code de vérification a été envoyé à ${data.email}`,
         visibilityTime: response.requiresManualReview ? 15000 : 10000,
         onPress: () => Toast.hide(),
@@ -376,11 +376,32 @@ export default function RegisterAssociationScreen() {
 
         const errorMessage = apiError?.message || "Une erreur est survenue.";
 
-        // 409 / email pris
+        // 409 — peut concerner l'email OU une association déjà existante.
+        // On distingue les deux cas via le message backend.
+        if (status === 409) {
+          const lower =
+            typeof errorMessage === "string" ? errorMessage.toLowerCase() : "";
+          if (lower.includes("association")) {
+            setError("root", { message: errorMessage });
+            scrollToTop();
+            Toast.show({
+              type: "error",
+              text1: "Association déjà enregistrée",
+              text2: errorMessage,
+              visibilityTime: 12000,
+              onPress: () => Toast.hide(),
+            });
+            return;
+          }
+          setError("email", {
+            type: "manual",
+            message: "Cet email est déjà utilisé.",
+          });
+          return;
+        }
         if (
-          status === 409 ||
-          (typeof errorMessage === "string" &&
-            errorMessage.toLowerCase().includes("email"))
+          typeof errorMessage === "string" &&
+          errorMessage.toLowerCase().includes("email")
         ) {
           setError("email", {
             type: "manual",

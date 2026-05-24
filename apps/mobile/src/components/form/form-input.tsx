@@ -34,7 +34,7 @@ export const FormInput = <T extends FieldValues>({
           // --- Connexion Logique (React Hook Form) ---
 
           // 1. La Valeur
-          value={value}
+          value={value === undefined || value === null ? "" : String(value)}
           // 2. Les événements
           // React Hook Form renvoie "onChange", mais l'Input attend "onChangeText"
           onChangeText={onChange}

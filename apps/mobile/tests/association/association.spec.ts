@@ -1,6 +1,6 @@
-import { test, expect, Page } from "@playwright/test";
+import { test, expect, Page } from "../_fixtures";
 import {
-  cleanDatabase,
+  cleanDatabaseForWorker,
   createTestUser,
   createTestAssociation,
   addAssociationMember,
@@ -9,8 +9,8 @@ import { AssociationRole } from "../../../api/src/generated/prisma/client";
 
 const VALID_PASSWORD = "Password123!";
 
-test.beforeEach(async () => {
-  await cleanDatabase();
+test.beforeEach(async ({}, testInfo) => {
+  await cleanDatabaseForWorker(testInfo.parallelIndex);
 });
 
 // ===========================================================================
@@ -37,6 +37,7 @@ async function loginUser(
   await page.getByTestId("btn-login-submit").filter({ visible: true }).click();
 
   await expect(page).toHaveURL("/");
+  await page.waitForLoadState("networkidle");
 }
 
 // ===========================================================================
@@ -73,7 +74,7 @@ test.describe("Page Association — État vide", () => {
   test("devrait afficher l'état vide si l'utilisateur n'appartient à aucune association", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToAssociation(page, user, isMobile);
@@ -86,7 +87,7 @@ test.describe("Page Association — État vide", () => {
   test("devrait afficher un message explicatif dans l'état vide", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToAssociation(page, user, isMobile);
@@ -104,8 +105,8 @@ test.describe("Page Association — Affichage (Owner)", () => {
   test("devrait afficher le nom de l'association", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToAssociation(page, user, isMobile);
@@ -119,8 +120,8 @@ test.describe("Page Association — Affichage (Owner)", () => {
   test("devrait afficher le badge de statut de l'association", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToAssociation(page, user, isMobile);
@@ -135,8 +136,8 @@ test.describe("Page Association — Affichage (Owner)", () => {
   test("devrait afficher le nombre de membres", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToAssociation(page, user, isMobile);
@@ -149,11 +150,11 @@ test.describe("Page Association — Affichage (Owner)", () => {
   test("devrait afficher le nombre de membres mis à jour avec plusieurs membres", async ({
     page,
   }, testInfo) => {
-    const owner = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(owner.id);
+    const owner = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(owner.id, testInfo.parallelIndex);
 
     // Créer un second membre
-    const member = await createTestUser(testInfo.workerIndex + 10);
+    const member = await createTestUser(testInfo.parallelIndex, 'member');
     await addAssociationMember(assoc.id, member.id, AssociationRole.EDITOR);
 
     const isMobile = testInfo.project.name.includes("Mobile");
@@ -173,8 +174,8 @@ test.describe("Page Association — Actions Owner", () => {
   test("devrait afficher le bouton 'Modifier les informations' pour le propriétaire", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToAssociation(page, user, isMobile);
@@ -185,8 +186,8 @@ test.describe("Page Association — Actions Owner", () => {
   test("devrait naviguer vers la page de modification au clic sur 'Modifier les informations'", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToAssociation(page, user, isMobile);
@@ -200,8 +201,8 @@ test.describe("Page Association — Actions Owner", () => {
   test("devrait afficher le bouton 'Gérer les membres' pour le propriétaire", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToAssociation(page, user, isMobile);
@@ -212,8 +213,8 @@ test.describe("Page Association — Actions Owner", () => {
   test("devrait naviguer vers la page des membres au clic sur 'Gérer les membres'", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToAssociation(page, user, isMobile);
@@ -227,8 +228,8 @@ test.describe("Page Association — Actions Owner", () => {
   test("devrait afficher le bouton 'Transférer la propriété'", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToAssociation(page, user, isMobile);
@@ -243,8 +244,8 @@ test.describe("Page Association — Actions Owner", () => {
   test("devrait afficher le bouton 'Quitter l'association' pour le propriétaire", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToAssociation(page, user, isMobile);
@@ -265,9 +266,9 @@ test.describe("Page Association — Actions Admin", () => {
   test("devrait afficher le bouton 'Gérer les membres' pour l'administrateur", async ({
     page,
   }, testInfo) => {
-    const owner = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(owner.id);
-    const admin = await createTestUser(testInfo.workerIndex + 10);
+    const owner = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(owner.id, testInfo.parallelIndex);
+    const admin = await createTestUser(testInfo.parallelIndex, 'admin');
     await addAssociationMember(assoc.id, admin.id, AssociationRole.ADMIN);
 
     const isMobile = testInfo.project.name.includes("Mobile");
@@ -280,9 +281,9 @@ test.describe("Page Association — Actions Admin", () => {
   test("devrait afficher le bouton 'Quitter l'association' pour l'administrateur", async ({
     page,
   }, testInfo) => {
-    const owner = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(owner.id);
-    const admin = await createTestUser(testInfo.workerIndex + 10);
+    const owner = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(owner.id, testInfo.parallelIndex);
+    const admin = await createTestUser(testInfo.parallelIndex, 'admin');
     await addAssociationMember(assoc.id, admin.id, AssociationRole.ADMIN);
 
     const isMobile = testInfo.project.name.includes("Mobile");
@@ -296,9 +297,9 @@ test.describe("Page Association — Actions Admin", () => {
   test("devrait afficher la modale de confirmation au clic sur 'Quitter l'association' (Admin)", async ({
     page,
   }, testInfo) => {
-    const owner = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(owner.id);
-    const admin = await createTestUser(testInfo.workerIndex + 10);
+    const owner = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(owner.id, testInfo.parallelIndex);
+    const admin = await createTestUser(testInfo.parallelIndex, 'admin');
     await addAssociationMember(assoc.id, admin.id, AssociationRole.ADMIN);
 
     const isMobile = testInfo.project.name.includes("Mobile");
@@ -316,9 +317,9 @@ test.describe("Page Association — Actions Admin", () => {
   test("devrait quitter l'association et rediriger vers l'accueil (Admin)", async ({
     page,
   }, testInfo) => {
-    const owner = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(owner.id);
-    const admin = await createTestUser(testInfo.workerIndex + 10);
+    const owner = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(owner.id, testInfo.parallelIndex);
+    const admin = await createTestUser(testInfo.parallelIndex, 'admin');
     await addAssociationMember(assoc.id, admin.id, AssociationRole.ADMIN);
 
     const isMobile = testInfo.project.name.includes("Mobile");
@@ -349,9 +350,9 @@ test.describe("Page Association — Actions Admin", () => {
   test("devrait annuler la sortie de l'association (Admin)", async ({
     page,
   }, testInfo) => {
-    const owner = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(owner.id);
-    const admin = await createTestUser(testInfo.workerIndex + 10);
+    const owner = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(owner.id, testInfo.parallelIndex);
+    const admin = await createTestUser(testInfo.parallelIndex, 'admin');
     await addAssociationMember(assoc.id, admin.id, AssociationRole.ADMIN);
 
     const isMobile = testInfo.project.name.includes("Mobile");
@@ -378,9 +379,9 @@ test.describe("Page Association — Actions Editor", () => {
   test("devrait afficher le bouton 'Voir les membres' pour l'éditeur", async ({
     page,
   }, testInfo) => {
-    const owner = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(owner.id);
-    const editor = await createTestUser(testInfo.workerIndex + 10);
+    const owner = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(owner.id, testInfo.parallelIndex);
+    const editor = await createTestUser(testInfo.parallelIndex, 'editor');
     await addAssociationMember(assoc.id, editor.id, AssociationRole.EDITOR);
 
     const isMobile = testInfo.project.name.includes("Mobile");
@@ -393,9 +394,9 @@ test.describe("Page Association — Actions Editor", () => {
   test("ne devrait pas afficher le bouton 'Modifier les informations' pour l'éditeur", async ({
     page,
   }, testInfo) => {
-    const owner = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(owner.id);
-    const editor = await createTestUser(testInfo.workerIndex + 10);
+    const owner = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(owner.id, testInfo.parallelIndex);
+    const editor = await createTestUser(testInfo.parallelIndex, 'editor');
     await addAssociationMember(assoc.id, editor.id, AssociationRole.EDITOR);
 
     const isMobile = testInfo.project.name.includes("Mobile");
@@ -408,9 +409,9 @@ test.describe("Page Association — Actions Editor", () => {
   test("devrait afficher le bouton 'Quitter l'association' pour l'éditeur", async ({
     page,
   }, testInfo) => {
-    const owner = await createTestUser(testInfo.workerIndex);
-    const assoc = await createTestAssociation(owner.id);
-    const editor = await createTestUser(testInfo.workerIndex + 10);
+    const owner = await createTestUser(testInfo.parallelIndex);
+    const assoc = await createTestAssociation(owner.id, testInfo.parallelIndex);
+    const editor = await createTestUser(testInfo.parallelIndex, 'editor');
     await addAssociationMember(assoc.id, editor.id, AssociationRole.EDITOR);
 
     const isMobile = testInfo.project.name.includes("Mobile");
@@ -429,8 +430,8 @@ test.describe("Page Association — Missions récentes", () => {
   test("devrait afficher la section 'Missions récentes'", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToAssociation(page, user, isMobile);
@@ -441,8 +442,8 @@ test.describe("Page Association — Missions récentes", () => {
   test("devrait afficher 'Aucune mission pour le moment' si l'association n'a pas de missions", async ({
     page,
   }, testInfo) => {
-    const user = await createTestUser(testInfo.workerIndex);
-    await createTestAssociation(user.id);
+    const user = await createTestUser(testInfo.parallelIndex);
+    await createTestAssociation(user.id, testInfo.parallelIndex);
     const isMobile = testInfo.project.name.includes("Mobile");
 
     await loginAndGoToAssociation(page, user, isMobile);

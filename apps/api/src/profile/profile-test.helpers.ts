@@ -13,6 +13,8 @@ export const mockUserComplete = {
   emailVerifiedAt: new Date(),
   status: UserStatus.ACTIVE,
   emailNotifications: false,
+  matchNotifications: false,
+  pushToken: null,
   createdAt: new Date(),
   updatedAt: new Date(),
   address: {
@@ -38,6 +40,7 @@ export const mockUserComplete = {
     type: 'HYBRID',
   },
   participations: [],
+  _count: { follows: 0 },
 };
 
 export const mockMappedUser = {
@@ -51,6 +54,9 @@ export const mockMappedUser = {
     type: 'HYBRID',
   },
   participations: [],
+  followsCount: 0,
+  participationsCount: 0,
+  helpedAssociationsCount: 0,
   createdAt: new Date().toISOString(),
 };
 
@@ -72,6 +78,21 @@ export const createMockAuthService = () => ({
     userAvailability: {
       upsert: jest.fn(),
     },
+    mission: {
+      findUnique: jest.fn(),
+    },
+    missionParticipant: {
+      // Default vide pour computeParticipationCounts (getProfile). Les tests
+      // qui veulent tester participationsCount / helpedAssociationsCount
+      // peuvent surcharger via mockResolvedValueOnce.
+      findMany: jest.fn().mockResolvedValue([]),
+      findFirst: jest.fn(),
+      upsert: jest.fn(),
+      deleteMany: jest.fn(),
+    },
+    userAssociationFollow: {
+      findMany: jest.fn(),
+    },
   },
   logger: { error: jest.fn(), warn: jest.fn() },
   mapUserToResponse: jest.fn().mockReturnValue(mockMappedUser),
@@ -86,4 +107,14 @@ export const createMockFileService = () => ({
 export const createMockCookieService = (): Partial<CookieService> => ({
   clearAuthCookies: jest.fn(),
   setAuthCookies: jest.fn(),
+});
+
+/**
+ * Mock du ConversationService utilisé par ProfileService pour notifier
+ * la suppression de conversations lors de la suppression de compte.
+ */
+export const createMockConversationService = () => ({
+  deleteConversationsAndNotify: jest
+    .fn()
+    .mockResolvedValue({ deletedCount: 0, notifiedUserIds: [] }),
 });

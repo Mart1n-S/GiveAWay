@@ -31,11 +31,15 @@ export default function NotificationsScreen() {
   const [emailNotifications, setEmailNotifications] = useState(
     profile?.emailNotifications ?? false,
   );
+  const [matchNotifications, setMatchNotifications] = useState(
+    profile?.matchNotifications ?? false,
+  );
 
   // État réel de la permission OS — source de vérité
   const [pushGranted, setPushGranted] = useState<boolean | null>(null);
 
   const [emailError, setEmailError] = useState<string | undefined>(undefined);
+  const [matchError, setMatchError] = useState<string | undefined>(undefined);
   const [globalError, setGlobalError] = useState<string | undefined>(undefined);
 
   const checkPushPermission = useCallback(async () => {
@@ -98,6 +102,37 @@ export default function NotificationsScreen() {
     await saveEmailNotifications(newValue);
   };
 
+  const saveMatchNotifications = async (newValue: boolean) => {
+    try {
+      await ProfileService.updateNotifications({ matchNotifications: newValue });
+    } catch (error: unknown) {
+      setMatchNotifications(!newValue);
+
+      if (isAxiosError(error) && error.response) {
+        const status = error.response.status;
+        const message: string =
+          error.response.data?.message || "Une erreur est survenue.";
+
+        if (status === 400) {
+          setMatchError(message);
+          return;
+        }
+        setGlobalError(message);
+      } else {
+        setGlobalError(
+          "Impossible de contacter le serveur. Vérifiez votre connexion.",
+        );
+      }
+    }
+  };
+
+  const handleMatchToggle = async (newValue: boolean) => {
+    setGlobalError(undefined);
+    setMatchError(undefined);
+    setMatchNotifications(newValue);
+    await saveMatchNotifications(newValue);
+  };
+
   return (
     <>
       <Stack.Screen options={{ headerTitle: "Notifications" }} />
@@ -126,7 +161,7 @@ export default function NotificationsScreen() {
             </Button>
           )}
 
-          {/* Bulle d'information */}
+          {/* Bulle d'information : sauvegarde auto */}
           <View className="flex-row gap-3 p-4 border border-blue-200 rounded-lg bg-blue-50">
             <InfoIcon className="w-5 h-5 mt-0.5 text-blue-600 shrink-0" />
             <Text className="flex-1 text-sm text-blue-600">
@@ -147,7 +182,17 @@ export default function NotificationsScreen() {
             </View>
           )}
 
-          {/* Notifications e-mail */}
+          {/* Bandeau : emails transactionnels toujours envoyés */}
+          <View className="flex-row gap-3 p-4 border rounded-lg border-grey-200 bg-grey-50">
+            <InfoIcon className="w-5 h-5 mt-0.5 text-grey-600 shrink-0" />
+            <Text className="flex-1 text-sm text-grey-700">
+              Les e-mails liés à votre compte (vérification, mot de passe) et à
+              vos missions inscrites (modification, annulation, retrait) vous
+              sont toujours envoyés. Ces e-mails ne peuvent pas être désactivés.
+            </Text>
+          </View>
+
+          {/* Notifications e-mail (opt-in) */}
           <View className="overflow-hidden bg-white border rounded-lg border-grey-100">
             <View className="px-5 pt-4 pb-2">
               <Text className="text-base font-bold text-grey-900">
@@ -159,11 +204,45 @@ export default function NotificationsScreen() {
 
             <ToggleRow
               testID="toggle-email-notifications"
-              label="E-mails de la plateforme"
-              description="Missions suggérées, rappels et mises à jour de votre compte"
+              label="Rappels et nouvelles missions"
+              description="Rappel la veille de vos missions inscrites, et nouvelles missions des associations que vous suivez."
               value={emailNotifications}
               onValueChange={handleEmailToggle}
               errorMessage={emailError}
+            />
+          </View>
+
+          {/* Missions personnalisées */}
+          <View className="overflow-hidden bg-white border rounded-lg border-grey-100">
+            <View className="px-5 pt-4 pb-2">
+              <Text className="text-base font-bold text-grey-900">
+                Missions personnalisées
+              </Text>
+            </View>
+
+            <View className="h-[1px] mx-5 bg-grey-100" />
+
+            {/* Bulle d'info ambre */}
+            <View className="flex-row gap-3 p-3 mx-5 mt-4 border rounded-lg border-amber-200 bg-amber-50">
+              <InfoIcon className="w-5 h-5 mt-0.5 text-amber-600 shrink-0" />
+              <Text className="flex-1 text-xs text-amber-700">
+                Même sans suivre une association, si une nouvelle mission
+                correspond à vos causes, compétences ou disponibilités, nous
+                pouvons vous en informer.
+              </Text>
+            </View>
+
+            <ToggleRow
+              testID="toggle-match-notifications"
+              label={
+                Platform.OS === "web"
+                  ? "Suggérer des missions par e-mail"
+                  : "Suggérer des missions par e-mail et notifications push"
+              }
+              description="Recevez des suggestions adaptées à votre profil"
+              value={matchNotifications}
+              onValueChange={handleMatchToggle}
+              errorMessage={matchError}
             />
           </View>
 

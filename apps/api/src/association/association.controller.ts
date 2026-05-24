@@ -33,12 +33,16 @@ import {
   AssociationMapItem,
   NearbyQueryDto,
   NearbyQuerySchema,
+  AssociationPublicProfile,
+  AssociationPublicListResponse,
+  ContactableMemberDto,
 } from '@repo/shared';
 import { AssociationRole } from '../generated/prisma/client';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { ImageValidationPipe } from '../common/pipes/image-validation.pipe';
 import { DocumentsValidationPipe } from '../common/pipes/documents-validation.pipe';
 import { AssociationService } from './association.service';
+import { AuthenticatedRequest } from '../common/interfaces/authenticated-request.interface';
 import {
   AssociationMemberGuard,
   AssociationAuthenticatedRequest,
@@ -49,6 +53,57 @@ import { AssociationRoles } from './guards/association-roles.decorator';
 @Controller('associations')
 export class AssociationController {
   constructor(private readonly associationService: AssociationService) {}
+
+  /**
+   * GET /associations/public
+   * Liste paginée et filtrable des associations validées.
+   * Route publique — aucune authentification requise.
+   *
+   * Params optionnels :
+   *   search    — filtre par nom (insensible à la casse)
+   *   city      — filtre par ville
+   *   lat, lng  — géolocalisation
+   *   radius    — rayon en km (défaut 10)
+   *   page, pageSize
+   *
+   * IMPORTANT : doit être déclaré AVANT :associationId
+   */
+  @Get('public')
+  @HttpCode(HttpStatus.OK)
+  async getPublicList(
+    @Query('search') search?: string,
+    @Query('city') city?: string,
+    @Query('lat') lat?: string,
+    @Query('lng') lng?: string,
+    @Query('radius') radius?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ): Promise<AssociationPublicListResponse> {
+    return this.associationService.findPublicList(
+      search || undefined,
+      city || undefined,
+      lat ? Number.parseFloat(lat) : undefined,
+      lng ? Number.parseFloat(lng) : undefined,
+      radius ? Number.parseFloat(radius) : 10,
+      page ? Number.parseInt(page, 10) : 1,
+      pageSize ? Number.parseInt(pageSize, 10) : 12,
+    );
+  }
+
+  /**
+   * GET /associations/public/:associationId
+   * Profil public d'une association validée.
+   * Route publique — aucune authentification requise.
+   *
+   * IMPORTANT : doit être déclaré AVANT :associationId générique
+   */
+  @Get('public/:associationId')
+  @HttpCode(HttpStatus.OK)
+  async getPublicProfile(
+    @Param('associationId', ParseIntPipe) associationId: number,
+  ): Promise<AssociationPublicProfile> {
+    return this.associationService.findPublicProfile(associationId);
+  }
 
   /**
    * GET /associations/nearby
@@ -178,6 +233,26 @@ export class AssociationController {
     @Param('associationId', ParseIntPipe) associationId: number,
   ): Promise<AssociationMemberDto[]> {
     return this.associationService.getMembers(associationId);
+  }
+
+  /**
+   * GET /associations/:associationId/contactable-members
+   * Liste publique-authentifiée des membres actifs qu'un bénévole peut
+   * contacter via la messagerie. N'expose pas les emails. Exclut le user
+   * courant. Utilisé par la modale "Choisir le destinataire" sur la fiche
+   * publique d'asso.
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Get(':associationId/contactable-members')
+  @HttpCode(HttpStatus.OK)
+  async getContactableMembers(
+    @Req() req: AuthenticatedRequest,
+    @Param('associationId', ParseIntPipe) associationId: number,
+  ): Promise<ContactableMemberDto[]> {
+    return this.associationService.getContactableMembers(
+      associationId,
+      req.user.id,
+    );
   }
 
   /**

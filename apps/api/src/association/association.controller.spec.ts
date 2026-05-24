@@ -18,16 +18,21 @@ import {
   AddMemberDto,
   UpdateMemberRoleDto,
   TransferOwnerDto,
+  AssociationPublicListResponse,
+  AssociationPublicProfile,
 } from '@repo/shared';
 
 // ── Mocks ─────────────────────────────────────────────────────────
 
 const mockAssociationService = {
   findNearby: jest.fn(),
+  findPublicList: jest.fn(),
+  findPublicProfile: jest.fn(),
   getAssociation: jest.fn(),
   updateAssociation: jest.fn(),
   getDocumentForDownload: jest.fn(),
   getMembers: jest.fn(),
+  getContactableMembers: jest.fn(),
   getAssociationMissions: jest.fn(),
   addMember: jest.fn(),
   updateMemberRole: jest.fn(),
@@ -114,6 +119,168 @@ describe('AssociationController', () => {
 
     controller = module.get<AssociationController>(AssociationController);
     jest.clearAllMocks();
+  });
+
+  // =========================================================================
+  // getPublicList
+  // =========================================================================
+  describe('getPublicList', () => {
+    const mockPublicList: AssociationPublicListResponse = {
+      associations: [
+        {
+          id: 1,
+          name: 'Croix-Rouge Paris',
+          description: null,
+          logoUrl: null,
+          website: null,
+          category: 'Humanitaire',
+          city: 'Paris',
+          activeMissionsCount: 3,
+        },
+      ],
+      total: 1,
+      page: 1,
+      pageSize: 12,
+    };
+
+    it('✅ Doit déléguer au service avec les valeurs par défaut', async () => {
+      mockAssociationService.findPublicList.mockResolvedValue(mockPublicList);
+
+      const result = await controller.getPublicList();
+
+      expect(mockAssociationService.findPublicList).toHaveBeenCalledWith(
+        undefined, // search
+        undefined, // city
+        undefined, // lat
+        undefined, // lng
+        10, // radius par défaut
+        1, // page par défaut
+        12, // pageSize par défaut
+      );
+      expect(result).toEqual(mockPublicList);
+    });
+
+    it('✅ Doit convertir les params string en types appropriés', async () => {
+      mockAssociationService.findPublicList.mockResolvedValue(mockPublicList);
+
+      await controller.getPublicList(
+        'croix',
+        'Paris',
+        '48.85',
+        '2.35',
+        '20',
+        '2',
+        '6',
+      );
+
+      expect(mockAssociationService.findPublicList).toHaveBeenCalledWith(
+        'croix',
+        'Paris',
+        48.85,
+        2.35,
+        20,
+        2,
+        6,
+      );
+    });
+
+    it('✅ Doit traiter les chaînes vides comme undefined', async () => {
+      mockAssociationService.findPublicList.mockResolvedValue(mockPublicList);
+
+      await controller.getPublicList('', '', '', '', '', '', '');
+
+      expect(mockAssociationService.findPublicList).toHaveBeenCalledWith(
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        10,
+        1,
+        12,
+      );
+    });
+
+    it('✅ Doit retourner une liste vide si aucune association', async () => {
+      const emptyList: AssociationPublicListResponse = {
+        associations: [],
+        total: 0,
+        page: 1,
+        pageSize: 12,
+      };
+      mockAssociationService.findPublicList.mockResolvedValue(emptyList);
+
+      const result = await controller.getPublicList();
+
+      expect(result.associations).toHaveLength(0);
+      expect(result.total).toBe(0);
+    });
+
+    it('✅ Doit propager une erreur du service', async () => {
+      mockAssociationService.findPublicList.mockRejectedValue(
+        new Error('DB error'),
+      );
+
+      await expect(controller.getPublicList()).rejects.toThrow('DB error');
+    });
+  });
+
+  // =========================================================================
+  // getPublicProfile
+  // =========================================================================
+  describe('getPublicProfile', () => {
+    const mockPublicProfile: AssociationPublicProfile = {
+      id: 42,
+      name: 'Les Restos du Cœur',
+      description: 'Aide alimentaire',
+      object: 'Objet statutaire',
+      legalStatus: 'Association loi 1901',
+      logoUrl: null,
+      website: null,
+      phone: null,
+      category: 'Aide alimentaire',
+      address: {
+        street: '10 rue de la Paix',
+        postalCode: '75001',
+        city: 'Paris',
+        latitude: 48.85,
+        longitude: 2.35,
+      },
+      activeMissionsCount: 5,
+      createdAt: new Date().toISOString(),
+    };
+
+    it("✅ Doit déléguer au service avec l'ID correct", async () => {
+      mockAssociationService.findPublicProfile.mockResolvedValue(
+        mockPublicProfile,
+      );
+
+      const result = await controller.getPublicProfile(42);
+
+      expect(mockAssociationService.findPublicProfile).toHaveBeenCalledWith(42);
+      expect(result).toEqual(mockPublicProfile);
+    });
+
+    it("❌ Doit propager NotFoundException si l'association est introuvable", async () => {
+      mockAssociationService.findPublicProfile.mockRejectedValue(
+        new NotFoundException('Association introuvable'),
+      );
+
+      await expect(controller.getPublicProfile(999)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('✅ Doit retourner le profil complet avec adresse et catégorie', async () => {
+      mockAssociationService.findPublicProfile.mockResolvedValue(
+        mockPublicProfile,
+      );
+
+      const result = await controller.getPublicProfile(42);
+
+      expect(result.address?.city).toBe('Paris');
+      expect(result.category).toBe('Aide alimentaire');
+      expect(result.activeMissionsCount).toBe(5);
+    });
   });
 
   // =========================================================================
@@ -312,6 +479,37 @@ describe('AssociationController', () => {
       const result = await controller.getMembers(1);
 
       expect(result).toEqual([]);
+    });
+  });
+
+  // =========================================================================
+  // getContactableMembers
+  // =========================================================================
+  describe('getContactableMembers', () => {
+    it('✅ Délègue au service avec associationId et user.id du requêteur', async () => {
+      const fakeMembers = [
+        {
+          userId: 7,
+          firstName: 'Alice',
+          lastName: 'Dupont',
+          profilePicture: null,
+          role: 'OWNER' as const,
+        },
+      ];
+      mockAssociationService.getContactableMembers.mockResolvedValue(
+        fakeMembers,
+      );
+      const req = { user: { id: 42 } } as unknown as Parameters<
+        typeof controller.getContactableMembers
+      >[0];
+
+      const result = await controller.getContactableMembers(req, 1);
+
+      expect(mockAssociationService.getContactableMembers).toHaveBeenCalledWith(
+        1,
+        42,
+      );
+      expect(result).toEqual(fakeMembers);
     });
   });
 

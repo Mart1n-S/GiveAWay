@@ -5,7 +5,11 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Param,
+  ParseIntPipe,
   Patch,
+  Post,
+  Query,
   Req,
   Res,
   UnauthorizedException,
@@ -23,7 +27,13 @@ import {
   UpdateProfileSchema,
   UpdateNotificationsDto,
   UpdateNotificationsSchema,
+  RegisterPushTokenDto,
+  RegisterPushTokenSchema,
   User,
+  FollowedAssociationItem,
+  ParticipationStatsDto,
+  ParticipationStatsQueryDto,
+  ParticipationStatsQuerySchema,
 } from '@repo/shared';
 import { AuthenticatedRequest } from '../common/interfaces/authenticated-request.interface';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -47,6 +57,92 @@ export class ProfileController {
     }
 
     return this.profileService.getProfile(req.user.id);
+  }
+
+  /**
+   * GET /profile/follows
+   * Retourne la liste des associations suivies par l'utilisateur connecté
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Get('follows')
+  @HttpCode(HttpStatus.OK)
+  async getFollowedAssociations(
+    @Req() req: AuthenticatedRequest,
+  ): Promise<FollowedAssociationItem[]> {
+    if (!req.user.id) {
+      throw new UnauthorizedException('Utilisateur non identifié');
+    }
+    return this.profileService.getFollowedAssociations(req.user.id);
+  }
+
+  /**
+   * GET /profile/participations/stats
+   * Retourne les statistiques de participation du bénévole connecté
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Get('participations/stats')
+  @HttpCode(HttpStatus.OK)
+  async getParticipationStats(
+    @Req() req: AuthenticatedRequest,
+    @Query(new ZodValidationPipe(ParticipationStatsQuerySchema))
+    query: ParticipationStatsQueryDto,
+  ): Promise<ParticipationStatsDto> {
+    if (!req.user.id) {
+      throw new UnauthorizedException('Utilisateur non identifié');
+    }
+    return this.profileService.getParticipationStats(req.user.id, query);
+  }
+
+  /**
+   * GET /profile/missions/:missionId/participation
+   * Vérifie si l'utilisateur connecté participe à une mission donnée
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Get('missions/:missionId/participation')
+  @HttpCode(HttpStatus.OK)
+  async checkParticipation(
+    @Req() req: AuthenticatedRequest,
+    @Param('missionId', ParseIntPipe) missionId: number,
+  ): Promise<{ isParticipating: boolean }> {
+    if (!req.user.id)
+      throw new UnauthorizedException('Utilisateur non identifié');
+    const isParticipating = await this.profileService.checkParticipation(
+      req.user.id,
+      missionId,
+    );
+    return { isParticipating };
+  }
+
+  /**
+   * POST /profile/missions/:missionId/participate
+   * L'utilisateur connecté s'inscrit à une mission
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Post('missions/:missionId/participate')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async participateInMission(
+    @Req() req: AuthenticatedRequest,
+    @Param('missionId', ParseIntPipe) missionId: number,
+  ): Promise<void> {
+    if (!req.user.id)
+      throw new UnauthorizedException('Utilisateur non identifié');
+    await this.profileService.participateInMission(req.user.id, missionId);
+  }
+
+  /**
+   * DELETE /profile/missions/:missionId/participate
+   * L'utilisateur connecté annule sa participation à une mission
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Delete('missions/:missionId/participate')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async cancelParticipation(
+    @Req() req: AuthenticatedRequest,
+    @Param('missionId', ParseIntPipe) missionId: number,
+  ): Promise<void> {
+    if (!req.user.id)
+      throw new UnauthorizedException('Utilisateur non identifié');
+    await this.profileService.cancelParticipation(req.user.id, missionId);
   }
 
   /**
@@ -111,6 +207,24 @@ export class ProfileController {
     }
 
     return this.profileService.updateNotifications(req.user.id, dto);
+  }
+
+  /**
+   * PATCH /profile/push-token
+   * Enregistre ou met à jour le token de notification push de l'appareil
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Patch('push-token')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async savePushToken(
+    @Req() req: AuthenticatedRequest,
+    @Body(new ZodValidationPipe(RegisterPushTokenSchema))
+    dto: RegisterPushTokenDto,
+  ): Promise<void> {
+    if (!req.user.id) {
+      throw new UnauthorizedException('Utilisateur non identifié');
+    }
+    await this.profileService.savePushToken(req.user.id, dto);
   }
 
   /**

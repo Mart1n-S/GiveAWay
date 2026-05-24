@@ -65,11 +65,11 @@ const STATUS_CONFIG: Record<
 // ─── Delete Document Modal ────────────────────────────────────────────────────
 
 interface DeleteDocModalProps {
-  visible: boolean;
-  filename: string;
-  isLoading: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
+  readonly visible: boolean;
+  readonly filename: string;
+  readonly isLoading: boolean;
+  readonly onClose: () => void;
+  readonly onConfirm: () => void;
 }
 
 function DeleteDocModal({
@@ -137,14 +137,14 @@ function DeleteDocModal({
 // ─── Transfer Owner Modal ─────────────────────────────────────────────────────
 
 interface TransferOwnerModalProps {
-  visible: boolean;
-  members: AssociationMemberDto[];
-  currentUserId: number;
-  associationId: number;
-  onClose: () => void;
-  onSuccess: () => void;
+  readonly visible: boolean;
+  readonly members: AssociationMemberDto[];
+  readonly currentUserId: number;
+  readonly associationId: number;
+  readonly onClose: () => void;
+  readonly onSuccess: () => void;
   /** Affiche une bannière expliquant que le transfert est requis pour quitter */
-  leaveMode?: boolean;
+  readonly leaveMode?: boolean;
 }
 
 function TransferOwnerModal({
@@ -770,9 +770,9 @@ export default function AssociationScreen() {
                         accessibilityLabel={`Télécharger ${doc.type}`}
                         className="hover:bg-grey-100 active:bg-grey-200 shrink-0"
                         icon={
-                          !isDownloading ? (
+                          isDownloading ? undefined : (
                             <DownloadIcon className="w-4 h-4 text-primary group-hover:text-primary-hover group-active:text-primary-active" />
-                          ) : undefined
+                          )
                         }
                       />
                       <Button
@@ -821,9 +821,9 @@ export default function AssociationScreen() {
                   }
                   disabled={!isValidated}
                   icon={
-                    !isValidated ? (
+                    isValidated ? undefined : (
                       <InfoIcon className="w-4 h-4 text-grey-disabledText" />
-                    ) : undefined
+                    )
                   }
                   className="w-full"
                 >
@@ -842,13 +842,34 @@ export default function AssociationScreen() {
                   }
                   disabled={!isValidated}
                   icon={
-                    !isValidated ? (
+                    isValidated ? undefined : (
                       <InfoIcon className="w-4 h-4 text-grey-disabledText" />
-                    ) : undefined
+                    )
                   }
                   className="w-full"
                 >
                   Gérer les membres
+                </Button>
+              )}
+
+              {(isOwner || isAdmin) && (
+                <Button
+                  testID="btn-statistics"
+                  variant="secondary"
+                  onPress={
+                    isValidated
+                      ? () => router.push("/association/statistiques" as any)
+                      : handleLockedAction
+                  }
+                  disabled={!isValidated}
+                  icon={
+                    isValidated ? undefined : (
+                      <InfoIcon className="w-4 h-4 text-grey-disabledText" />
+                    )
+                  }
+                  className="w-full"
+                >
+                  Statistiques
                 </Button>
               )}
 
@@ -1005,15 +1026,7 @@ export default function AssociationScreen() {
             loading={missionsLoading}
             error={missionsError}
             onRetry={loadRecentMissions}
-            onViewAll={() => {
-              Toast.show({
-                type: "info",
-                text1: "Bientôt disponible",
-                text2: "La gestion des missions arrive prochainement.",
-                visibilityTime: 3000,
-                onPress: () => Toast.hide(),
-              });
-            }}
+            onViewAll={() => router.push("/association/missions" as any)}
           />
         </View>
       </ScrollView>

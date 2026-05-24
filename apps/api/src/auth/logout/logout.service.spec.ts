@@ -6,6 +6,7 @@ import { AuthService } from '../auth.service';
 const mockAuthService = {
   prisma: {
     refreshToken: { findMany: jest.fn(), delete: jest.fn() },
+    user: { update: jest.fn() },
   },
 };
 
@@ -57,6 +58,34 @@ describe('LogoutService', () => {
 
     await service.logout(1, 'any_token');
 
+    expect(mockAuthService.prisma.refreshToken.delete).not.toHaveBeenCalled();
+  });
+
+  it('✅ Efface le pushToken après déconnexion (sécurité notifications)', async () => {
+    mockAuthService.prisma.refreshToken.findMany.mockResolvedValue([]);
+    mockAuthService.prisma.user.update.mockResolvedValue({});
+
+    await service.logout(5, 'any_token');
+
+    expect(mockAuthService.prisma.user.update).toHaveBeenCalledWith({
+      where: { id: 5 },
+      data: { pushToken: null },
+    });
+  });
+
+  it('✅ Efface le pushToken même si aucun refresh token ne correspond', async () => {
+    mockAuthService.prisma.refreshToken.findMany.mockResolvedValue([
+      { id: 1, hashedToken: 'hash1' },
+    ]);
+    jest.spyOn(argon2, 'verify').mockResolvedValue(false);
+    mockAuthService.prisma.user.update.mockResolvedValue({});
+
+    await service.logout(5, 'unknown_token');
+
+    expect(mockAuthService.prisma.user.update).toHaveBeenCalledWith({
+      where: { id: 5 },
+      data: { pushToken: null },
+    });
     expect(mockAuthService.prisma.refreshToken.delete).not.toHaveBeenCalled();
   });
 });

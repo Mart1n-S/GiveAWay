@@ -1,12 +1,12 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../_fixtures";
 import {
-  cleanDatabase,
+  cleanDatabaseForWorker,
   createTestUser,
-  prisma,
+  prisma, getPrisma
 } from "../../../api/test/prisma-test-helper";
 
-test.beforeEach(async () => {
-  await cleanDatabase();
+test.beforeEach(async ({}, testInfo) => {
+  await cleanDatabaseForWorker(testInfo.parallelIndex);
 });
 
 // afterAll(async () => {
@@ -18,7 +18,7 @@ test.describe("Flux de Réinitialisation du mot de passe", () => {
     page,
   }, testInfo) => {
     // 1. PRÉPARATION : Création de l'utilisateur via le helper (email unique par worker)
-    const user = await createTestUser(testInfo.workerIndex);
+    const user = await createTestUser(testInfo.parallelIndex);
     const newPassword = "NewPassword123!";
 
     // --- ÉTAPE 1 : DEMANDE DE RÉINITIALISATION ---
@@ -53,7 +53,7 @@ test.describe("Flux de Réinitialisation du mot de passe", () => {
           let userInDb = null;
           for (let i = 0; i < 5; i++) {
             // Tentatives sur 1 seconde
-            userInDb = await prisma.user.findUnique({
+            userInDb = await getPrisma(test.info().parallelIndex).user.findUnique({
               where: { email: user.email },
             });
             if (userInDb) break;

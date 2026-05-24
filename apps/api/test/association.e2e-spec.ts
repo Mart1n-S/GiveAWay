@@ -126,9 +126,9 @@ describe('Association Module (E2E)', () => {
     memberAssocUserId = assocUser.id;
 
     // Login des 3 utilisateurs
-    ownerToken = await loginUser(`e2e.0@test.com`, 'Password123!');
-    memberToken = await loginUser(`e2e.1@test.com`, 'Password123!');
-    outsiderToken = await loginUser(`e2e.2@test.com`, 'Password123!');
+    ownerToken = await loginUser(`e2e.w0@test.com`, 'Password123!');
+    memberToken = await loginUser(`e2e.w1@test.com`, 'Password123!');
+    outsiderToken = await loginUser(`e2e.w2@test.com`, 'Password123!');
   });
 
   afterAll(async () => {
@@ -234,7 +234,7 @@ describe('Association Module (E2E)', () => {
         members: unknown[];
       };
       expect(body.id).toBe(associationId);
-      expect(body.name).toBe('Association E2E Test');
+      expect(body.name).toBe('Association E2E Test [w0]');
       expect(Array.isArray(body.members)).toBe(true);
     });
 
@@ -452,7 +452,7 @@ describe('Association Module (E2E)', () => {
       const res = await request(httpServer)
         .post(`/associations/${associationId}/members`)
         .set('Authorization', `Bearer ${ownerToken}`)
-        .send({ email: `e2e.3@test.com` })
+        .send({ email: `e2e.w3@test.com` })
         .expect(201);
 
       const body = res.body as { userId: number; role: string };
@@ -471,7 +471,7 @@ describe('Association Module (E2E)', () => {
       await request(httpServer)
         .post(`/associations/${associationId}/members`)
         .set('Authorization', `Bearer ${memberToken}`)
-        .send({ email: `e2e.4@test.com` })
+        .send({ email: `e2e.w4@test.com` })
         .expect(201);
     });
 
@@ -481,7 +481,7 @@ describe('Association Module (E2E)', () => {
       await request(httpServer)
         .post(`/associations/${associationId}/members`)
         .set('Authorization', `Bearer ${memberToken}`)
-        .send({ email: `e2e.5@test.com` })
+        .send({ email: `e2e.w5@test.com` })
         .expect(403);
     });
 
@@ -497,7 +497,7 @@ describe('Association Module (E2E)', () => {
       await request(httpServer)
         .post(`/associations/${associationId}/members`)
         .set('Authorization', `Bearer ${ownerToken}`)
-        .send({ email: `e2e.1@test.com` })
+        .send({ email: `e2e.w1@test.com` })
         .expect(409);
     });
 

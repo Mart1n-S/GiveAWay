@@ -40,6 +40,15 @@
     "dev": {
       "cache": false,
       "persistent": true
+    },
+    "admin#dev": {
+      "cache": false,
+      "persistent": true,
+      "dependsOn": ["@repo/shared#build"]
+    },
+    "admin#build": {
+      "dependsOn": ["@repo/shared#build"],
+      "outputs": ["dist/**"]
     }
   }
 }
