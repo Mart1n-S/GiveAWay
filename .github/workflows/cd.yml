@@ -53,6 +53,18 @@ jobs:
             ${{ secrets.HARBOR_URL }}/giiveaway/front:latest
             ${{ secrets.HARBOR_URL }}/giiveaway/front:${{ github.sha }}
 
+      - name: Build & Push Admin
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: apps/admin/Dockerfile
+          push: true
+          build-args: |
+            VITE_API_URL=https://api.giiveaway.fr
+          tags: |
+            ${{ secrets.HARBOR_URL }}/giiveaway/admin:latest
+            ${{ secrets.HARBOR_URL }}/giiveaway/admin:${{ github.sha }}
+
   update-gitops:
     name: Update GitOps repo
     runs-on: ubuntu-latest
@@ -71,6 +83,8 @@ jobs:
           sed -i "s|image: ${{ secrets.HARBOR_URL }}/giiveaway/api:.*|image: ${{ secrets.HARBOR_URL }}/giiveaway/api:${{ github.sha }}|g" \
             gitops/apps/giiveaway/deployment.yaml
           sed -i "s|image: ${{ secrets.HARBOR_URL }}/giiveaway/front:.*|image: ${{ secrets.HARBOR_URL }}/giiveaway/front:${{ github.sha }}|g" \
+            gitops/apps/giiveaway/deployment.yaml
+          sed -i "s|image: ${{ secrets.HARBOR_URL }}/giiveaway/admin:.*|image: ${{ secrets.HARBOR_URL }}/giiveaway/admin:${{ github.sha }}|g" \
             gitops/apps/giiveaway/deployment.yaml
 
       - name: Commit and push
