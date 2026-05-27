@@ -404,11 +404,11 @@ function MarketingView() {
               <ValuePill icon={LocalisationIcon} label="Près de chez vous" />
             </View>
           </View>
-          <View className="flex-col gap-4 md:w-64">
+          {/* <View className="flex-col gap-4 md:w-64">
             <StatCard value="29" label="causes soutenues" />
             <StatCard value="16" label="types de compétences" />
             <StatCard value="9" label="catégories d'associations" />
-          </View>
+          </View> */}
         </View>
       </View>
 

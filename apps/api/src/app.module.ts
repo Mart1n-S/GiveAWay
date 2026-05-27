@@ -60,7 +60,7 @@ import { MissionReminderModule } from './reminders/mission-reminder.module';
         return [
           {
             ttl: 5 * 60 * 1000, // 5 minutes
-            limit: 100, // 100 requêtes max par minute par IP
+            limit: 300, // 300 requêtes max par minute par IP
           },
         ];
       },

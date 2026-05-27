@@ -30,7 +30,7 @@ export class LoginController {
 
   // Route: POST /auth/login
   @UseGuards(GuestGuard)
-  @Throttle({ default: { limit: 5, ttl: 60 * 60 * 1000 } }) // 5 tentatives de connexion par heure max
+  @Throttle({ default: { limit: 15, ttl: 60 * 60 * 1000 } }) // 15 tentatives de connexion par heure max
   @HttpCode(HttpStatus.OK)
   @Post('login')
   @UsePipes(new ZodValidationPipe(LoginSchema))
